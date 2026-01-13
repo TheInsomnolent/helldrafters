@@ -76,8 +76,13 @@ export const processEventOutcome = (outcome, choice, state, selections = {}) => 
     case OUTCOME_TYPES.GAIN_BOOSTER:
       // Generate booster draft instead of directly applying
       updates.needsBoosterSelection = true;
-      updates.boosterDraft = generateBoosterDraft(players, gameConfig, state.burnedCards || []);
+      const boosterDraft = generateBoosterDraft(players, gameConfig, state.burnedCards || []);
+      updates.boosterDraft = boosterDraft;
       updates.boosterOutcome = outcome;
+      // If burn mode is enabled, mark these boosters to be burned when shown
+      if (gameConfig.burnCards && boosterDraft.length > 0) {
+        updates.burnBoosterDraft = boosterDraft;
+      }
       break;
 
     case OUTCOME_TYPES.LOSE_ALL_BUT_ONE_LIFE:
