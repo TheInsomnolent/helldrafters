@@ -29,7 +29,8 @@ export const initialState = {
     activePlayerIndex: 0,
     roundCards: [],
     isRerolling: false,
-    pendingStratagem: null
+    pendingStratagem: null,
+    extraDraftRound: 0 // Tracks which extra draft round we're on (0 = normal draft)
   },
   burnedCards: [],
   customSetup: {

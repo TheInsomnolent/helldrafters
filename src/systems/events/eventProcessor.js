@@ -45,8 +45,13 @@ export const processEventOutcome = (outcome, choice, state, selections = {}) => 
       break;
 
     case OUTCOME_TYPES.EXTRA_DRAFT:
-      // Handled by caller - this is informational
-      updates.extraDraftCards = outcome.value;
+      // Store extra draft cards in the player who will benefit
+      if (eventPlayerChoice !== null) {
+        const newPlayers = [...players];
+        const player = newPlayers[eventPlayerChoice];
+        player.extraDraftCards = (player.extraDraftCards || 0) + outcome.value;
+        updates.players = newPlayers;
+      }
       break;
 
     case OUTCOME_TYPES.SKIP_DIFFICULTY:
@@ -97,7 +102,10 @@ export const processEventOutcome = (outcome, choice, state, selections = {}) => 
         const newPlayers = [...players];
         const player = newPlayers[eventPlayerChoice];
         
-        // Clear all stratagems
+        // Save current stratagems for restoration after mission
+        player.savedStratagems = [...player.loadout.stratagems];
+        
+        // Clear all stratagems temporarily
         player.loadout.stratagems = [null, null, null, null];
         
         // Keep only one weapon: primary if they have it, otherwise secondary

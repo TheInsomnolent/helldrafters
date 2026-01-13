@@ -145,6 +145,7 @@ export const getWeightedPool = (player, difficulty, gameConfig, burnedCards = []
  * @param {string[]} burnedCards - Array of burned card IDs
  * @param {Object[]} allPlayers - All players
  * @param {Function} onBurnCard - Callback when a card is burned (optional)
+ * @param {number} customHandSize - Optional custom hand size override
  * @returns {Object[]} Array of item objects or armor combo objects for the draft hand
  */
 export const generateDraftHand = (
@@ -153,7 +154,8 @@ export const generateDraftHand = (
   gameConfig,
   burnedCards = [],
   allPlayers = [],
-  onBurnCard = null
+  onBurnCard = null,
+  customHandSize = null
 ) => {
   if (!player) {
     console.warn('Player not found for draft generation');
@@ -161,7 +163,7 @@ export const generateDraftHand = (
   }
 
   const pool = getWeightedPool(player, difficulty, gameConfig, burnedCards, allPlayers);
-  const handSize = getDraftHandSize(gameConfig.starRating);
+  const handSize = customHandSize !== null ? customHandSize : getDraftHandSize(gameConfig.starRating);
 
   const hand = [];
   for (let i = 0; i < handSize; i++) {

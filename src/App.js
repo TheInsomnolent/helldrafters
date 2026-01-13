@@ -204,13 +204,16 @@ export default function HelldiversRoguelite() {
     }
     
     const player = players[playerIdx];
+    const handSize = getDraftHandSize(gameConfig.starRating);
+
     return generateDraftHand(
       player,
       currentDiff,
       gameConfig,
       burnedCards,
       players,
-      (cardId) => dispatch(actions.addBurnedCard(cardId))
+      (cardId) => dispatch(actions.addBurnedCard(cardId)),
+      handSize
     );
   };
 
@@ -221,13 +224,100 @@ export default function HelldiversRoguelite() {
       return;
     }
     
+    // Restore stratagems and clear restrictions for players who completed their restricted mission
+    const updatedPlayers = players.map(player => {
+      if (player.weaponRestricted && player.savedStratagems) {
+        return {
+          ...player,
+          loadout: {
+            ...player.loadout,
+            stratagems: [...player.savedStratagems]
+          },
+          weaponRestricted: false,
+          savedStratagems: undefined
+        };
+      }
+      return player;
+    });
+    
+    if (JSON.stringify(updatedPlayers) !== JSON.stringify(players)) {
+      dispatch(actions.setPlayers(updatedPlayers));
+    }
+    
     dispatch(actions.setDraftState({
       activePlayerIndex: 0,
       roundCards: generateDraftHandForPlayer(0),
       isRerolling: false,
-      pendingStratagem: null
+      pendingStratagem: null,
+      extraDraftRound: 0
     }));
     dispatch(actions.setPhase('DRAFT'));
+  };
+
+  const proceedToNextDraft = (updatedPlayers) => {
+    const currentPlayerIdx = draftState.activePlayerIndex;
+    const currentPlayer = updatedPlayers[currentPlayerIdx];
+    const currentExtraRound = draftState.extraDraftRound || 0;
+    
+    // Check if current player has more extra drafts to complete
+    if (currentPlayer.extraDraftCards && currentExtraRound < currentPlayer.extraDraftCards) {
+      // Continue with next extra draft for same player
+      dispatch(actions.setDraftState({
+        activePlayerIndex: currentPlayerIdx,
+        roundCards: generateDraftHandForPlayer(currentPlayerIdx),
+        isRerolling: false,
+        pendingStratagem: null,
+        extraDraftRound: currentExtraRound + 1
+      }));
+      return;
+    }
+    
+    // Clear extra draft cards for this player
+    if (currentPlayer.extraDraftCards) {
+      const clearedPlayers = [...updatedPlayers];
+      clearedPlayers[currentPlayerIdx] = { ...currentPlayer, extraDraftCards: 0 };
+      dispatch(actions.setPlayers(clearedPlayers));
+    }
+    
+    // Move to next player or complete
+    if (currentPlayerIdx < gameConfig.playerCount - 1) {
+      const nextIdx = currentPlayerIdx + 1;
+      dispatch(actions.setDraftState({
+        activePlayerIndex: nextIdx,
+        roundCards: generateDraftHandForPlayer(nextIdx),
+        isRerolling: false,
+        pendingStratagem: null,
+        extraDraftRound: 0
+      }));
+    } else {
+      // Draft complete - check for event
+      if (eventsEnabled) {
+        const baseChance = 0.0;
+        const sampleBonus = (
+          (state.samples.common * 0.01) +
+          (state.samples.rare * 0.02) +
+          (state.samples.superRare * 0.03)
+        );
+        const totalChance = Math.min(1.0, baseChance + sampleBonus);
+
+        if (Math.random() < totalChance) {
+          const event = selectRandomEvent(currentDiff, players.length > 1, seenEvents);
+          if (event) {
+            dispatch(actions.resetSamples());
+            dispatch(actions.addSeenEvent(event.id));
+            dispatch(actions.setCurrentEvent(event));
+            dispatch(actions.setEventPlayerChoice(null));
+            dispatch(actions.setPhase('EVENT'));
+            return;
+          }
+        }
+      }
+      dispatch(actions.setPhase('DASHBOARD'));
+    }
+  };
+
+  const handleSkipDraft = () => {
+    proceedToNextDraft(players);
   };
 
   const handleDraftPick = (item) => {
@@ -276,40 +366,8 @@ export default function HelldiversRoguelite() {
 
     dispatch(actions.setPlayers(updatedPlayers));
 
-    // Next player or Finish
-    if (currentPlayerIdx < gameConfig.playerCount - 1) {
-      const nextIdx = currentPlayerIdx + 1;
-      dispatch(actions.setDraftState({
-        activePlayerIndex: nextIdx,
-        roundCards: generateDraftHandForPlayer(nextIdx),
-        isRerolling: false,
-        pendingStratagem: null
-      }));
-    } else {
-      // Draft complete - check for event
-      if (eventsEnabled) {
-        const baseChance = 0.0;
-        const sampleBonus = (
-          (state.samples.common * 0.01) +
-          (state.samples.rare * 0.02) +
-          (state.samples.superRare * 0.03)
-        );
-        const totalChance = Math.min(1.0, baseChance + sampleBonus);
-
-        if (Math.random() < totalChance) {
-          const event = selectRandomEvent(currentDiff, players.length > 1, seenEvents);
-          if (event) {
-            dispatch(actions.resetSamples());
-            dispatch(actions.addSeenEvent(event.id));
-            dispatch(actions.setCurrentEvent(event));
-            dispatch(actions.setEventPlayerChoice(null));
-            dispatch(actions.setPhase('EVENT'));
-            return;
-          }
-        }
-      }
-      dispatch(actions.setPhase('DASHBOARD'));
-    }
+    // Next player, extra draft, or finish
+    proceedToNextDraft(updatedPlayers);
   };
 
   const handleStratagemReplacement = (slotIndex) => {
@@ -326,40 +384,8 @@ export default function HelldiversRoguelite() {
     
     dispatch(actions.setPlayers(updatedPlayers));
 
-    // Next player or Finish
-    if (currentPlayerIdx < gameConfig.playerCount - 1) {
-      const nextIdx = currentPlayerIdx + 1;
-      dispatch(actions.setDraftState({
-        activePlayerIndex: nextIdx,
-        roundCards: generateDraftHandForPlayer(nextIdx),
-        isRerolling: false,
-        pendingStratagem: null
-      }));
-    } else {
-      // Draft complete - check for event
-      if (eventsEnabled) {
-        const baseChance = 0.0;
-        const sampleBonus = (
-          (state.samples.common * 0.01) +
-          (state.samples.rare * 0.02) +
-          (state.samples.superRare * 0.03)
-        );
-        const totalChance = Math.min(1.0, baseChance + sampleBonus);
-
-        if (Math.random() < totalChance) {
-          const event = selectRandomEvent(currentDiff, players.length > 1, seenEvents);
-          if (event) {
-            dispatch(actions.resetSamples());
-            dispatch(actions.addSeenEvent(event.id));
-            dispatch(actions.setCurrentEvent(event));
-            dispatch(actions.setEventPlayerChoice(null));
-            dispatch(actions.setPhase('EVENT'));
-            return;
-          }
-        }
-      }
-      dispatch(actions.setPhase('DASHBOARD'));
-    }
+    // Next player, extra draft, or finish
+    proceedToNextDraft(updatedPlayers);
   };
 
   const rerollDraft = (cost) => {
@@ -1648,6 +1674,23 @@ export default function HelldiversRoguelite() {
         
         <div style={{ width: '100%', maxWidth: '1200px', margin: '0 auto', flexGrow: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
           <div style={{ textAlign: 'center', marginBottom: '40px' }}>
+            {(draftState.extraDraftRound > 0) && (
+              <div style={{
+                backgroundColor: factionColors.PRIMARY + '20',
+                border: `2px solid ${factionColors.PRIMARY}`,
+                borderRadius: '8px',
+                padding: '12px 24px',
+                marginBottom: '16px',
+                display: 'inline-block'
+              }}>
+                <div style={{ color: factionColors.PRIMARY, fontSize: '14px', fontWeight: 'bold', textTransform: 'uppercase', letterSpacing: '1px' }}>
+                  🎁 BONUS DRAFT {draftState.extraDraftRound}/{player.extraDraftCards || 0}
+                </div>
+                <div style={{ color: '#94a3b8', fontSize: '11px', marginTop: '4px' }}>
+                  Priority Access Equipment
+                </div>
+              </div>
+            )}
             <h2 style={{ color: factionColors.PRIMARY, fontSize: '14px', fontFamily: 'monospace', textTransform: 'uppercase', marginBottom: '8px', letterSpacing: '1px' }}>
               Priority Requisition Authorized
             </h2>
@@ -1692,6 +1735,34 @@ export default function HelldiversRoguelite() {
             >
               <RefreshCw size={20} />
               Reroll All Cards (-1 Req)
+            </button>
+            <button 
+              onClick={handleSkipDraft}
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '12px',
+                padding: '12px 32px',
+                borderRadius: '4px',
+                fontWeight: 'bold',
+                textTransform: 'uppercase',
+                letterSpacing: '1px',
+                border: '2px solid #64748b',
+                backgroundColor: 'transparent',
+                color: '#94a3b8',
+                cursor: 'pointer',
+                transition: 'all 0.2s'
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.borderColor = '#94a3b8';
+                e.currentTarget.style.color = 'white';
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.borderColor = '#64748b';
+                e.currentTarget.style.color = '#94a3b8';
+              }}
+            >
+              Skip Draft
             </button>
           </div>
           

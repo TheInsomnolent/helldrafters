@@ -580,6 +580,24 @@ export default function EventDisplay({
                   >
                     CONFIRM
                   </button>
+                  <button
+                    onClick={onAutoContinue}
+                    style={{
+                      padding: '12px 32px',
+                      fontSize: '16px',
+                      fontWeight: 'bold',
+                      backgroundColor: '#6b7280',
+                      color: '#fff',
+                      border: 'none',
+                      borderRadius: '4px',
+                      cursor: 'pointer',
+                      transition: 'all 0.2s'
+                    }}
+                    onMouseEnter={(e) => e.target.style.backgroundColor = '#4b5563'}
+                    onMouseLeave={(e) => e.target.style.backgroundColor = '#6b7280'}
+                  >
+                    SKIP
+                  </button>
                 </div>
               </div>
             </div>
