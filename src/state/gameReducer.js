@@ -12,7 +12,8 @@ export const initialState = {
     starRating: 3,
     globalUniqueness: true,
     burnCards: true,
-    customStart: false
+    customStart: false,
+    endlessMode: false
   },
   currentDiff: 1,
   requisition: 0,

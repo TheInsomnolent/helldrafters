@@ -572,6 +572,126 @@ export default function HelldiversRoguelite() {
 
   // --- RENDER PHASES ---
 
+  if (phase === 'VICTORY') {
+    return (
+      <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'linear-gradient(135deg, #0f1419 0%, #1a2f3a 50%, #0f1419 100%)', padding: '24px' }}>
+        <div style={{ maxWidth: '900px', width: '100%', textAlign: 'center' }}>
+          <div style={{ marginBottom: '40px' }}>
+            <div style={{ fontSize: '80px', marginBottom: '16px' }}>🎖️</div>
+            <h1 style={{ fontSize: '64px', fontWeight: '900', color: '#F5C642', margin: '0 0 16px 0', textTransform: 'uppercase', letterSpacing: '0.05em', textShadow: '0 0 20px rgba(245, 198, 66, 0.5)' }}>
+              DEMOCRACY MANIFESTED
+            </h1>
+            <h2 style={{ fontSize: '24px', fontWeight: 'bold', color: '#22c55e', margin: '0 0 8px 0' }}>
+              OPERATION COMPLETE
+            </h2>
+            <p style={{ fontSize: '16px', color: '#cbd5e1', lineHeight: '1.8', margin: '0', maxWidth: '600px', marginLeft: 'auto', marginRight: 'auto' }}>
+              Your squad has successfully completed all 10 difficulty tiers.
+              <br/>
+              Super Earth salutes your unwavering dedication to Liberty and Freedom.
+              <br/>
+              <span style={{ color: '#F5C642', fontWeight: 'bold' }}>Managed Democracy prevails!</span>
+            </p>
+          </div>
+
+          {/* Final Stats */}
+          <div style={{ backgroundColor: 'rgba(26, 35, 50, 0.8)', padding: '24px', borderRadius: '8px', border: '2px solid rgba(245, 198, 66, 0.4)', marginBottom: '32px' }}>
+            <div style={{ fontSize: '14px', color: '#F5C642', marginBottom: '16px', textTransform: 'uppercase', fontWeight: 'bold', letterSpacing: '0.1em' }}>
+              Mission Statistics
+            </div>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '16px', textAlign: 'center' }}>
+              <div>
+                <div style={{ fontSize: '12px', color: '#64748b', marginBottom: '4px' }}>Difficulty Cleared</div>
+                <div style={{ fontSize: '32px', fontWeight: 'bold', color: '#F5C642' }}>D10</div>
+                <div style={{ fontSize: '11px', color: '#94a3b8', marginTop: '2px' }}>Super Helldive</div>
+              </div>
+              <div>
+                <div style={{ fontSize: '12px', color: '#64748b', marginBottom: '4px' }}>Requisition</div>
+                <div style={{ fontSize: '32px', fontWeight: 'bold', color: '#22c55e' }}>{requisition}</div>
+              </div>
+              <div>
+                <div style={{ fontSize: '12px', color: '#64748b', marginBottom: '4px' }}>Lives Remaining</div>
+                <div style={{ fontSize: '32px', fontWeight: 'bold', color: '#ef4444' }}>{lives}</div>
+              </div>
+              <div>
+                <div style={{ fontSize: '12px', color: '#64748b', marginBottom: '4px' }}>Theater</div>
+                <div style={{ fontSize: '24px', fontWeight: 'bold', color: 'white', marginTop: '8px' }}>{gameConfig.faction}</div>
+              </div>
+            </div>
+          </div>
+
+          {/* Final Loadouts */}
+          <div style={{ backgroundColor: 'rgba(26, 35, 50, 0.8)', padding: '24px', borderRadius: '8px', border: '1px solid rgba(100, 116, 139, 0.5)', marginBottom: '32px' }}>
+            <div style={{ fontSize: '14px', color: '#F5C642', marginBottom: '20px', textTransform: 'uppercase', fontWeight: 'bold', letterSpacing: '0.1em' }}>
+              Final Loadouts
+            </div>
+            <div style={{ display: 'grid', gridTemplateColumns: players.length > 2 ? 'repeat(2, 1fr)' : 'repeat(' + players.length + ', 1fr)', gap: '16px' }}>
+              {players.map((player, idx) => {
+                const loadout = player.loadout;
+                const primaryItem = getItemById(loadout.primary);
+                const secondaryItem = getItemById(loadout.secondary);
+                const grenadeItem = getItemById(loadout.grenade);
+                const armorItem = getItemById(loadout.armor);
+                const boosterItem = getItemById(loadout.booster);
+                const stratagems = loadout.stratagems.map(s => getItemById(s)).filter(Boolean);
+
+                return (
+                  <div key={idx} style={{ backgroundColor: 'rgba(40, 53, 72, 0.6)', padding: '16px', borderRadius: '6px', border: '1px solid rgba(245, 198, 66, 0.3)' }}>
+                    <div style={{ fontSize: '16px', fontWeight: 'bold', color: '#F5C642', marginBottom: '12px', textAlign: 'left' }}>
+                      {player.name}
+                    </div>
+                    <div style={{ fontSize: '11px', color: '#cbd5e1', textAlign: 'left', lineHeight: '1.8' }}>
+                      <div><span style={{ color: '#94a3b8' }}>Primary:</span> {primaryItem?.name || 'None'}</div>
+                      <div><span style={{ color: '#94a3b8' }}>Secondary:</span> {secondaryItem?.name || 'None'}</div>
+                      <div><span style={{ color: '#94a3b8' }}>Grenade:</span> {grenadeItem?.name || 'None'}</div>
+                      <div><span style={{ color: '#94a3b8' }}>Armor:</span> {armorItem?.name || 'None'}</div>
+                      {boosterItem && <div><span style={{ color: '#94a3b8' }}>Booster:</span> {boosterItem.name}</div>}
+                      {stratagems.length > 0 && (
+                        <div style={{ marginTop: '8px', paddingTop: '8px', borderTop: '1px solid rgba(100, 116, 139, 0.3)' }}>
+                          <div style={{ color: '#94a3b8', marginBottom: '4px' }}>Stratagems:</div>
+                          {stratagems.map((s, i) => <div key={i}>• {s.name}</div>)}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+
+          <button
+            onClick={() => dispatch(actions.setPhase('MENU'))}
+            style={{
+              width: '100%',
+              maxWidth: '400px',
+              padding: '20px',
+              backgroundColor: '#F5C642',
+              color: 'black',
+              border: 'none',
+              borderRadius: '4px',
+              fontWeight: '900',
+              fontSize: '18px',
+              textTransform: 'uppercase',
+              letterSpacing: '0.2em',
+              cursor: 'pointer',
+              transition: 'all 0.2s',
+              boxShadow: '0 0 30px rgba(245, 198, 66, 0.4)'
+            }}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.backgroundColor = '#ffd95a';
+              e.currentTarget.style.boxShadow = '0 0 40px rgba(245, 198, 66, 0.6)';
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.backgroundColor = '#F5C642';
+              e.currentTarget.style.boxShadow = '0 0 30px rgba(245, 198, 66, 0.4)';
+            }}
+          >
+            Return to Menu
+          </button>
+        </div>
+      </div>
+    );
+  }
+
   if (phase === 'GAMEOVER') {
     return (
       <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', backgroundColor: '#0f1419', padding: '24px' }}>
@@ -579,15 +699,17 @@ export default function HelldiversRoguelite() {
           <div style={{ marginBottom: '40px' }}>
             <div style={{ fontSize: '80px', marginBottom: '16px' }}>💀</div>
             <h1 style={{ fontSize: '64px', fontWeight: '900', color: '#ef4444', margin: '0 0 16px 0', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-              KIA
+              DISHONORABLE DISCHARGE
             </h1>
             <h2 style={{ fontSize: '24px', fontWeight: 'bold', color: '#94a3b8', margin: '0 0 8px 0' }}>
               MISSION FAILED
             </h2>
             <p style={{ fontSize: '16px', color: '#64748b', lineHeight: '1.6', margin: '0' }}>
-              All Helldivers have been eliminated.
+              Your squad has been eliminated.
               <br/>
-              Super Earth is disappointed in your performance.
+              Super Earth revokes your citizenship and Helldivers status.
+              <br/>
+              You have brought shame to Democracy.
             </p>
           </div>
 
@@ -771,6 +893,18 @@ export default function HelldiversRoguelite() {
                   <div>
                     <div style={{ color: '#F5C642', fontWeight: 'bold', fontSize: '14px' }}>Enable Events</div>
                     <div style={{ color: '#94a3b8', fontSize: '11px', marginTop: '4px' }}>Random high-risk, high-reward events between missions</div>
+                  </div>
+                </label>
+                <label style={{ display: 'flex', alignItems: 'center', gap: '12px', cursor: 'pointer', padding: '12px', backgroundColor: gameConfig.endlessMode ? 'rgba(245, 198, 66, 0.1)' : 'transparent', borderRadius: '4px', border: '1px solid rgba(100, 116, 139, 0.5)' }}>
+                  <input 
+                    type="checkbox" 
+                    checked={gameConfig.endlessMode}
+                    onChange={(e) => dispatch(actions.updateGameConfig({ endlessMode: e.target.checked }))}
+                    style={{ width: '20px', height: '20px', cursor: 'pointer' }}
+                  />
+                  <div>
+                    <div style={{ color: '#F5C642', fontWeight: 'bold', fontSize: '14px' }}>Endless Mode</div>
+                    <div style={{ color: '#94a3b8', fontSize: '11px', marginTop: '4px' }}>Continue running D10 missions indefinitely. Otherwise, win after completing D10</div>
                   </div>
                 </label>
               </div>
@@ -1748,6 +1882,13 @@ export default function HelldiversRoguelite() {
                   if (document.getElementById('superRareSamples')) document.getElementById('superRareSamples').value = '0';
                   
                   dispatch(actions.addRequisition(1));
+                  
+                  // Check for victory condition
+                  if (currentDiff === 10 && !gameConfig.endlessMode) {
+                    dispatch(actions.setPhase('VICTORY'));
+                    return;
+                  }
+                  
                   if (currentDiff < 10) dispatch(actions.setDifficulty(currentDiff + 1));
                   startDraftPhase();
                 }}
