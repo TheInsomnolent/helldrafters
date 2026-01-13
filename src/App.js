@@ -1,286 +1,69 @@
-import React, { useState, useEffect, useMemo } from 'react';
-import { Shield, Target, Flame, Crosshair, Zap, Skull, Settings, RefreshCw, Users, AlertTriangle, CheckCircle, XCircle, RotateCcw, ChevronRight, Trophy } from 'lucide-react';
-import { selectRandomEvent, OUTCOME_TYPES, EVENT_TYPES } from './events';
+import React, { useReducer, useEffect } from 'react';
+import { RefreshCw, AlertTriangle, CheckCircle, XCircle, Trophy } from 'lucide-react';
+import { selectRandomEvent, EVENT_TYPES } from './events';
+import { RARITY, TYPE, FACTION } from './constants/types';
+import { MASTER_DB } from './data/items';
+import { STARTING_LOADOUT, DIFFICULTY_CONFIG } from './constants/gameConfig';
+import { getItemById } from './utils/itemHelpers';
+import { getDraftHandSize, getWeightedPool, generateDraftHand } from './utils/draftHelpers';
+import { areStratagemSlotsFull, getFirstEmptyStratagemSlot } from './utils/loadoutHelpers';
+import { processAllOutcomes, canAffordChoice, formatOutcome, formatOutcomes, needsPlayerChoice } from './systems/events/eventProcessor';
+import { exportGameStateToFile, parseSaveFile, normalizeLoadedState } from './systems/persistence/saveManager';
+import GameHeader from './components/GameHeader';
+import EventDisplay from './components/EventDisplay';
+import DraftDisplay from './components/DraftDisplay';
+import LoadoutDisplay from './components/LoadoutDisplay';
+import { gameReducer, initialState } from './state/gameReducer';
+import * as actions from './state/actions';
 
-// --- DATA CONSTANTS ---
+// --- DATA CONSTANTS (imported from modules) ---
 
-const RARITY = {
-  COMMON: 'Common',
-  UNCOMMON: 'Uncommon',
-  RARE: 'Rare',
-  LEGENDARY: 'Legendary'
-};
 
-const TYPE = {
-  PRIMARY: 'Primary',
-  SECONDARY: 'Secondary',
-  GRENADE: 'Grenade',
-  STRATAGEM: 'Stratagem',
-  BOOSTER: 'Booster',
-  ARMOR: 'Armor'
-};
 
-const FACTION = {
-  BUGS: 'Terminids',
-  BOTS: 'Automatons',
-  SQUIDS: 'Illuminate'
-};
 
-const TAGS = {
-  FIRE: 'Fire',
-  AT: 'Anti-Tank',
-  STUN: 'Stun',
-  SMOKE: 'Smoke',
-  BACKPACK: 'Backpack',
-  SUPPORT_WEAPON: 'Support Weapon',
-  PRECISION: 'Precision',
-  EXPLOSIVE: 'Explosive',
-  DEFENSIVE: 'Defensive'
-};
 
-// --- DATABASE ---
-// Transcribed from the provided Spec
-const MASTER_DB = [
-  // --- PRIMARY WEAPONS ---
-  { id: 'p_liberator', name: 'AR-23 Liberator', type: TYPE.PRIMARY, rarity: RARITY.COMMON, tags: [] },
-  { id: 'p_lib_pen', name: 'AR-23P Liberator Penetrator', type: TYPE.PRIMARY, rarity: RARITY.UNCOMMON, tags: [TAGS.PRECISION] },
-  { id: 'p_lib_con', name: 'AR-23C Liberator Concussive', type: TYPE.PRIMARY, rarity: RARITY.UNCOMMON, tags: [TAGS.STUN] },
-  { id: 'p_tenderizer', name: 'AR-61 Tenderizer', type: TYPE.PRIMARY, rarity: RARITY.UNCOMMON, tags: [TAGS.PRECISION] },
-  { id: 'p_adjudicator', name: 'BR-14 Adjudicator', type: TYPE.PRIMARY, rarity: RARITY.UNCOMMON, tags: [TAGS.PRECISION] },
-  { id: 'p_sta52', name: 'StA-52 Assault Rifle', type: TYPE.PRIMARY, rarity: RARITY.COMMON, tags: [] },
-  { id: 'p_coyote', name: 'AR-2 Coyote', type: TYPE.PRIMARY, rarity: RARITY.RARE, tags: [TAGS.FIRE] },
-  { id: 'p_onetwo', name: 'AR/GL-21 One-Two', type: TYPE.PRIMARY, rarity: RARITY.RARE, tags: [TAGS.EXPLOSIVE] },
-  
-  // Shotguns
-  { id: 'p_punisher', name: 'SG-8 Punisher', type: TYPE.PRIMARY, rarity: RARITY.COMMON, tags: [TAGS.STUN] },
-  { id: 'p_slugger', name: 'SG-8S Slugger', type: TYPE.PRIMARY, rarity: RARITY.RARE, tags: [TAGS.PRECISION] },
-  { id: 'p_breaker', name: 'SG-225 Breaker', type: TYPE.PRIMARY, rarity: RARITY.UNCOMMON, tags: [] },
-  { id: 'p_breaker_sp', name: 'SG-225SP Breaker Spray&Pray', type: TYPE.PRIMARY, rarity: RARITY.COMMON, tags: [] },
-  { id: 'p_breaker_inc', name: 'SG-225IE Breaker Incendiary', type: TYPE.PRIMARY, rarity: RARITY.RARE, tags: [TAGS.FIRE] },
-  { id: 'p_punisher_plas', name: 'SG-8P Punisher Plasma', type: TYPE.PRIMARY, rarity: RARITY.RARE, tags: [TAGS.EXPLOSIVE] },
-  { id: 'p_cookout', name: 'SG-451 Cookout', type: TYPE.PRIMARY, rarity: RARITY.UNCOMMON, tags: [TAGS.FIRE, TAGS.STUN] },
-  { id: 'p_halt', name: 'SG-20 Halt', type: TYPE.PRIMARY, rarity: RARITY.UNCOMMON, tags: [TAGS.STUN] },
 
-  // Energy
-  { id: 'p_scythe', name: 'LAS-5 Scythe', type: TYPE.PRIMARY, rarity: RARITY.COMMON, tags: [] },
-  { id: 'p_sickle', name: 'LAS-16 Sickle', type: TYPE.PRIMARY, rarity: RARITY.RARE, tags: [] },
-  { id: 'p_scorcher', name: 'PLAS-1 Scorcher', type: TYPE.PRIMARY, rarity: RARITY.RARE, tags: [TAGS.EXPLOSIVE] },
-  { id: 'p_purifier', name: 'PLAS-101 Purifier', type: TYPE.PRIMARY, rarity: RARITY.UNCOMMON, tags: [TAGS.EXPLOSIVE] },
-  { id: 'p_blitzer', name: 'ARC-12 Blitzer', type: TYPE.PRIMARY, rarity: RARITY.RARE, tags: [TAGS.STUN] },
 
-  // Marksman
-  { id: 'p_diligence', name: 'R-63 Diligence', type: TYPE.PRIMARY, rarity: RARITY.COMMON, tags: [TAGS.PRECISION] },
-  { id: 'p_cs', name: 'R-63CS Counter Sniper', type: TYPE.PRIMARY, rarity: RARITY.UNCOMMON, tags: [TAGS.PRECISION] },
-  { id: 'p_eruptor', name: 'R-36 Eruptor', type: TYPE.PRIMARY, rarity: RARITY.RARE, tags: [TAGS.EXPLOSIVE] },
-  { id: 'p_xbow', name: 'CB-9 Explosive Crossbow', type: TYPE.PRIMARY, rarity: RARITY.UNCOMMON, tags: [TAGS.EXPLOSIVE] },
 
-  // SMGs
-  { id: 'p_knight', name: 'MP-98 Knight', type: TYPE.PRIMARY, rarity: RARITY.COMMON, tags: [] },
-  { id: 'p_defender', name: 'SMG-37 Defender', type: TYPE.PRIMARY, rarity: RARITY.COMMON, tags: [] },
-  { id: 'p_pummeler', name: 'SMG-72 Pummeler', type: TYPE.PRIMARY, rarity: RARITY.UNCOMMON, tags: [TAGS.STUN] },
-
-  // --- SECONDARY WEAPONS ---
-  { id: 's_peacemaker', name: 'P-2 Peacemaker', type: TYPE.SECONDARY, rarity: RARITY.COMMON, tags: [] },
-  { id: 's_redeemer', name: 'P-19 Redeemer', type: TYPE.SECONDARY, rarity: RARITY.COMMON, tags: [] },
-  { id: 's_senator', name: 'P-4 Senator', type: TYPE.SECONDARY, rarity: RARITY.UNCOMMON, tags: [TAGS.PRECISION] },
-  { id: 's_grenapistol', name: 'GP-31 Grenade Pistol', type: TYPE.SECONDARY, rarity: RARITY.UNCOMMON, tags: [TAGS.EXPLOSIVE] },
-  { id: 's_dagger', name: 'LAS-7 Dagger', type: TYPE.SECONDARY, rarity: RARITY.COMMON, tags: [] },
-  { id: 's_verdict', name: 'P-113 Verdict', type: TYPE.SECONDARY, rarity: RARITY.COMMON, tags: [] },
-  { id: 's_bushwhacker', name: 'SG-22 Bushwhacker', type: TYPE.SECONDARY, rarity: RARITY.UNCOMMON, tags: [TAGS.STUN] },
-  { id: 's_crisper', name: 'Crisper', type: TYPE.SECONDARY, rarity: RARITY.UNCOMMON, tags: [TAGS.FIRE] },
-  { id: 's_stimpistol', name: 'P-43 Stim Pistol', type: TYPE.SECONDARY, rarity: RARITY.RARE, tags: [TAGS.DEFENSIVE] },
-
-  // --- GRENADES ---
-  { id: 'g_he', name: 'G-12 High Explosive', type: TYPE.GRENADE, rarity: RARITY.COMMON, tags: [TAGS.EXPLOSIVE] },
-  { id: 'g_frag', name: 'G-6 Frag', type: TYPE.GRENADE, rarity: RARITY.COMMON, tags: [TAGS.EXPLOSIVE] },
-  { id: 'g_impact', name: 'G-16 Impact', type: TYPE.GRENADE, rarity: RARITY.UNCOMMON, tags: [TAGS.EXPLOSIVE] },
-  { id: 'g_stun', name: 'G-23 Stun', type: TYPE.GRENADE, rarity: RARITY.RARE, tags: [TAGS.STUN] },
-  { id: 'g_inc', name: 'G-10 Incendiary', type: TYPE.GRENADE, rarity: RARITY.COMMON, tags: [TAGS.FIRE] },
-  { id: 'g_inc_imp', name: 'G-13 Incendiary Impact', type: TYPE.GRENADE, rarity: RARITY.UNCOMMON, tags: [TAGS.FIRE] },
-  { id: 'g_smoke', name: 'G-3 Smoke', type: TYPE.GRENADE, rarity: RARITY.UNCOMMON, tags: [TAGS.SMOKE] },
-  { id: 'g_thermite', name: 'Thermite Grenade', type: TYPE.GRENADE, rarity: RARITY.RARE, tags: [TAGS.AT, TAGS.FIRE] },
-  { id: 'g_gas', name: 'Gas Grenade', type: TYPE.GRENADE, rarity: RARITY.UNCOMMON, tags: [] },
-  { id: 'g_knife', name: 'Throwing Knife', type: TYPE.GRENADE, rarity: RARITY.COMMON, tags: [] },
-
-  // --- STRATAGEMS (Orbitals) ---
-  { id: 'st_ops', name: 'Orbital Precision Strike', type: TYPE.STRATAGEM, rarity: RARITY.COMMON, tags: [TAGS.AT, TAGS.PRECISION] },
-  { id: 'st_gatling', name: 'Orbital Gatling Barrage', type: TYPE.STRATAGEM, rarity: RARITY.COMMON, tags: [] },
-  { id: 'st_airburst', name: 'Orbital Airburst Strike', type: TYPE.STRATAGEM, rarity: RARITY.COMMON, tags: [] },
-  { id: 'st_120', name: 'Orbital 120mm HE Barrage', type: TYPE.STRATAGEM, rarity: RARITY.UNCOMMON, tags: [TAGS.EXPLOSIVE] },
-  { id: 'st_380', name: 'Orbital 380mm HE Barrage', type: TYPE.STRATAGEM, rarity: RARITY.RARE, tags: [TAGS.EXPLOSIVE, TAGS.AT] },
-  { id: 'st_walking', name: 'Orbital Walking Barrage', type: TYPE.STRATAGEM, rarity: RARITY.UNCOMMON, tags: [TAGS.EXPLOSIVE] },
-  { id: 'st_laser', name: 'Orbital Laser', type: TYPE.STRATAGEM, rarity: RARITY.RARE, tags: [TAGS.AT, TAGS.FIRE] },
-  { id: 'st_railcannon', name: 'Orbital Railcannon Strike', type: TYPE.STRATAGEM, rarity: RARITY.RARE, tags: [TAGS.AT, TAGS.PRECISION] },
-  { id: 'st_napalm_o', name: 'Orbital Napalm Barrage', type: TYPE.STRATAGEM, rarity: RARITY.RARE, tags: [TAGS.FIRE] },
-  { id: 'st_gas_o', name: 'Orbital Gas Strike', type: TYPE.STRATAGEM, rarity: RARITY.COMMON, tags: [] },
-  { id: 'st_ems_o', name: 'Orbital EMS Strike', type: TYPE.STRATAGEM, rarity: RARITY.UNCOMMON, tags: [TAGS.STUN] },
-  { id: 'st_smoke_o', name: 'Orbital Smoke Strike', type: TYPE.STRATAGEM, rarity: RARITY.COMMON, tags: [TAGS.SMOKE] },
-
-  // --- STRATAGEMS (Eagle) ---
-  { id: 'st_e_strafe', name: 'Eagle Strafing Run', type: TYPE.STRATAGEM, rarity: RARITY.COMMON, tags: [] },
-  { id: 'st_e_airstrike', name: 'Eagle Airstrike', type: TYPE.STRATAGEM, rarity: RARITY.UNCOMMON, tags: [TAGS.EXPLOSIVE, TAGS.AT] },
-  { id: 'st_e_cluster', name: 'Eagle Cluster Bomb', type: TYPE.STRATAGEM, rarity: RARITY.UNCOMMON, tags: [] },
-  { id: 'st_e_napalm', name: 'Eagle Napalm Airstrike', type: TYPE.STRATAGEM, rarity: RARITY.UNCOMMON, tags: [TAGS.FIRE] },
-  { id: 'st_e_smoke', name: 'Eagle Smoke Strike', type: TYPE.STRATAGEM, rarity: RARITY.COMMON, tags: [TAGS.SMOKE] },
-  { id: 'st_e_rockets', name: 'Eagle 110mm Rocket Pods', type: TYPE.STRATAGEM, rarity: RARITY.UNCOMMON, tags: [TAGS.AT, TAGS.PRECISION] },
-  { id: 'st_e_500', name: 'Eagle 500kg Bomb', type: TYPE.STRATAGEM, rarity: RARITY.RARE, tags: [TAGS.AT, TAGS.EXPLOSIVE] },
-
-  // --- STRATAGEMS (Support Weapons) ---
-  { id: 'st_mg43', name: 'Machine Gun MG-43', type: TYPE.STRATAGEM, rarity: RARITY.COMMON, tags: [TAGS.SUPPORT_WEAPON] },
-  { id: 'st_amr', name: 'Anti-Materiel Rifle', type: TYPE.STRATAGEM, rarity: RARITY.UNCOMMON, tags: [TAGS.SUPPORT_WEAPON, TAGS.PRECISION] },
-  { id: 'st_stalwart', name: 'Stalwart', type: TYPE.STRATAGEM, rarity: RARITY.COMMON, tags: [TAGS.SUPPORT_WEAPON] },
-  { id: 'st_eat', name: 'EAT-17 Expendable Anti-Tank', type: TYPE.STRATAGEM, rarity: RARITY.UNCOMMON, tags: [TAGS.SUPPORT_WEAPON, TAGS.AT] },
-  { id: 'st_rr', name: 'Recoilless Rifle', type: TYPE.STRATAGEM, rarity: RARITY.UNCOMMON, tags: [TAGS.SUPPORT_WEAPON, TAGS.AT, TAGS.BACKPACK] },
-  { id: 'st_flame', name: 'Flamethrower', type: TYPE.STRATAGEM, rarity: RARITY.UNCOMMON, tags: [TAGS.SUPPORT_WEAPON, TAGS.FIRE] },
-  { id: 'st_ac', name: 'Autocannon AC-8', type: TYPE.STRATAGEM, rarity: RARITY.UNCOMMON, tags: [TAGS.SUPPORT_WEAPON, TAGS.EXPLOSIVE, TAGS.BACKPACK] },
-  { id: 'st_railgun', name: 'Railgun', type: TYPE.STRATAGEM, rarity: RARITY.RARE, tags: [TAGS.SUPPORT_WEAPON, TAGS.AT, TAGS.PRECISION] },
-  { id: 'st_spear', name: 'Spear', type: TYPE.STRATAGEM, rarity: RARITY.RARE, tags: [TAGS.SUPPORT_WEAPON, TAGS.AT, TAGS.BACKPACK] },
-  { id: 'st_laser_can', name: 'Laser Cannon', type: TYPE.STRATAGEM, rarity: RARITY.UNCOMMON, tags: [TAGS.SUPPORT_WEAPON] },
-  { id: 'st_arc', name: 'Arc Thrower', type: TYPE.STRATAGEM, rarity: RARITY.RARE, tags: [TAGS.SUPPORT_WEAPON] },
-  { id: 'st_quasar', name: 'Quasar Cannon', type: TYPE.STRATAGEM, rarity: RARITY.RARE, tags: [TAGS.SUPPORT_WEAPON, TAGS.AT] },
-  { id: 'st_hmg', name: 'Heavy Machine Gun', type: TYPE.STRATAGEM, rarity: RARITY.UNCOMMON, tags: [TAGS.SUPPORT_WEAPON] },
-  { id: 'st_commando', name: 'Commando', type: TYPE.STRATAGEM, rarity: RARITY.RARE, tags: [TAGS.SUPPORT_WEAPON, TAGS.AT] },
-  { id: 'st_sterilizer', name: 'Sterilizer', type: TYPE.STRATAGEM, rarity: RARITY.UNCOMMON, tags: [TAGS.SUPPORT_WEAPON] },
-
-  // --- STRATAGEMS (Backpacks) ---
-  { id: 'st_bp_jump', name: 'Jump Pack', type: TYPE.STRATAGEM, rarity: RARITY.UNCOMMON, tags: [TAGS.BACKPACK] },
-  { id: 'st_bp_supply', name: 'Supply Pack', type: TYPE.STRATAGEM, rarity: RARITY.UNCOMMON, tags: [TAGS.BACKPACK] },
-  { id: 'st_bp_rover', name: 'Guard Dog Rover', type: TYPE.STRATAGEM, rarity: RARITY.UNCOMMON, tags: [TAGS.BACKPACK, TAGS.FIRE] },
-  { id: 'st_bp_dog', name: 'Guard Dog', type: TYPE.STRATAGEM, rarity: RARITY.COMMON, tags: [TAGS.BACKPACK] },
-  { id: 'st_bp_shield', name: 'Shield Generator Pack', type: TYPE.STRATAGEM, rarity: RARITY.RARE, tags: [TAGS.BACKPACK, TAGS.DEFENSIVE] },
-  { id: 'st_bp_ballistic', name: 'Ballistic Shield', type: TYPE.STRATAGEM, rarity: RARITY.UNCOMMON, tags: [TAGS.BACKPACK, TAGS.DEFENSIVE] },
-
-  // --- STRATAGEMS (Sentries) ---
-  { id: 'st_s_mg', name: 'Machine Gun Sentry', type: TYPE.STRATAGEM, rarity: RARITY.COMMON, tags: [TAGS.DEFENSIVE] },
-  { id: 'st_s_gat', name: 'Gatling Sentry', type: TYPE.STRATAGEM, rarity: RARITY.COMMON, tags: [TAGS.DEFENSIVE] },
-  { id: 'st_s_mortar', name: 'Mortar Sentry', type: TYPE.STRATAGEM, rarity: RARITY.UNCOMMON, tags: [TAGS.DEFENSIVE, TAGS.EXPLOSIVE] },
-  { id: 'st_s_ems', name: 'EMS Mortar Sentry', type: TYPE.STRATAGEM, rarity: RARITY.UNCOMMON, tags: [TAGS.DEFENSIVE, TAGS.STUN] },
-  { id: 'st_s_ac', name: 'Autocannon Sentry', type: TYPE.STRATAGEM, rarity: RARITY.UNCOMMON, tags: [TAGS.DEFENSIVE, TAGS.AT] },
-  { id: 'st_s_rocket', name: 'Rocket Sentry', type: TYPE.STRATAGEM, rarity: RARITY.UNCOMMON, tags: [TAGS.DEFENSIVE, TAGS.AT] },
-  { id: 'st_s_tesla', name: 'Tesla Tower', type: TYPE.STRATAGEM, rarity: RARITY.RARE, tags: [TAGS.DEFENSIVE] },
-  { id: 'st_s_mines', name: 'Anti-Personnel Mines', type: TYPE.STRATAGEM, rarity: RARITY.COMMON, tags: [TAGS.DEFENSIVE] },
-  { id: 'st_s_inc_mines', name: 'Incendiary Mines', type: TYPE.STRATAGEM, rarity: RARITY.COMMON, tags: [TAGS.DEFENSIVE, TAGS.FIRE] },
-  { id: 'st_s_at_mines', name: 'Anti-Tank Mines', type: TYPE.STRATAGEM, rarity: RARITY.UNCOMMON, tags: [TAGS.DEFENSIVE, TAGS.AT] },
-
-  // --- ARMOR (Light) ---
-  { id: 'a_sc37', name: 'SC-37 Legionnaire', type: TYPE.ARMOR, rarity: RARITY.COMMON, tags: [] },
-  { id: 'a_sc34', name: 'SC-34 Infiltrator', type: TYPE.ARMOR, rarity: RARITY.COMMON, tags: [] },
-  { id: 'a_sc30', name: 'SC-30 Trailblazer Scout', type: TYPE.ARMOR, rarity: RARITY.COMMON, tags: [] },
-  { id: 'a_ce74', name: 'CE-74 Breaker', type: TYPE.ARMOR, rarity: RARITY.COMMON, tags: [] },
-  { id: 'a_fs38', name: 'FS-38 Eradicator', type: TYPE.ARMOR, rarity: RARITY.UNCOMMON, tags: [TAGS.DEFENSIVE] },
-  { id: 'a_b08', name: 'B-08 Light Gunner', type: TYPE.ARMOR, rarity: RARITY.COMMON, tags: [] },
-  { id: 'a_ds10', name: 'DS-10 Big Game Hunter', type: TYPE.ARMOR, rarity: RARITY.UNCOMMON, tags: [] },
-  { id: 'a_cm21', name: 'CM-21 Trench Paramedic', type: TYPE.ARMOR, rarity: RARITY.UNCOMMON, tags: [] },
-  { id: 'a_ex00', name: 'EX-00 Prototype X', type: TYPE.ARMOR, rarity: RARITY.RARE, tags: [] },
-  { id: 'a_ph9', name: 'PH-9 Predator', type: TYPE.ARMOR, rarity: RARITY.UNCOMMON, tags: [] },
-
-  // --- ARMOR (Medium) ---
-  { id: 'a_b01', name: 'B-01 Tactical', type: TYPE.ARMOR, rarity: RARITY.COMMON, tags: [] },
-  { id: 'a_ce35', name: 'CE-35 Trench Engineer', type: TYPE.ARMOR, rarity: RARITY.COMMON, tags: [] },
-  { id: 'a_cm09', name: 'CM-09 Bonesnapper', type: TYPE.ARMOR, rarity: RARITY.COMMON, tags: [] },
-  { id: 'a_dp40', name: 'DP-40 Hero of the Federation', type: TYPE.ARMOR, rarity: RARITY.UNCOMMON, tags: [] },
-  { id: 'a_sa04', name: 'SA-04 Combat Technician', type: TYPE.ARMOR, rarity: RARITY.UNCOMMON, tags: [] },
-  { id: 'a_sa25', name: 'SA-25 Steel Trooper', type: TYPE.ARMOR, rarity: RARITY.UNCOMMON, tags: [] },
-  { id: 'a_b24', name: 'B-24 Enforcer', type: TYPE.ARMOR, rarity: RARITY.UNCOMMON, tags: [TAGS.DEFENSIVE] },
-  { id: 'a_ce81', name: 'CE-81 Juggernaut', type: TYPE.ARMOR, rarity: RARITY.UNCOMMON, tags: [] },
-  { id: 'a_ex03', name: 'EX-03 Prototype 3', type: TYPE.ARMOR, rarity: RARITY.RARE, tags: [] },
-  { id: 'a_cw9', name: 'CW-9 White Wolf', type: TYPE.ARMOR, rarity: RARITY.UNCOMMON, tags: [] },
-
-  // --- ARMOR (Heavy) ---
-  { id: 'a_fs05', name: 'FS-05 Marksman', type: TYPE.ARMOR, rarity: RARITY.COMMON, tags: [TAGS.DEFENSIVE] },
-  { id: 'a_fs23', name: 'FS-23 Battle Master', type: TYPE.ARMOR, rarity: RARITY.UNCOMMON, tags: [TAGS.DEFENSIVE] },
-  { id: 'a_sa32', name: 'SA-32 Dynamo', type: TYPE.ARMOR, rarity: RARITY.RARE, tags: [] },
-  { id: 'a_b27', name: 'B-27 Fortified Commando', type: TYPE.ARMOR, rarity: RARITY.RARE, tags: [TAGS.DEFENSIVE] },
-  { id: 'a_fs61', name: 'FS-61 Dreadnought', type: TYPE.ARMOR, rarity: RARITY.UNCOMMON, tags: [TAGS.DEFENSIVE] },
-  { id: 'a_cm17', name: 'CM-17 Butcher', type: TYPE.ARMOR, rarity: RARITY.UNCOMMON, tags: [] },
-  { id: 'a_fs55', name: 'FS-55 Devastator', type: TYPE.ARMOR, rarity: RARITY.RARE, tags: [TAGS.DEFENSIVE] },
-  { id: 'a_ce64', name: 'CE-64 Grenadier', type: TYPE.ARMOR, rarity: RARITY.UNCOMMON, tags: [TAGS.EXPLOSIVE] },
-  { id: 'a_cw36', name: 'CW-36 Winter Warrior', type: TYPE.ARMOR, rarity: RARITY.UNCOMMON, tags: [] },
-  { id: 'a_i44', name: 'I-44 Salamander', type: TYPE.ARMOR, rarity: RARITY.UNCOMMON, tags: [TAGS.FIRE] },
-
-  // --- BOOSTERS ---
-  { id: 'b_space', name: 'Hellpod Space Optimization', type: TYPE.BOOSTER, rarity: RARITY.RARE, tags: [] },
-  { id: 'b_vitality', name: 'Vitality Enhancement', type: TYPE.BOOSTER, rarity: RARITY.UNCOMMON, tags: [] },
-  { id: 'b_uav', name: 'UAV Recon', type: TYPE.BOOSTER, rarity: RARITY.COMMON, tags: [] },
-  { id: 'b_stamina', name: 'Stamina Enhancement', type: TYPE.BOOSTER, rarity: RARITY.RARE, tags: [] },
-  { id: 'b_muscle', name: 'Muscle Enhancement', type: TYPE.BOOSTER, rarity: RARITY.UNCOMMON, tags: [] },
-  { id: 'b_reinforce', name: 'Reinforcement Budget', type: TYPE.BOOSTER, rarity: RARITY.COMMON, tags: [] },
-  { id: 'b_local', name: 'Localization Confusion', type: TYPE.BOOSTER, rarity: RARITY.UNCOMMON, tags: [] },
-  { id: 'b_shock', name: 'Motivational Shocks', type: TYPE.BOOSTER, rarity: RARITY.COMMON, tags: [] },
-  { id: 'b_infusion', name: 'Experimental Infusion', type: TYPE.BOOSTER, rarity: RARITY.RARE, tags: [] },
-  { id: 'b_firepod', name: 'Firebomb Hellpods', type: TYPE.BOOSTER, rarity: RARITY.COMMON, tags: [TAGS.FIRE] }
-];
 
 // --- INITIAL STATE & HELPER LOGIC ---
 
-const STARTING_LOADOUT = {
-  primary: null,
-  secondary: 's_peacemaker',
-  grenade: 'g_he',
-  armor: 'a_b01',
-  booster: null,
-  stratagems: [null, null, null, null]
-};
 
-const DIFFICULTY_CONFIG = [
-  { level: 1, name: 'Trivial', reqAT: false },
-  { level: 2, name: 'Easy', reqAT: false },
-  { level: 3, name: 'Medium', reqAT: false }, // Med Penetration ideally, but app focuses on AT check
-  { level: 4, name: 'Challenging', reqAT: true }, // Chargers/Hulks appear
-  { level: 5, name: 'Hard', reqAT: true },
-  { level: 6, name: 'Extreme', reqAT: true },
-  { level: 7, name: 'Suicide Mission', reqAT: true },
-  { level: 8, name: 'Impossible', reqAT: true },
-  { level: 9, name: 'Helldive', reqAT: true },
-  { level: 10, name: 'Super Helldive', reqAT: true }
-];
 
 export default function HelldiversRoguelite() {
-  // --- STATE ---
-  const [phase, setPhase] = useState('MENU'); // MENU, CUSTOM_SETUP, DASHBOARD, DRAFT, EVENT, GAMEOVER
-  const [gameConfig, setGameConfig] = useState({ playerCount: 1, faction: FACTION.BUGS, starRating: 3, globalUniqueness: true, burnCards: true, customStart: false });
-  const [currentDiff, setCurrentDiff] = useState(1);
-  const [requisition, setRequisition] = useState(0); // Reroll currency
-  const [lives, setLives] = useState(3);
-  const [burnedCards, setBurnedCards] = useState([]); // Cards that have been seen (for burn mode)
-  const [customSetup, setCustomSetup] = useState({ difficulty: 1, loadouts: [] }); // For custom start mode
+  // --- STATE (Using useReducer for complex state management) ---
+  const [state, dispatch] = useReducer(gameReducer, initialState);
   
-  // Players array: [{ id: 1, loadout: {...}, inventory: [...] }]
-  const [players, setPlayers] = useState([]);
+  // Destructure commonly used state values for easier access
+  const {
+    phase,
+    gameConfig,
+    currentDiff,
+    requisition,
+    lives,
+    burnedCards,
+    customSetup,
+    players,
+    draftState,
+    eventsEnabled,
+    currentEvent,
+    eventPlayerChoice
+  } = state;
   
-  // Draft State
-  const [draftState, setDraftState] = useState({
-    activePlayerIndex: 0,
-    roundCards: [],
-    isRerolling: false,
-    pendingStratagem: null // Holds stratagem waiting for slot selection
-  });
-
-  const [settingsOpen, setSettingsOpen] = useState(false);
-  const [disabledWarbonds, setDisabledWarbonds] = useState([]); // For future expansion logic
-  const [selectedPlayer, setSelectedPlayer] = useState(0); // For custom setup phase
-  const [eventsEnabled, setEventsEnabled] = useState(true);
-  const [currentEvent, setCurrentEvent] = useState(null);
-  const [eventPlayerChoice, setEventPlayerChoice] = useState(null);
+  // UI-only state (not part of game state)
+  const [settingsOpen, setSettingsOpen] = React.useState(false);
+  const [disabledWarbonds, setDisabledWarbonds] = React.useState([]); // For future expansion logic
+  const [selectedPlayer, setSelectedPlayer] = React.useState(0); // For custom setup phase
+  
   
   // Load game state from localStorage on mount
   useEffect(() => {
     try {
       const savedState = localStorage.getItem('helldraftersGameState');
       if (savedState) {
-        const state = JSON.parse(savedState);
-        if (state.phase && state.phase !== 'MENU') {
-          setPhase(state.phase);
-          setGameConfig(state.gameConfig || { playerCount: 1, faction: FACTION.BUGS, starRating: 3, globalUniqueness: false, burnCards: false });
-          setCurrentDiff(state.currentDiff || 1);
-          setRequisition(state.requisition || 0);
-          setLives(state.lives || 3);
-          setBurnedCards(state.burnedCards || []);
-          setPlayers(state.players || []);
-          setDraftState(state.draftState || { activePlayerIndex: 0, roundCards: [], isRerolling: false, pendingStratagem: null });
-          setEventsEnabled(state.eventsEnabled || false);
-          setCurrentEvent(state.currentEvent || null);
-          setEventPlayerChoice(state.eventPlayerChoice || null);
+        const loadedState = JSON.parse(savedState);
+        if (loadedState.phase && loadedState.phase !== 'MENU') {
+          dispatch(actions.loadGameState(loadedState));
         }
       }
     } catch (error) {
@@ -292,19 +75,6 @@ export default function HelldiversRoguelite() {
   useEffect(() => {
     if (phase !== 'MENU') {
       try {
-        const state = {
-          phase,
-          gameConfig,
-          currentDiff,
-          requisition,
-          lives,
-          burnedCards,
-          players,
-          draftState,
-          eventsEnabled,
-          currentEvent,
-          eventPlayerChoice
-        };
         localStorage.setItem('helldraftersGameState', JSON.stringify(state));
       } catch (error) {
         console.error('Failed to save game state:', error);
@@ -313,85 +83,32 @@ export default function HelldiversRoguelite() {
       // Clear saved state when returning to menu
       localStorage.removeItem('helldraftersGameState');
     }
-  }, [phase, gameConfig, currentDiff, requisition, lives, burnedCards, players, draftState]);
-  
-  // Calculate draft hand size based on star rating (1-6 stars -> 2-4 cards)
-  const getDraftHandSize = () => {
-    const rating = gameConfig.starRating;
-    if (rating <= 2) return 2;
-    if (rating <= 4) return 3;
-    return 4;
-  };
+  }, [state, phase]);
 
   // --- SAVE/LOAD FUNCTIONS ---
 
   const exportGameState = () => {
-    const state = {
-      phase,
-      gameConfig,
-      currentDiff,
-      requisition,
-      lives,
-      burnedCards,
-      players,
-      draftState,
-      eventsEnabled,
-      currentEvent,
-      eventPlayerChoice,
-      customSetup,
-      selectedPlayer,
-      exportedAt: new Date().toISOString()
-    };
-    
-    const dataStr = JSON.stringify(state, null, 2);
-    const dataBlob = new Blob([dataStr], { type: 'application/json' });
-    const url = URL.createObjectURL(dataBlob);
-    const link = document.createElement('a');
-    link.href = url;
-    link.download = `helldrafters-save-${new Date().toISOString().split('T')[0]}.json`;
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-    URL.revokeObjectURL(url);
+    exportGameStateToFile(state);
   };
 
-  const importGameState = (event) => {
+  const importGameState = async (event) => {
     const file = event.target.files?.[0];
     if (!file) return;
 
-    const reader = new FileReader();
-    reader.onload = (e) => {
-      try {
-        const state = JSON.parse(e.target?.result);
-        
-        // Validate the state has required properties
-        if (!state.phase || !state.gameConfig || !state.players) {
-          alert('Invalid save file format');
-          return;
-        }
+    try {
+      const loadedState = await parseSaveFile(file);
+      const normalizedState = normalizeLoadedState(loadedState);
 
-        // Restore all state
-        setPhase(state.phase);
-        setGameConfig(state.gameConfig);
-        setCurrentDiff(state.currentDiff || 1);
-        setRequisition(state.requisition || 0);
-        setLives(state.lives || 3);
-        setBurnedCards(state.burnedCards || []);
-        setPlayers(state.players || []);
-        setDraftState(state.draftState || { activePlayerIndex: 0, roundCards: [], isRerolling: false, pendingStratagem: null });
-        setEventsEnabled(state.eventsEnabled !== undefined ? state.eventsEnabled : true);
-        setCurrentEvent(state.currentEvent || null);
-        setEventPlayerChoice(state.eventPlayerChoice || null);
-        setCustomSetup(state.customSetup || { difficulty: 1, loadouts: [] });
-        setSelectedPlayer(state.selectedPlayer || 0);
+      // Restore all state
+      dispatch(actions.loadGameState(normalizedState));
+      setSelectedPlayer(normalizedState.selectedPlayer || 0);
 
-        alert('Game loaded successfully!');
-      } catch (error) {
-        console.error('Failed to load game:', error);
-        alert('Failed to load save file. File may be corrupted.');
-      }
-    };
-    reader.readAsText(file);
+      alert('Game loaded successfully!');
+    } catch (error) {
+      console.error('Failed to load game:', error);
+      alert(error.message || 'Failed to load save file. File may be corrupted.');
+    }
+    
     event.target.value = ''; // Reset input
   };
 
@@ -408,8 +125,8 @@ export default function HelldiversRoguelite() {
         booster: STARTING_LOADOUT.booster,
         stratagems: [...STARTING_LOADOUT.stratagems]
       }));
-      setCustomSetup({ difficulty: 1, loadouts: initialLoadouts });
-      setPhase('CUSTOM_SETUP');
+      dispatch(actions.setCustomSetup({ difficulty: 1, loadouts: initialLoadouts }));
+      dispatch(actions.setPhase('CUSTOM_SETUP'));
     } else {
       // Normal start
       const newPlayers = Array.from({ length: gameConfig.playerCount }, (_, i) => ({
@@ -425,12 +142,12 @@ export default function HelldiversRoguelite() {
         },
         inventory: Object.values(STARTING_LOADOUT).flat().filter(id => id !== null)
       }));
-      setPlayers(newPlayers);
-      setCurrentDiff(1);
-      setRequisition(0); // Start with 0, earn 1 per mission
-      setLives(3);
-      setBurnedCards([]);
-      setPhase('DASHBOARD');
+      dispatch(actions.setPlayers(newPlayers));
+      dispatch(actions.setDifficulty(1));
+      dispatch(actions.setRequisition(0)); // Start with 0, earn 1 per mission
+      dispatch(actions.setLives(3));
+      dispatch(actions.setBurnedCards([]));
+      dispatch(actions.setPhase('DASHBOARD'));
     }
   };
 
@@ -441,128 +158,30 @@ export default function HelldiversRoguelite() {
       loadout: { ...loadout },
       inventory: Object.values(loadout).flat().filter(id => id !== null)
     }));
-    setPlayers(newPlayers);
-    setCurrentDiff(customSetup.difficulty);
-    setRequisition(0);
-    setLives(3);
-    setBurnedCards([]);
-    setPhase('DASHBOARD');
+    dispatch(actions.setPlayers(newPlayers));
+    dispatch(actions.setDifficulty(customSetup.difficulty));
+    dispatch(actions.setRequisition(0));
+    dispatch(actions.setLives(3));
+    dispatch(actions.setBurnedCards([]));
+    dispatch(actions.setPhase('DASHBOARD'));
   };
 
   // --- CORE LOGIC: THE DRAFT DIRECTOR ---
 
-  const getItemById = (id) => MASTER_DB.find(item => item.id === id);
-
-  const getWeightedPool = (player, difficulty) => {
-    // 1. Filter out already owned items and boosters (boosters only come from events)
-    let candidates = MASTER_DB.filter(item => !player.inventory.includes(item.id) && item.type !== TYPE.BOOSTER);
-
-    // 2. Filter out burned cards (if burn mode enabled)
-    if (gameConfig.burnCards) {
-      candidates = candidates.filter(item => !burnedCards.includes(item.id));
-    }
-
-    // 3. Filter by global uniqueness (if enabled)
-    if (gameConfig.globalUniqueness) {
-      const allPlayerInventories = players.flatMap(p => p.inventory);
-      candidates = candidates.filter(item => !allPlayerInventories.includes(item.id));
-    }
-
-    // 4. Faction Weighting
-    // If Bugs -> Boost Fire items
-    // If Bots -> Boost Precision/Explosive Resistance items (simulated by boosting Precision weapons)
-    // We assign a dynamic weight to each candidate
-    const weightedCandidates = candidates.map(item => {
-      let weight = 10; // Base weight
-
-      // Rarity Weights
-      if (item.rarity === RARITY.COMMON) weight += 50;
-      if (item.rarity === RARITY.UNCOMMON) weight += 25;
-      if (item.rarity === RARITY.RARE) weight += 5;
-
-      // Faction Synergy
-      if (gameConfig.faction === FACTION.BUGS && item.tags.includes(TAGS.FIRE)) weight += 30;
-      if (gameConfig.faction === FACTION.BOTS && item.tags.includes(TAGS.PRECISION)) weight += 20;
-      if (gameConfig.faction === FACTION.SQUIDS && item.tags.includes(TAGS.STUN)) weight += 20;
-
-      // Smart Logic: Need Anti-Tank?
-      const playerHasAT = player.inventory.some(invId => {
-        const i = getItemById(invId);
-        return i && i.tags.includes(TAGS.AT);
-      });
-
-      // CRITICAL SOFT-LOCK PREVENTION
-      // If we are approaching Diff 4+ and have no AT, massively boost AT weights
-      if (difficulty >= 3 && !playerHasAT && item.tags.includes(TAGS.AT)) {
-        weight += 500; 
-      }
-
-      // Smart Logic: Composition Balance
-      // If player has a secondary, reduce weight of secondaries heavily
-      // to prevent "3 secondary" hands, but don't eliminate them (upgrades exist)
-      if (player.loadout.secondary && item.type === TYPE.SECONDARY) weight = Math.max(1, weight - 40);
-      
-      // If player has backpack, reduce backpack weight
-      const hasBackpack = player.loadout.stratagems.some(sId => {
-        const s = getItemById(sId);
-        return s && s.tags.includes(TAGS.BACKPACK);
-      });
-      if (hasBackpack && item.tags.includes(TAGS.BACKPACK)) weight = 0; // Hard lock: Only 1 backpack usually allowed/needed
-
-      return { item, weight };
-    });
-
-    return weightedCandidates.filter(c => c.weight > 0);
-  };
-
-  const generateDraftHand = (playerIdx) => {
-    // Safety check: ensure player exists
+  const generateDraftHandForPlayer = (playerIdx) => {
     if (!players || !players[playerIdx]) {
-      console.warn('Player not found for draft generation');
       return [];
     }
     
     const player = players[playerIdx];
-    const pool = getWeightedPool(player, currentDiff);
-    const handSize = getDraftHandSize();
-    
-    // Select cards based on weight
-    const hand = [];
-    for (let i = 0; i < handSize; i++) {
-      if (pool.length === 0) break;
-      
-      const totalWeight = pool.reduce((sum, c) => sum + c.weight, 0);
-      
-      // Safety check: if total weight is 0, we can't select anything
-      if (totalWeight === 0) {
-        console.warn('Pool has no valid weighted items');
-        break;
-      }
-      
-      let randomNum = Math.random() * totalWeight;
-      
-      for (let j = 0; j < pool.length; j++) {
-        const poolItem = pool[j];
-        // Safety check: ensure pool item exists and has valid structure
-        if (!poolItem || !poolItem.item) {
-          console.warn('Invalid pool item at index', j);
-          continue;
-        }
-        
-        randomNum -= poolItem.weight;
-        if (randomNum <= 0) {
-          hand.push(poolItem.item);
-          // Add to burned cards if burn mode enabled
-          if (gameConfig.burnCards) {
-            setBurnedCards(prev => [...prev, poolItem.item.id]);
-          }
-          // Remove from pool to avoid duplicates in same hand
-          pool.splice(j, 1); 
-          break;
-        }
-      }
-    }
-    return hand;
+    return generateDraftHand(
+      player,
+      currentDiff,
+      gameConfig,
+      burnedCards,
+      players,
+      (cardId) => dispatch(actions.addBurnedCard(cardId))
+    );
   };
 
   const startDraftPhase = () => {
@@ -572,13 +191,13 @@ export default function HelldiversRoguelite() {
       return;
     }
     
-    setDraftState({
+    dispatch(actions.setDraftState({
       activePlayerIndex: 0,
-      roundCards: generateDraftHand(0),
+      roundCards: generateDraftHandForPlayer(0),
       isRerolling: false,
       pendingStratagem: null
-    });
-    setPhase('DRAFT');
+    }));
+    dispatch(actions.setPhase('DRAFT'));
   };
 
   const handleDraftPick = (item) => {
@@ -588,11 +207,9 @@ export default function HelldiversRoguelite() {
 
     // Special handling for stratagems when slots are full
     if (item.type === TYPE.STRATAGEM) {
-      const emptySlot = player.loadout.stratagems.indexOf(null);
-      if (emptySlot === -1) {
+      if (areStratagemSlotsFull(player.loadout)) {
         // All slots full - show replacement UI
-        setDraftState(prev => ({
-          ...prev,
+        dispatch(actions.updateDraftState({
           pendingStratagem: item
         }));
         return; // Don't proceed with pick yet
@@ -610,33 +227,33 @@ export default function HelldiversRoguelite() {
     if (item.type === TYPE.BOOSTER) player.loadout.booster = item.id;
     if (item.type === TYPE.STRATAGEM) {
       // Find empty slot (we know it exists because we checked above)
-      const emptySlot = player.loadout.stratagems.indexOf(null);
+      const emptySlot = getFirstEmptyStratagemSlot(player.loadout);
       player.loadout.stratagems[emptySlot] = item.id;
     }
 
-    setPlayers(updatedPlayers);
+    dispatch(actions.setPlayers(updatedPlayers));
 
     // Next player or Finish
     if (currentPlayerIdx < gameConfig.playerCount - 1) {
       const nextIdx = currentPlayerIdx + 1;
-      setDraftState({
+      dispatch(actions.setDraftState({
         activePlayerIndex: nextIdx,
-        roundCards: generateDraftHand(nextIdx),
+        roundCards: generateDraftHandForPlayer(nextIdx),
         isRerolling: false,
         pendingStratagem: null
-      });
+      }));
     } else {
       // Draft complete - check for event
       if (eventsEnabled && Math.random() < 0.4) { // 40% chance
         const event = selectRandomEvent(currentDiff, players.length > 1);
         if (event) {
-          setCurrentEvent(event);
-          setEventPlayerChoice(null);
-          setPhase('EVENT');
+          dispatch(actions.setCurrentEvent(event));
+          dispatch(actions.setEventPlayerChoice(null));
+          dispatch(actions.setPhase('EVENT'));
           return;
         }
       }
-      setPhase('DASHBOARD');
+      dispatch(actions.setPhase('DASHBOARD'));
     }
   };
 
@@ -652,38 +269,37 @@ export default function HelldiversRoguelite() {
     // Replace the selected slot
     player.loadout.stratagems[slotIndex] = item.id;
     
-    setPlayers(updatedPlayers);
+    dispatch(actions.setPlayers(updatedPlayers));
 
     // Next player or Finish
     if (currentPlayerIdx < gameConfig.playerCount - 1) {
       const nextIdx = currentPlayerIdx + 1;
-      setDraftState({
+      dispatch(actions.setDraftState({
         activePlayerIndex: nextIdx,
-        roundCards: generateDraftHand(nextIdx),
+        roundCards: generateDraftHandForPlayer(nextIdx),
         isRerolling: false,
         pendingStratagem: null
-      });
+      }));
     } else {
       // Draft complete - check for event
       if (eventsEnabled && Math.random() < 0.4) { // 40% chance
         const event = selectRandomEvent(currentDiff, players.length > 1);
         if (event) {
-          setCurrentEvent(event);
-          setEventPlayerChoice(null);
-          setPhase('EVENT');
+          dispatch(actions.setCurrentEvent(event));
+          dispatch(actions.setEventPlayerChoice(null));
+          dispatch(actions.setPhase('EVENT'));
           return;
         }
       }
-      setPhase('DASHBOARD');
+      dispatch(actions.setPhase('DASHBOARD'));
     }
   };
 
   const rerollDraft = (cost) => {
     if (requisition < cost) return;
-    setRequisition(prev => prev - cost);
-    setDraftState(prev => ({
-      ...prev,
-      roundCards: generateDraftHand(prev.activePlayerIndex)
+    dispatch(actions.spendRequisition(cost));
+    dispatch(actions.updateDraftState({
+      roundCards: generateDraftHandForPlayer(draftState.activePlayerIndex)
     }));
   };
 
@@ -719,13 +335,12 @@ export default function HelldiversRoguelite() {
     if (newCard) {
       // Add to burned cards if burn mode enabled
       if (gameConfig.burnCards) {
-        setBurnedCards(prev => [...prev, newCard.id]);
+        dispatch(actions.addBurnedCard(newCard.id));
       }
       
       // Replace the card
-      setDraftState(prev => ({
-        ...prev,
-        roundCards: prev.roundCards.map(card => card.id === cardToRemove.id ? newCard : card)
+      dispatch(actions.updateDraftState({
+        roundCards: draftState.roundCards.map(card => card.id === cardToRemove.id ? newCard : card)
       }));
     }
   };
@@ -887,7 +502,7 @@ export default function HelldiversRoguelite() {
           </div>
 
           <button
-            onClick={() => setPhase('MENU')}
+            onClick={() => dispatch(actions.setPhase('MENU'))}
             style={{
               width: '100%',
               padding: '20px',
@@ -937,7 +552,7 @@ export default function HelldiversRoguelite() {
                 {Object.values(FACTION).map(f => (
                   <button 
                     key={f}
-                    onClick={() => setGameConfig({...gameConfig, faction: f})}
+                    onClick={() => dispatch(actions.updateGameConfig({ faction: f }))}
                     style={{
                       padding: '16px',
                       borderRadius: '4px',
@@ -967,7 +582,7 @@ export default function HelldiversRoguelite() {
                 {[1, 2, 3, 4].map(n => (
                   <button 
                     key={n}
-                    onClick={() => setGameConfig({...gameConfig, playerCount: n})}
+                    onClick={() => dispatch(actions.updateGameConfig({ playerCount: n }))}
                     style={{
                       width: '64px',
                       height: '64px',
@@ -1000,7 +615,7 @@ export default function HelldiversRoguelite() {
                   <input 
                     type="checkbox" 
                     checked={gameConfig.globalUniqueness}
-                    onChange={(e) => setGameConfig({...gameConfig, globalUniqueness: e.target.checked})}
+                    onChange={(e) => dispatch(actions.updateGameConfig({ globalUniqueness: e.target.checked }))}
                     style={{ width: '20px', height: '20px', cursor: 'pointer' }}
                   />
                   <div>
@@ -1012,7 +627,7 @@ export default function HelldiversRoguelite() {
                   <input 
                     type="checkbox" 
                     checked={gameConfig.burnCards}
-                    onChange={(e) => setGameConfig({...gameConfig, burnCards: e.target.checked})}
+                    onChange={(e) => dispatch(actions.updateGameConfig({ burnCards: e.target.checked }))}
                     style={{ width: '20px', height: '20px', cursor: 'pointer' }}
                   />
                   <div>
@@ -1024,7 +639,7 @@ export default function HelldiversRoguelite() {
                   <input 
                     type="checkbox" 
                     checked={gameConfig.customStart}
-                    onChange={(e) => setGameConfig({...gameConfig, customStart: e.target.checked})}
+                    onChange={(e) => dispatch(actions.updateGameConfig({ customStart: e.target.checked }))}
                     style={{ width: '20px', height: '20px', cursor: 'pointer' }}
                   />
                   <div>
@@ -1036,7 +651,7 @@ export default function HelldiversRoguelite() {
                   <input 
                     type="checkbox" 
                     checked={eventsEnabled}
-                    onChange={(e) => setEventsEnabled(e.target.checked)}
+                    onChange={(e) => dispatch(actions.setEventsEnabled(e.target.checked))}
                     style={{ width: '20px', height: '20px', cursor: 'pointer' }}
                   />
                   <div>
@@ -1154,7 +769,7 @@ export default function HelldiversRoguelite() {
       } else {
         newLoadouts[playerIdx] = { ...newLoadouts[playerIdx], [slotType]: itemId };
       }
-      setCustomSetup({ ...customSetup, loadouts: newLoadouts });
+      dispatch(actions.updateCustomSetup({ loadouts: newLoadouts }));
     };
 
     const currentLoadout = customSetup.loadouts[selectedPlayer];
@@ -1186,7 +801,7 @@ export default function HelldiversRoguelite() {
               {DIFFICULTY_CONFIG.map(diff => (
                 <button
                   key={diff.level}
-                  onClick={() => setCustomSetup({ ...customSetup, difficulty: diff.level })}
+                  onClick={() => dispatch(actions.updateCustomSetup({ difficulty: diff.level }))}
                   style={{
                     padding: '12px 8px',
                     backgroundColor: customSetup.difficulty === diff.level ? '#F5C642' : 'transparent',
@@ -1385,7 +1000,7 @@ export default function HelldiversRoguelite() {
           {/* Action Buttons */}
           <div style={{ display: 'flex', gap: '16px', marginTop: '32px' }}>
             <button
-              onClick={() => setPhase('MENU')}
+              onClick={() => dispatch(actions.setPhase('MENU'))}
               style={{
                 flex: 1,
                 padding: '16px',
@@ -1428,435 +1043,105 @@ export default function HelldiversRoguelite() {
 
   if (phase === 'EVENT') {
     if (!currentEvent) {
-      setPhase('DRAFT');
+      dispatch(actions.setPhase('DRAFT'));
       return null;
     }
 
     const handleEventChoice = (choice) => {
-      // Process outcomes
-      choice.outcomes.forEach(outcome => {
-        processOutcome(outcome, choice);
+      // Process outcomes using the event processor
+      const updates = processAllOutcomes(choice.outcomes, choice, {
+        players,
+        eventPlayerChoice,
+        requisition,
+        lives,
+        currentDiff,
+        gameConfig
       });
+
+      // Apply state updates
+      if (updates.requisition !== undefined) dispatch(actions.setRequisition(updates.requisition));
+      if (updates.lives !== undefined) dispatch(actions.setLives(updates.lives));
+      if (updates.players !== undefined) dispatch(actions.setPlayers(updates.players));
+      if (updates.currentDiff !== undefined) dispatch(actions.setDifficulty(updates.currentDiff));
+      if (updates.faction !== undefined) dispatch(actions.updateGameConfig({ faction: updates.faction }));
+      if (updates.bonusRequisition !== undefined) dispatch(actions.addRequisition(updates.bonusRequisition));
+      
+      // Handle game over
+      if (updates.triggerGameOver) {
+        setTimeout(() => dispatch(actions.setPhase('GAMEOVER')), 100);
+      }
       
       // After event, proceed to draft
-      setCurrentEvent(null);
-      setEventPlayerChoice(null);
+      dispatch(actions.setCurrentEvent(null));
+      dispatch(actions.setEventPlayerChoice(null));
       startDraftPhase();
     };
 
-    const processOutcome = (outcome, choice) => {
-      switch (outcome.type) {
-        case OUTCOME_TYPES.ADD_REQUISITION:
-          setRequisition(prev => prev + outcome.value);
-          break;
+    const handleAutoContinue = () => {
+      if (currentEvent.outcomes) {
+        let outcomesToProcess = [];
         
-        case OUTCOME_TYPES.SPEND_REQUISITION:
-          setRequisition(prev => Math.max(0, prev - outcome.value));
-          break;
-        
-        case OUTCOME_TYPES.GAIN_LIFE:
-          setLives(prev => prev + outcome.value);
-          break;
-        
-        case OUTCOME_TYPES.LOSE_LIFE:
-          setLives(prev => {
-            const newLives = Math.max(0, prev - outcome.value);
-            if (newLives === 0) {
-              setTimeout(() => setPhase('GAMEOVER'), 100);
-            }
-            return newLives;
-          });
-          break;
-        
-        case OUTCOME_TYPES.CHANGE_FACTION:
-          setGameConfig(prev => ({ ...prev, faction: outcome.value }));
-          break;
-        
-        case OUTCOME_TYPES.EXTRA_DRAFT:
-          // Will be handled by adding extra cards to draft
-          break;
-        
-        case OUTCOME_TYPES.SKIP_DIFFICULTY:
-          setCurrentDiff(prev => Math.min(10, prev + outcome.value));
-          break;
-        
-        case OUTCOME_TYPES.REPLAY_DIFFICULTY:
-          setCurrentDiff(prev => Math.max(1, prev - outcome.value));
-          break;
-        
-        case OUTCOME_TYPES.SACRIFICE_ITEM:
-          if (outcome.targetPlayer === 'choose' && eventPlayerChoice !== null) {
-            // Remove a stratagem from chosen player
-            const player = players[eventPlayerChoice];
-            if (player.loadout.stratagems.length > 0) {
-              const newPlayers = [...players];
-              newPlayers[eventPlayerChoice].loadout.stratagems.pop();
-              setPlayers(newPlayers);
+        if (currentEvent.type === EVENT_TYPES.RANDOM) {
+          // Pick weighted random outcome
+          const totalWeight = currentEvent.outcomes.reduce((sum, o) => sum + (o.weight || 1), 0);
+          let random = Math.random() * totalWeight;
+          for (const outcome of currentEvent.outcomes) {
+            random -= (outcome.weight || 1);
+            if (random <= 0) {
+              outcomesToProcess = [outcome];
+              break;
             }
           }
-          break;
+        } else {
+          // Process all outcomes for BENEFICIAL/DETRIMENTAL
+          outcomesToProcess = currentEvent.outcomes;
+        }
         
-        case OUTCOME_TYPES.GAIN_BOOSTER:
-          if (outcome.targetPlayer === 'choose' && eventPlayerChoice !== null) {
-            // Grant a random booster to chosen player
-            const boosters = MASTER_DB.filter(item => item.type === TYPE.BOOSTER);
-            if (boosters.length > 0) {
-              const randomBooster = boosters[Math.floor(Math.random() * boosters.length)];
-              const newPlayers = [...players];
-              newPlayers[eventPlayerChoice].loadout.booster = randomBooster.id;
-              newPlayers[eventPlayerChoice].inventory.push(randomBooster.id);
-              setPlayers(newPlayers);
-            }
-          } else if (!outcome.targetPlayer || outcome.targetPlayer === 'all') {
-            // Grant to all players
-            const boosters = MASTER_DB.filter(item => item.type === TYPE.BOOSTER);
-            if (boosters.length > 0) {
-              const randomBooster = boosters[Math.floor(Math.random() * boosters.length)];
-              const newPlayers = players.map(p => ({
-                ...p,
-                loadout: { ...p.loadout, booster: randomBooster.id },
-                inventory: [...p.inventory, randomBooster.id]
-              }));
-              setPlayers(newPlayers);
-            }
-          }
-          break;
+        // Process outcomes using the event processor
+        const updates = processAllOutcomes(outcomesToProcess, null, {
+          players,
+          eventPlayerChoice,
+          requisition,
+          lives,
+          currentDiff,
+          gameConfig
+        });
+
+        // Apply state updates
+        if (updates.requisition !== undefined) dispatch(actions.setRequisition(updates.requisition));
+        if (updates.lives !== undefined) dispatch(actions.setLives(updates.lives));
+        if (updates.players !== undefined) dispatch(actions.setPlayers(updates.players));
+        if (updates.currentDiff !== undefined) dispatch(actions.setDifficulty(updates.currentDiff));
+        if (updates.faction !== undefined) dispatch(actions.updateGameConfig({ faction: updates.faction }));
+        if (updates.bonusRequisition !== undefined) dispatch(actions.addRequisition(updates.bonusRequisition));
         
-        case OUTCOME_TYPES.LOSE_ALL_BUT_ONE_LIFE:
-          setLives(1);
-          break;
-        
-        case OUTCOME_TYPES.DUPLICATE_STRATAGEM_TO_ANOTHER_HELLDIVER:
-          // Only works in multiplayer
-          if (players.length > 1 && eventPlayerChoice !== null) {
-            const sourcePlayer = players[eventPlayerChoice];
-            const availableStratagems = sourcePlayer.loadout.stratagems.filter(s => s !== null);
-            
-            if (availableStratagems.length > 0) {
-              // Pick random stratagem from source player
-              const randomStratagem = availableStratagems[Math.floor(Math.random() * availableStratagems.length)];
-              
-              // Find other players (not self)
-              const otherPlayers = players.map((p, idx) => ({ player: p, idx })).filter((_, idx) => idx !== eventPlayerChoice);
-              
-              if (otherPlayers.length > 0) {
-                // Pick random other player
-                const targetPlayerData = otherPlayers[Math.floor(Math.random() * otherPlayers.length)];
-                const newPlayers = [...players];
-                
-                // Add stratagem to target player
-                const emptySlot = newPlayers[targetPlayerData.idx].loadout.stratagems.indexOf(null);
-                if (emptySlot !== -1) {
-                  newPlayers[targetPlayerData.idx].loadout.stratagems[emptySlot] = randomStratagem;
-                  newPlayers[targetPlayerData.idx].inventory.push(randomStratagem);
-                  setPlayers(newPlayers);
-                }
-              }
-            }
-          }
-          break;
-        
-        case OUTCOME_TYPES.REDRAFT:
-          // Discard all items from chosen player, then draft Math.ceil(discardedCount / outcome.value) cards
-          if (eventPlayerChoice !== null) {
-            const player = players[eventPlayerChoice];
-            const discardedCount = player.inventory.length;
-            const draftsToGrant = Math.ceil(discardedCount / (outcome.value || 1));
-            
-            // Clear player's inventory and loadout
-            const newPlayers = [...players];
-            newPlayers[eventPlayerChoice] = {
-              ...player,
-              inventory: [STARTING_LOADOUT.secondary, STARTING_LOADOUT.grenade, STARTING_LOADOUT.armor].filter(id => id !== null),
-              loadout: {
-                primary: STARTING_LOADOUT.primary,
-                secondary: STARTING_LOADOUT.secondary,
-                grenade: STARTING_LOADOUT.grenade,
-                armor: STARTING_LOADOUT.armor,
-                booster: STARTING_LOADOUT.booster,
-                stratagems: [...STARTING_LOADOUT.stratagems]
-              }
-            };
-            setPlayers(newPlayers);
-            
-            // Grant extra drafts (this would need to be tracked separately for proper implementation)
-            // For now, we'll just give requisition as a proxy
-            setRequisition(prev => prev + draftsToGrant);
-          }
-          break;
-        
-        default:
-          break;
+        // Handle game over
+        if (updates.triggerGameOver) {
+          setTimeout(() => dispatch(actions.setPhase('GAMEOVER')), 100);
+        }
       }
+      
+      dispatch(actions.setCurrentEvent(null));
+      dispatch(actions.setEventPlayerChoice(null));
+      startDraftPhase();
     };
-
-    const canAffordChoice = (choice) => {
-      if (choice.requiresRequisition && requisition < choice.requiresRequisition) {
-        return false;
-      }
-      return true;
-    };
-
-    const formatOutcome = (outcome) => {
-      switch (outcome.type) {
-        case OUTCOME_TYPES.ADD_REQUISITION:
-          return `+${outcome.value} Requisition`;
-        case OUTCOME_TYPES.SPEND_REQUISITION:
-          return `-${outcome.value} Requisition`;
-        case OUTCOME_TYPES.GAIN_LIFE:
-          return `+${outcome.value} Life`;
-        case OUTCOME_TYPES.LOSE_LIFE:
-          return `-${outcome.value} Life`;
-        case OUTCOME_TYPES.LOSE_ALL_BUT_ONE_LIFE:
-          return `Lives reduced to 1`;
-        case OUTCOME_TYPES.CHANGE_FACTION:
-          return `Switch to ${outcome.value}`;
-        case OUTCOME_TYPES.EXTRA_DRAFT:
-          return `Draft ${outcome.value} extra card${outcome.value > 1 ? 's' : ''}`;
-        case OUTCOME_TYPES.SKIP_DIFFICULTY:
-          return `Skip ${outcome.value} difficulty level${outcome.value > 1 ? 's' : ''}`;
-        case OUTCOME_TYPES.REPLAY_DIFFICULTY:
-          return `Replay current difficulty`;
-        case OUTCOME_TYPES.SACRIFICE_ITEM:
-          return `Remove a ${outcome.value}`;
-        case OUTCOME_TYPES.GAIN_BOOSTER:
-          const target = outcome.targetPlayer === 'all' ? '(All Helldivers)' : '';
-          return `Gain random Booster ${target}`;
-        case OUTCOME_TYPES.REMOVE_ITEM:
-          return `Remove an item`;
-        case OUTCOME_TYPES.GAIN_SPECIFIC_ITEM:
-          return `Gain specific item`;
-        case OUTCOME_TYPES.DUPLICATE_STRATAGEM_TO_ANOTHER_HELLDIVER:
-          return `Copy stratagem to another Helldiver`;
-        case OUTCOME_TYPES.REDRAFT:
-          return `Redraft: Discard all items, draft ${outcome.value ? Math.ceil(1 / outcome.value) : 1}x per discarded`;
-        default:
-          return '';
-      }
-    };
-
-    const formatOutcomes = (outcomes) => {
-      if (!outcomes || outcomes.length === 0) return 'No effect';
-      return outcomes.map(formatOutcome).filter(o => o).join(', ');
-    };
-
-    const needsPlayerChoice = currentEvent.targetPlayer === 'single' && 
-      currentEvent.choices && 
-      currentEvent.choices.some(c => c.outcomes.some(o => o.targetPlayer === 'choose'));
 
     return (
-      <div style={{ minHeight: '100vh', backgroundColor: '#1a2332', color: '#e0e0e0', padding: '24px' }}>
-        {/* Header */}
-        <div style={{ 
-          position: 'fixed', 
-          top: 0, 
-          left: 0, 
-          right: 0, 
-          backgroundColor: '#0f1419', 
-          padding: '16px 24px',
-          display: 'flex',
-          justifyContent: 'space-between',
-          alignItems: 'center',
-          borderBottom: '2px solid #F5C642',
-          zIndex: 100
-        }}>
-          <div style={{ fontSize: '20px', fontWeight: 'bold', color: '#F5C642' }}>
-            EVENT - DIFFICULTY {currentDiff}
-          </div>
-          <div style={{ display: 'flex', gap: '16px', alignItems: 'center' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-              <Trophy size={20} color="#F5C642" />
-              <span style={{ fontWeight: 'bold' }}>{requisition}</span>
-            </div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-              <AlertTriangle size={20} color="#ff4444" />
-              <span style={{ fontWeight: 'bold' }}>{lives} Lives</span>
-            </div>
-          </div>
-        </div>
-
-        {/* Event Content */}
-        <div style={{ 
-          maxWidth: '800px', 
-          margin: '100px auto 0',
-          display: 'flex',
-          flexDirection: 'column',
-          gap: '24px'
-        }}>
-          {/* Event Card */}
-          <div style={{
-            backgroundColor: '#283548',
-            border: '2px solid #F5C642',
-            borderRadius: '8px',
-            padding: '32px',
-            textAlign: 'center'
-          }}>
-            <h2 style={{ 
-              fontSize: '32px', 
-              color: '#F5C642', 
-              marginBottom: '16px',
-              fontWeight: 'bold'
-            }}>
-              {currentEvent.name}
-            </h2>
-            <p style={{ 
-              fontSize: '18px', 
-              lineHeight: '1.6',
-              marginBottom: '32px',
-              color: '#b0b0b0'
-            }}>
-              {currentEvent.description}
-            </p>
-
-            {/* Player Selection (if needed) */}
-            {needsPlayerChoice && eventPlayerChoice === null && (
-              <div style={{ marginBottom: '24px' }}>
-                <div style={{ fontSize: '16px', marginBottom: '12px', color: '#F5C642' }}>
-                  Choose a Helldiver:
-                </div>
-                <div style={{ display: 'flex', gap: '12px', justifyContent: 'center', flexWrap: 'wrap' }}>
-                  {players.map((player, idx) => (
-                    <button
-                      key={idx}
-                      onClick={() => setEventPlayerChoice(idx)}
-                      style={{
-                        padding: '12px 24px',
-                        fontSize: '16px',
-                        fontWeight: 'bold',
-                        backgroundColor: '#1a2332',
-                        color: '#F5C642',
-                        border: '2px solid #F5C642',
-                        borderRadius: '4px',
-                        cursor: 'pointer',
-                        transition: 'all 0.2s'
-                      }}
-                      onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#283548'}
-                      onMouseLeave={(e) => e.currentTarget.style.backgroundColor = '#1a2332'}
-                    >
-                      HELLDIVER {idx + 1}
-                    </button>
-                  ))}
-                </div>
-              </div>
-            )}
-
-            {/* Choices */}
-            {currentEvent.type === EVENT_TYPES.CHOICE && (!needsPlayerChoice || eventPlayerChoice !== null) && (
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-                {currentEvent.choices.map((choice, idx) => {
-                  const affordable = canAffordChoice(choice);
-                  const outcomeText = formatOutcomes(choice.outcomes);
-                  return (
-                    <button
-                      key={idx}
-                      onClick={() => handleEventChoice(choice)}
-                      disabled={!affordable}
-                      style={{
-                        padding: '16px',
-                        fontSize: '16px',
-                        fontWeight: 'bold',
-                        backgroundColor: affordable ? '#F5C642' : '#555',
-                        color: affordable ? '#0f1419' : '#888',
-                        border: 'none',
-                        borderRadius: '4px',
-                        cursor: affordable ? 'pointer' : 'not-allowed',
-                        transition: 'all 0.2s',
-                        textAlign: 'left',
-                        display: 'flex',
-                        flexDirection: 'column',
-                        gap: '8px'
-                      }}
-                      onMouseEnter={(e) => affordable && (e.target.style.backgroundColor = '#ffd95a')}
-                      onMouseLeave={(e) => affordable && (e.target.style.backgroundColor = '#F5C642')}
-                    >
-                      <div style={{ fontSize: '16px' }}>
-                        {choice.text}
-                      </div>
-                      <div style={{ 
-                        fontSize: '13px', 
-                        fontWeight: 'normal',
-                        opacity: 0.85,
-                        fontStyle: 'italic'
-                      }}>
-                        {outcomeText}
-                      </div>
-                    </button>
-                  );
-                })}
-              </div>
-            )}
-
-            {/* Random/Beneficial/Detrimental events auto-proceed */}
-            {currentEvent.type !== EVENT_TYPES.CHOICE && (
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '16px', alignItems: 'center' }}>
-                {currentEvent.outcomes && currentEvent.outcomes.length > 0 && (
-                  <div style={{
-                    backgroundColor: '#1f2937',
-                    padding: '12px 24px',
-                    borderRadius: '4px',
-                    border: '1px solid rgba(245, 198, 66, 0.3)'
-                  }}>
-                    <div style={{ fontSize: '12px', color: '#64748b', marginBottom: '4px', textTransform: 'uppercase' }}>
-                      {currentEvent.type === EVENT_TYPES.RANDOM ? 'Possible Outcomes:' : 'Outcome:'}
-                    </div>
-                    <div style={{ fontSize: '14px', color: '#F5C642' }}>
-                      {currentEvent.type === EVENT_TYPES.RANDOM 
-                        ? currentEvent.outcomes.map((o, i) => (
-                            <div key={i}>
-                              {formatOutcome(o)} {o.weight ? `(${o.weight}% chance)` : ''}
-                            </div>
-                          ))
-                        : formatOutcomes(currentEvent.outcomes)
-                      }
-                    </div>
-                  </div>
-                )}
-                <button
-                  onClick={() => {
-                    if (currentEvent.outcomes) {
-                      if (currentEvent.type === EVENT_TYPES.RANDOM) {
-                        // Pick weighted random outcome
-                        const totalWeight = currentEvent.outcomes.reduce((sum, o) => sum + (o.weight || 1), 0);
-                        let random = Math.random() * totalWeight;
-                        for (const outcome of currentEvent.outcomes) {
-                          random -= (outcome.weight || 1);
-                          if (random <= 0) {
-                            processOutcome(outcome, null);
-                            break;
-                          }
-                        }
-                      } else {
-                        // Process all outcomes for BENEFICIAL/DETRIMENTAL
-                        currentEvent.outcomes.forEach(outcome => {
-                          processOutcome(outcome, null);
-                        });
-                      }
-                    }
-                    setCurrentEvent(null);
-                    setEventPlayerChoice(null);
-                    startDraftPhase();
-                  }}
-                  style={{
-                    padding: '16px 32px',
-                    fontSize: '16px',
-                    fontWeight: 'bold',
-                    backgroundColor: '#F5C642',
-                    color: '#0f1419',
-                    border: 'none',
-                    borderRadius: '4px',
-                    cursor: 'pointer',
-                    transition: 'all 0.2s'
-                  }}
-                  onMouseEnter={(e) => e.target.style.backgroundColor = '#ffd95a'}
-                  onMouseLeave={(e) => e.target.style.backgroundColor = '#F5C642'}
-                >
-                  Continue
-                </button>
-              </div>
-            )}
-          </div>
-        </div>
-      </div>
+      <EventDisplay
+        currentEvent={currentEvent}
+        eventPlayerChoice={eventPlayerChoice}
+        players={players}
+        currentDiff={currentDiff}
+        requisition={requisition}
+        lives={lives}
+        needsPlayerChoice={needsPlayerChoice}
+        canAffordChoice={canAffordChoice}
+        formatOutcome={formatOutcome}
+        formatOutcomes={formatOutcomes}
+        onPlayerChoice={(choice) => dispatch(actions.setEventPlayerChoice(choice))}
+        onEventChoice={handleEventChoice}
+        onAutoContinue={handleAutoContinue}
+      />
     );
   }
 
@@ -1897,7 +1182,7 @@ export default function HelldiversRoguelite() {
           <button
             onClick={() => {
               if (window.confirm('Are you sure you want to cancel this run? All progress will be lost.')) {
-                setPhase('MENU');
+                dispatch(actions.setPhase('MENU'));
               }
             }}
             style={{
@@ -2003,7 +1288,7 @@ export default function HelldiversRoguelite() {
               </div>
               
               <button
-                onClick={() => setDraftState(prev => ({ ...prev, pendingStratagem: null }))}
+                onClick={() => dispatch(actions.updateDraftState({ pendingStratagem: null }))}
                 style={{
                   width: '100%',
                   padding: '12px',
@@ -2093,87 +1378,14 @@ export default function HelldiversRoguelite() {
   return (
     <div style={{ minHeight: '100vh', paddingBottom: '80px' }}>
       {/* HEADER */}
-      <div style={{ backgroundColor: '#0f1419', borderBottom: '1px solid rgba(245, 198, 66, 0.3)', padding: '16px', position: 'sticky', top: 0, zIndex: 10 }}>
-        <div style={{ maxWidth: '1400px', margin: '0 auto', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
-            <div style={{ backgroundColor: '#F5C642', color: 'black', padding: '4px 12px', fontWeight: '900', fontSize: '20px', borderRadius: '4px' }}>
-              D{currentDiff}
-            </div>
-            <div>
-              <h1 style={{ fontSize: '18px', fontWeight: 'bold', textTransform: 'uppercase', color: 'white', letterSpacing: '1px', margin: 0 }}>
-                {DIFFICULTY_CONFIG[currentDiff-1]?.name}
-              </h1>
-              <div style={{ fontSize: '12px', color: '#F5C642', fontFamily: 'monospace' }}>Theater: {gameConfig.faction}</div>
-            </div>
-          </div>
-          
-          <div style={{ display: 'flex', alignItems: 'center', gap: '24px' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: '#F5C642' }}>
-              <Trophy size={18} />
-              <span style={{ fontFamily: 'monospace', fontWeight: 'bold', fontSize: '20px' }}>{requisition}</span>
-            </div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: '#ef4444' }}>
-              <AlertTriangle size={18} />
-              <span style={{ fontFamily: 'monospace', fontWeight: 'bold', fontSize: '20px' }}>{lives} Lives</span>
-            </div>
-            <button
-              onClick={exportGameState}
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: '8px',
-                padding: '8px 16px',
-                backgroundColor: 'rgba(100, 116, 139, 0.3)',
-                color: '#94a3b8',
-                border: '1px solid rgba(100, 116, 139, 0.5)',
-                borderRadius: '4px',
-                fontWeight: 'bold',
-                textTransform: 'uppercase',
-                fontSize: '12px',
-                cursor: 'pointer',
-                transition: 'all 0.2s'
-              }}
-              onMouseEnter={(e) => {
-                e.currentTarget.style.backgroundColor = 'rgba(100, 116, 139, 0.5)';
-                e.currentTarget.style.color = '#F5C642';
-              }}
-              onMouseLeave={(e) => {
-                e.currentTarget.style.backgroundColor = 'rgba(100, 116, 139, 0.3)';
-                e.currentTarget.style.color = '#94a3b8';
-              }}
-            >
-              💾 Export
-            </button>
-            <button
-              onClick={() => {
-                if (window.confirm('Are you sure you want to cancel this run? All progress will be lost.')) {
-                  setPhase('MENU');
-                }
-              }}
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: '8px',
-                padding: '8px 16px',
-                backgroundColor: 'rgba(127, 29, 29, 0.3)',
-                color: '#ef4444',
-                border: '1px solid #7f1d1d',
-                borderRadius: '4px',
-                fontWeight: 'bold',
-                textTransform: 'uppercase',
-                fontSize: '12px',
-                cursor: 'pointer',
-                transition: 'all 0.2s'
-              }}
-              onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'rgba(127, 29, 29, 0.5)'}
-              onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'rgba(127, 29, 29, 0.3)'}
-            >
-              <XCircle size={16} />
-              Cancel Run
-            </button>
-          </div>
-        </div>
-      </div>
+      <GameHeader 
+        currentDiff={currentDiff}
+        requisition={requisition}
+        lives={lives}
+        faction={gameConfig.faction}
+        onExport={exportGameState}
+        onCancelRun={() => dispatch(actions.setPhase('MENU'))}
+      />
 
       {/* MAIN CONTENT */}
       <div style={{ maxWidth: '1400px', margin: '0 auto', padding: '24px' }}>
@@ -2181,63 +1393,7 @@ export default function HelldiversRoguelite() {
         {/* PLAYER ROSTER */}
         <div style={{ display: 'grid', gridTemplateColumns: gameConfig.playerCount > 1 ? 'repeat(auto-fit, minmax(400px, 1fr))' : '1fr', gap: '32px', marginBottom: '48px' }}>
           {players.map(player => (
-            <div key={player.id} style={{ backgroundColor: '#283548', borderRadius: '8px', border: '1px solid rgba(100, 116, 139, 0.5)', overflow: 'hidden' }}>
-              <div style={{ backgroundColor: '#1f2937', padding: '12px', borderBottom: '1px solid rgba(100, 116, 139, 0.5)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                <h3 style={{ fontWeight: 'bold', color: '#cbd5e1', textTransform: 'uppercase', letterSpacing: '1px', margin: 0 }}>{player.name}</h3>
-                <span style={{ fontSize: '12px', color: '#64748b' }}>Loadout Active</span>
-              </div>
-              <div style={{ padding: '16px', display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '16px' }}>
-                {/* Primary */}
-                <div style={{ gridColumn: 'span 2' }}>
-                  <div style={{ fontSize: '10px', color: '#64748b', textTransform: 'uppercase', marginBottom: '4px' }}>Primary</div>
-                  <div style={{ fontSize: '14px', fontWeight: 'bold', color: '#F5C642', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={getItemById(player.loadout.primary)?.name}>
-                    {getItemById(player.loadout.primary)?.name || 'None'}
-                  </div>
-                </div>
-                {/* Secondary */}
-                <div style={{ gridColumn: 'span 2' }}>
-                  <div style={{ fontSize: '10px', color: '#64748b', textTransform: 'uppercase', marginBottom: '4px' }}>Secondary</div>
-                  <div style={{ fontSize: '14px', fontWeight: 'bold', color: 'white', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={getItemById(player.loadout.secondary)?.name}>
-                    {getItemById(player.loadout.secondary)?.name}
-                  </div>
-                </div>
-                
-                {/* Grenade */}
-                <div style={{ gridColumn: 'span 2' }}>
-                   <div style={{ fontSize: '10px', color: '#64748b', textTransform: 'uppercase', marginBottom: '4px' }}>Grenade</div>
-                   <div style={{ fontSize: '12px', color: '#cbd5e1', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{getItemById(player.loadout.grenade)?.name}</div>
-                </div>
-
-                 {/* Armor */}
-                 <div style={{ gridColumn: 'span 2' }}>
-                   <div style={{ fontSize: '10px', color: '#64748b', textTransform: 'uppercase', marginBottom: '4px' }}>Armor</div>
-                   <div style={{ fontSize: '12px', color: '#cbd5e1', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{getItemById(player.loadout.armor)?.name}</div>
-                </div>
-
-                 {/* Booster */}
-                 <div style={{ gridColumn: 'span 2' }}>
-                   <div style={{ fontSize: '10px', color: '#64748b', textTransform: 'uppercase', marginBottom: '4px' }}>Booster</div>
-                   <div style={{ fontSize: '12px', color: '#cbd5e1', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{getItemById(player.loadout.booster)?.name || 'None'}</div>
-                </div>
-
-                 {/* Spacer for better alignment */}
-                 <div style={{ gridColumn: 'span 2' }}></div>
-
-                {/* Stratagems */}
-                <div style={{ gridColumn: 'span 4', marginTop: '8px' }}>
-                  <div style={{ fontSize: '10px', color: '#64748b', textTransform: 'uppercase', marginBottom: '4px' }}>Stratagems</div>
-                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '8px' }}>
-                    {player.loadout.stratagems.map((sid, i) => (
-                      <div key={i} style={{ backgroundColor: '#1f2937', height: '64px', borderRadius: '4px', border: '1px solid rgba(71, 85, 105, 0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '4px', textAlign: 'center', position: 'relative' }}>
-                        {sid ? (
-                           <span style={{ fontSize: '9px', lineHeight: '1.2', color: 'white', fontWeight: '600' }}>{getItemById(sid)?.name}</span>
-                        ) : <span style={{ color: '#334155', fontSize: '12px' }}>EMPTY</span>}
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              </div>
-            </div>
+            <LoadoutDisplay key={player.id} player={player} getItemById={getItemById} />
           ))}
         </div>
 
@@ -2255,7 +1411,7 @@ export default function HelldiversRoguelite() {
                 {[1, 2, 3, 4, 5, 6].map(n => (
                   <button 
                     key={n}
-                    onClick={() => setGameConfig({...gameConfig, starRating: n})}
+                    onClick={() => dispatch(actions.updateGameConfig({ starRating: n }))}
                     style={{
                       padding: '16px 8px',
                       borderRadius: '4px',
@@ -2295,13 +1451,11 @@ export default function HelldiversRoguelite() {
             <div style={{ display: 'flex', gap: '16px', justifyContent: 'center' }}>
               <button 
                 onClick={() => {
-                   setLives(l => {
-                     const newLives = l - 1;
-                     if (newLives === 0) {
-                       setTimeout(() => setPhase('GAMEOVER'), 100);
-                     }
-                     return newLives;
-                   });
+                   const newLives = lives - 1;
+                   dispatch(actions.setLives(newLives));
+                   if (newLives === 0) {
+                     setTimeout(() => dispatch(actions.setPhase('GAMEOVER')), 100);
+                   }
                 }}
                 style={{
                   display: 'flex',
@@ -2326,8 +1480,8 @@ export default function HelldiversRoguelite() {
 
               <button 
                 onClick={() => {
-                  setRequisition(r => r + 1);
-                  if (currentDiff < 10) setCurrentDiff(d => d + 1);
+                  dispatch(actions.addRequisition(1));
+                  if (currentDiff < 10) dispatch(actions.setDifficulty(currentDiff + 1));
                   startDraftPhase();
                 }}
                 style={{
