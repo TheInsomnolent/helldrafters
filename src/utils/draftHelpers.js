@@ -1,4 +1,4 @@
-import { getItemById, anyItemHasTag, getUniqueArmorCombos, getArmorsByCombo, playerHasAccessToArmorCombo, hasArmorCombo } from './itemHelpers';
+import { getItemById, anyItemHasTag, getUniqueArmorCombos, playerHasAccessToArmorCombo, hasArmorCombo } from './itemHelpers';
 import { RARITY, TAGS, TYPE, FACTION } from '../constants/types';
 import { MASTER_DB } from '../data/itemsByWarbond';
 

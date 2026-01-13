@@ -1,5 +1,5 @@
 import React, { useReducer, useEffect } from 'react';
-import { RefreshCw, AlertTriangle, CheckCircle, XCircle, Trophy } from 'lucide-react';
+import { RefreshCw, CheckCircle, XCircle } from 'lucide-react';
 import { selectRandomEvent, EVENT_TYPES } from './systems/events/events';
 import { RARITY, TYPE, FACTION } from './constants/types';
 import { MASTER_DB } from './data/itemsByWarbond';
@@ -12,7 +12,6 @@ import { processAllOutcomes, canAffordChoice, formatOutcome, formatOutcomes, nee
 import { exportGameStateToFile, parseSaveFile, normalizeLoadedState } from './systems/persistence/saveManager';
 import GameHeader from './components/GameHeader';
 import EventDisplay from './components/EventDisplay';
-import DraftDisplay from './components/DraftDisplay';
 import LoadoutDisplay from './components/LoadoutDisplay';
 import GameLobby from './components/GameLobby';
 import { gameReducer, initialState } from './state/gameReducer';
@@ -54,8 +53,6 @@ export default function HelldiversRoguelite() {
   } = state;
   
   // UI-only state (not part of game state)
-  const [settingsOpen, setSettingsOpen] = React.useState(false);
-  const [disabledWarbonds, setDisabledWarbonds] = React.useState([]); // For future expansion logic
   const [selectedPlayer, setSelectedPlayer] = React.useState(0); // For custom setup phase
   
   
@@ -278,13 +275,24 @@ export default function HelldiversRoguelite() {
       }));
     } else {
       // Draft complete - check for event
-      if (eventsEnabled && Math.random() < 0.4) { // 40% chance
-        const event = selectRandomEvent(currentDiff, players.length > 1);
-        if (event) {
-          dispatch(actions.setCurrentEvent(event));
-          dispatch(actions.setEventPlayerChoice(null));
-          dispatch(actions.setPhase('EVENT'));
-          return;
+      if (eventsEnabled) {
+        const baseChance = 0.0;
+        const sampleBonus = (
+          (state.samples.common * 0.01) +
+          (state.samples.rare * 0.02) +
+          (state.samples.superRare * 0.03)
+        );
+        const totalChance = Math.min(1.0, baseChance + sampleBonus);
+
+        if (Math.random() < totalChance) {
+          const event = selectRandomEvent(currentDiff, players.length > 1);
+          if (event) {
+            dispatch(actions.resetSamples());
+            dispatch(actions.setCurrentEvent(event));
+            dispatch(actions.setEventPlayerChoice(null));
+            dispatch(actions.setPhase('EVENT'));
+            return;
+          }
         }
       }
       dispatch(actions.setPhase('DASHBOARD'));
@@ -316,13 +324,24 @@ export default function HelldiversRoguelite() {
       }));
     } else {
       // Draft complete - check for event
-      if (eventsEnabled && Math.random() < 0.4) { // 40% chance
-        const event = selectRandomEvent(currentDiff, players.length > 1);
-        if (event) {
-          dispatch(actions.setCurrentEvent(event));
-          dispatch(actions.setEventPlayerChoice(null));
-          dispatch(actions.setPhase('EVENT'));
-          return;
+      if (eventsEnabled) {
+        const baseChance = 0.0;
+        const sampleBonus = (
+          (state.samples.common * 0.01) +
+          (state.samples.rare * 0.02) +
+          (state.samples.superRare * 0.03)
+        );
+        const totalChance = Math.min(1.0, baseChance + sampleBonus);
+
+        if (Math.random() < totalChance) {
+          const event = selectRandomEvent(currentDiff, players.length > 1);
+          if (event) {
+            dispatch(actions.resetSamples());
+            dispatch(actions.setCurrentEvent(event));
+            dispatch(actions.setEventPlayerChoice(null));
+            dispatch(actions.setPhase('EVENT'));
+            return;
+          }
         }
       }
       dispatch(actions.setPhase('DASHBOARD'));
@@ -1178,12 +1197,13 @@ export default function HelldiversRoguelite() {
       // Handle game over
       if (updates.triggerGameOver) {
         setTimeout(() => dispatch(actions.setPhase('GAMEOVER')), 100);
+        return;
       }
       
-      // After event, proceed to draft
+      // After event, proceed to dashboard
       dispatch(actions.setCurrentEvent(null));
       dispatch(actions.setEventPlayerChoice(null));
-      startDraftPhase();
+      dispatch(actions.setPhase('DASHBOARD'));
     };
 
     const handleAutoContinue = () => {
@@ -1227,12 +1247,13 @@ export default function HelldiversRoguelite() {
         // Handle game over
         if (updates.triggerGameOver) {
           setTimeout(() => dispatch(actions.setPhase('GAMEOVER')), 100);
+          return;
         }
       }
       
       dispatch(actions.setCurrentEvent(null));
       dispatch(actions.setEventPlayerChoice(null));
-      startDraftPhase();
+      dispatch(actions.setPhase('DASHBOARD'));
     };
 
     return (
@@ -1425,7 +1446,7 @@ export default function HelldiversRoguelite() {
               Priority Requisition Authorized
             </h2>
             <h1 style={{ fontSize: '36px', fontWeight: '900', color: 'white', textTransform: 'uppercase', margin: '0 0 8px 0' }}>
-              {player.name} <span style={{ color: '#64748b' }}>//</span> Select Upgrade
+              {player.name} <span style={{ color: '#64748b' }}>{'//'}</span> Select Upgrade
             </h1>
             <p style={{ color: '#94a3b8', margin: '0' }}>
               Choose wisely. This equipment is vital for Difficulty {currentDiff + 1}.
@@ -1492,6 +1513,7 @@ export default function HelldiversRoguelite() {
         requisition={requisition}
         lives={lives}
         faction={gameConfig.faction}
+        samples={state.samples}
         onExport={exportGameState}
         onCancelRun={() => dispatch(actions.setPhase('MENU'))}
       />
@@ -1557,6 +1579,125 @@ export default function HelldiversRoguelite() {
               </p>
             </div>
             
+            {/* Samples Collected */}
+            <div style={{ marginBottom: '32px' }}>
+              <label style={{ display: 'block', fontSize: '12px', fontWeight: 'bold', color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.15em', marginBottom: '12px' }}>
+                Samples Collected This Mission
+              </label>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '16px', marginBottom: '8px' }}>
+                {/* Common Samples */}
+                <div>
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', marginBottom: '8px' }}>
+                    <img 
+                      src="https://helldivers.wiki.gg/images/Common_Sample_Logo.svg" 
+                      alt="Common" 
+                      style={{ width: '20px', height: '20px' }}
+                    />
+                    <span style={{ fontSize: '12px', fontWeight: 'bold', color: '#22c55e', textTransform: 'uppercase' }}>
+                      Common
+                    </span>
+                  </div>
+                  <input
+                    type="number"
+                    min="0"
+                    max="999"
+                    defaultValue="0"
+                    id="commonSamples"
+                    style={{
+                      width: '100%',
+                      padding: '12px',
+                      backgroundColor: '#1f2937',
+                      border: '1px solid #22c55e',
+                      borderRadius: '4px',
+                      color: '#22c55e',
+                      fontSize: '16px',
+                      fontWeight: 'bold',
+                      textAlign: 'center',
+                      fontFamily: 'monospace'
+                    }}
+                  />
+                  <div style={{ fontSize: '10px', color: '#64748b', marginTop: '4px', fontStyle: 'italic' }}>
+                    +1% event chance each
+                  </div>
+                </div>
+                
+                {/* Rare Samples */}
+                <div>
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', marginBottom: '8px' }}>
+                    <img 
+                      src="https://helldivers.wiki.gg/images/Rare_Sample_Logo.svg" 
+                      alt="Rare" 
+                      style={{ width: '20px', height: '20px' }}
+                    />
+                    <span style={{ fontSize: '12px', fontWeight: 'bold', color: '#f97316', textTransform: 'uppercase' }}>
+                      Rare
+                    </span>
+                  </div>
+                  <input
+                    type="number"
+                    min="0"
+                    max="999"
+                    defaultValue="0"
+                    id="rareSamples"
+                    style={{
+                      width: '100%',
+                      padding: '12px',
+                      backgroundColor: '#1f2937',
+                      border: '1px solid #f97316',
+                      borderRadius: '4px',
+                      color: '#f97316',
+                      fontSize: '16px',
+                      fontWeight: 'bold',
+                      textAlign: 'center',
+                      fontFamily: 'monospace'
+                    }}
+                  />
+                  <div style={{ fontSize: '10px', color: '#64748b', marginTop: '4px', fontStyle: 'italic' }}>
+                    +2% event chance each
+                  </div>
+                </div>
+                
+                {/* Super Rare Samples */}
+                <div>
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', marginBottom: '8px' }}>
+                    <img 
+                      src="https://helldivers.wiki.gg/images/Super_Sample_Logo.svg" 
+                      alt="Super Rare" 
+                      style={{ width: '20px', height: '20px' }}
+                    />
+                    <span style={{ fontSize: '12px', fontWeight: 'bold', color: '#a855f7', textTransform: 'uppercase' }}>
+                      Super Rare
+                    </span>
+                  </div>
+                  <input
+                    type="number"
+                    min="0"
+                    max="999"
+                    defaultValue="0"
+                    id="superRareSamples"
+                    style={{
+                      width: '100%',
+                      padding: '12px',
+                      backgroundColor: '#1f2937',
+                      border: '1px solid #a855f7',
+                      borderRadius: '4px',
+                      color: '#a855f7',
+                      fontSize: '16px',
+                      fontWeight: 'bold',
+                      textAlign: 'center',
+                      fontFamily: 'monospace'
+                    }}
+                  />
+                  <div style={{ fontSize: '10px', color: '#64748b', marginTop: '4px', fontStyle: 'italic' }}>
+                    +3% event chance each
+                  </div>
+                </div>
+              </div>
+              <p style={{ fontSize: '11px', color: '#94a3b8', fontStyle: 'italic', margin: '8px 0 0 0', textAlign: 'center' }}>
+                Samples increase the chance of random events. Event chance resets to base 0% when an event occurs.
+              </p>
+            </div>
+            
             <div style={{ display: 'flex', gap: '16px', justifyContent: 'center' }}>
               <button 
                 onClick={() => {
@@ -1589,6 +1730,23 @@ export default function HelldiversRoguelite() {
 
               <button 
                 onClick={() => {
+                  // Collect samples from input fields
+                  const commonSamples = parseInt(document.getElementById('commonSamples')?.value || '0', 10);
+                  const rareSamples = parseInt(document.getElementById('rareSamples')?.value || '0', 10);
+                  const superRareSamples = parseInt(document.getElementById('superRareSamples')?.value || '0', 10);
+                  
+                  // Add samples to total
+                  dispatch(actions.addSamples({
+                    common: commonSamples,
+                    rare: rareSamples,
+                    superRare: superRareSamples
+                  }));
+                  
+                  // Clear input fields
+                  if (document.getElementById('commonSamples')) document.getElementById('commonSamples').value = '0';
+                  if (document.getElementById('rareSamples')) document.getElementById('rareSamples').value = '0';
+                  if (document.getElementById('superRareSamples')) document.getElementById('superRareSamples').value = '0';
+                  
                   dispatch(actions.addRequisition(1));
                   if (currentDiff < 10) dispatch(actions.setDifficulty(currentDiff + 1));
                   startDraftPhase();

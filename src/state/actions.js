@@ -57,6 +57,21 @@ export const loseLives = (amount) => ({
   payload: amount
 });
 
+// Samples
+export const addSamples = (samples) => ({
+  type: types.ADD_SAMPLES,
+  payload: samples
+});
+
+export const resetSamples = () => ({
+  type: types.RESET_SAMPLES
+});
+
+export const setSamples = (samples) => ({
+  type: types.SET_SAMPLES,
+  payload: samples
+});
+
 // Players management
 export const setPlayers = (players) => ({
   type: types.SET_PLAYERS,

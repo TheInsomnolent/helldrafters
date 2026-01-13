@@ -18,6 +18,11 @@ export const SET_LIVES = 'SET_LIVES';
 export const ADD_LIVES = 'ADD_LIVES';
 export const LOSE_LIVES = 'LOSE_LIVES';
 
+// Samples
+export const ADD_SAMPLES = 'ADD_SAMPLES';
+export const RESET_SAMPLES = 'RESET_SAMPLES';
+export const SET_SAMPLES = 'SET_SAMPLES';
+
 // Players management
 export const SET_PLAYERS = 'SET_PLAYERS';
 export const UPDATE_PLAYER = 'UPDATE_PLAYER';

@@ -17,6 +17,11 @@ export const initialState = {
   currentDiff: 1,
   requisition: 0,
   lives: 3,
+  samples: {
+    common: 0,
+    rare: 0,
+    superRare: 0
+  },
   players: [],
   draftState: {
     activePlayerIndex: 0,
@@ -82,6 +87,33 @@ export function gameReducer(state, action) {
       return {
         ...state,
         lives: Math.max(0, state.lives - action.payload)
+      };
+
+    // Samples
+    case types.ADD_SAMPLES:
+      return {
+        ...state,
+        samples: {
+          common: state.samples.common + (action.payload.common || 0),
+          rare: state.samples.rare + (action.payload.rare || 0),
+          superRare: state.samples.superRare + (action.payload.superRare || 0)
+        }
+      };
+
+    case types.RESET_SAMPLES:
+      return {
+        ...state,
+        samples: {
+          common: 0,
+          rare: 0,
+          superRare: 0
+        }
+      };
+
+    case types.SET_SAMPLES:
+      return {
+        ...state,
+        samples: action.payload
       };
 
     // Players management

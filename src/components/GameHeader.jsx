@@ -1,5 +1,5 @@
 import React from 'react';
-import { Trophy, AlertTriangle, XCircle } from 'lucide-react';
+import { AlertTriangle, XCircle } from 'lucide-react';
 import { DIFFICULTY_CONFIG } from '../constants/gameConfig';
 
 /**
@@ -10,6 +10,7 @@ export default function GameHeader({
   requisition, 
   lives, 
   faction,
+  samples,
   onExport,
   onCancelRun 
 }) {
@@ -62,18 +63,66 @@ export default function GameHeader({
         </div>
         
         <div style={{ display: 'flex', alignItems: 'center', gap: '24px' }}>
+          {/* Requisition */}
           <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: '#F5C642' }}>
-            <Trophy size={18} />
+            <img 
+              src="https://helldivers.wiki.gg/images/Requisition_Slip.svg" 
+              alt="Requisition" 
+              style={{ width: '20px', height: '20px' }}
+            />
             <span style={{ fontFamily: 'monospace', fontWeight: 'bold', fontSize: '20px' }}>
               {requisition}
             </span>
           </div>
+          
+          {/* Samples */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+            {/* Common Samples */}
+            <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+              <img 
+                src="https://helldivers.wiki.gg/images/Common_Sample_Logo.svg" 
+                alt="Common Samples" 
+                style={{ width: '18px', height: '18px' }}
+              />
+              <span style={{ fontFamily: 'monospace', fontWeight: 'bold', fontSize: '16px', color: '#22c55e' }}>
+                {samples?.common || 0}
+              </span>
+            </div>
+            
+            {/* Rare Samples */}
+            <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+              <img 
+                src="https://helldivers.wiki.gg/images/Rare_Sample_Logo.svg" 
+                alt="Rare Samples" 
+                style={{ width: '18px', height: '18px' }}
+              />
+              <span style={{ fontFamily: 'monospace', fontWeight: 'bold', fontSize: '16px', color: '#f97316' }}>
+                {samples?.rare || 0}
+              </span>
+            </div>
+            
+            {/* Super Rare Samples */}
+            <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+              <img 
+                src="https://helldivers.wiki.gg/images/Super_Sample_Logo.svg" 
+                alt="Super Rare Samples" 
+                style={{ width: '18px', height: '18px' }}
+              />
+              <span style={{ fontFamily: 'monospace', fontWeight: 'bold', fontSize: '16px', color: '#a855f7' }}>
+                {samples?.superRare || 0}
+              </span>
+            </div>
+          </div>
+          
+          {/* Lives */}
           <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: '#ef4444' }}>
             <AlertTriangle size={18} />
             <span style={{ fontFamily: 'monospace', fontWeight: 'bold', fontSize: '20px' }}>
               {lives} Lives
             </span>
           </div>
+          
+          {/* Action Buttons */}
           <button
             onClick={onExport}
             style={{
