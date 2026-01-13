@@ -993,6 +993,30 @@ export default function HelldiversRoguelite() {
                     <div style={{ color: '#94a3b8', fontSize: '11px', marginTop: '4px' }}>Manually trigger events from dashboard for testing</div>
                   </div>
                 </label>
+                <label style={{ display: 'flex', alignItems: 'center', gap: '12px', cursor: 'pointer', padding: '12px', backgroundColor: gameConfig.showCardPool ? `${factionColors.PRIMARY}1A` : 'transparent', borderRadius: '4px', border: '1px solid rgba(100, 116, 139, 0.5)' }}>
+                  <input 
+                    type="checkbox" 
+                    checked={gameConfig.showCardPool || false}
+                    onChange={(e) => dispatch(actions.updateGameConfig({ showCardPool: e.target.checked }))}
+                    style={{ width: '20px', height: '20px', cursor: 'pointer' }}
+                  />
+                  <div>
+                    <div style={{ color: factionColors.PRIMARY, fontWeight: 'bold', fontSize: '14px' }}>Show Card Pool</div>
+                    <div style={{ color: '#94a3b8', fontSize: '11px', marginTop: '4px' }}>Display all available items in the draw pool (debug)</div>
+                  </div>
+                </label>
+                <label style={{ display: 'flex', alignItems: 'center', gap: '12px', cursor: 'pointer', padding: '12px', backgroundColor: gameConfig.showCardPool ? `${factionColors.PRIMARY}1A` : 'transparent', borderRadius: '4px', border: '1px solid rgba(100, 116, 139, 0.5)' }}>
+                  <input 
+                    type="checkbox" 
+                    checked={gameConfig.showCardPool}
+                    onChange={(e) => dispatch(actions.updateGameConfig({ showCardPool: e.target.checked }))}
+                    style={{ width: '20px', height: '20px', cursor: 'pointer' }}
+                  />
+                  <div>
+                    <div style={{ color: factionColors.PRIMARY, fontWeight: 'bold', fontSize: '14px' }}>Show Card Pool</div>
+                    <div style={{ color: '#94a3b8', fontSize: '11px', marginTop: '4px' }}>Display all available items in the draw pool (debug)</div>
+                  </div>
+                </label>
               </div>
             </div>
 
@@ -1428,6 +1452,21 @@ export default function HelldiversRoguelite() {
       if (updates.currentDiff !== undefined) dispatch(actions.setDifficulty(updates.currentDiff));
       if (updates.faction !== undefined) dispatch(actions.updateGameConfig({ faction: updates.faction }));
       if (updates.bonusRequisition !== undefined) dispatch(actions.addRequisition(updates.bonusRequisition));
+      
+      // Handle burned cards from transformation
+      if (updates.newBurnedCards && updates.newBurnedCards.length > 0) {
+        updates.newBurnedCards.forEach(cardId => dispatch(actions.addBurnedCard(cardId)));
+      }
+      
+      // Display transformed slots
+      if (updates.transformedSlots && updates.transformedSlots.length > 0) {
+        const transformList = updates.transformedSlots.map(t => 
+          `${t.slot.replace('_', ' ').toUpperCase()}: ${t.oldItem} → ${t.newItem}`
+        ).join('\n• ');
+        setTimeout(() => {
+          alert(`Quantum Reconfiguration Complete!\n\n${updates.transformedSlots.length} item${updates.transformedSlots.length > 1 ? 's' : ''} transformed:\n\n• ${transformList}`);
+        }, 100);
+      }
       
       // Check if we need to immediately start a redraft
       if (updates.needsRedraft && updates.redraftPlayerIndex !== undefined) {
@@ -2241,6 +2280,111 @@ export default function HelldiversRoguelite() {
               <p style={{ fontSize: '10px', color: '#64748b', marginTop: '12px', textAlign: 'center', fontStyle: 'italic' }}>
                 Events marked as SEEN have already been triggered this run
               </p>
+            </div>
+          )}
+          
+          {/* Debug: Show Card Pool */}
+          {gameConfig.showCardPool && (
+            <div style={{ 
+              width: '100%', 
+              maxWidth: '800px', 
+              backgroundColor: '#1a2332', 
+              padding: '24px', 
+              borderRadius: '12px', 
+              border: '2px solid #3b82f6', 
+              marginTop: '24px' 
+            }}>
+              <h3 style={{ 
+                fontSize: '16px', 
+                fontWeight: 'bold', 
+                color: '#3b82f6', 
+                textTransform: 'uppercase',
+                marginBottom: '16px',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '8px'
+              }}>
+                🃏 Available Card Pool ({MASTER_DB.filter(item => !burnedCards.includes(item.id)).length} / {MASTER_DB.length})
+              </h3>
+              <div style={{ 
+                display: 'grid', 
+                gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))',
+                gap: '6px',
+                maxHeight: '500px',
+                overflowY: 'auto',
+                padding: '8px',
+                backgroundColor: '#0f172a',
+                borderRadius: '8px'
+              }}>
+                {MASTER_DB
+                  .filter(item => !burnedCards.includes(item.id))
+                  .sort((a, b) => {
+                    const typeOrder = [TYPE.PRIMARY, TYPE.SECONDARY, TYPE.GRENADE, TYPE.ARMOR, TYPE.BOOSTER, TYPE.STRATAGEM];
+                    const typeCompare = typeOrder.indexOf(a.type) - typeOrder.indexOf(b.type);
+                    if (typeCompare !== 0) return typeCompare;
+                    return a.name.localeCompare(b.name);
+                  })
+                  .map(item => {
+                    const typeColors = {
+                      [TYPE.PRIMARY]: '#ef4444',
+                      [TYPE.SECONDARY]: '#f59e0b',
+                      [TYPE.GRENADE]: '#10b981',
+                      [TYPE.ARMOR]: '#3b82f6',
+                      [TYPE.BOOSTER]: '#a855f7',
+                      [TYPE.STRATAGEM]: '#ec4899'
+                    };
+                    const typeLabels = {
+                      [TYPE.PRIMARY]: 'PRI',
+                      [TYPE.SECONDARY]: 'SEC',
+                      [TYPE.GRENADE]: 'GRN',
+                      [TYPE.ARMOR]: 'ARM',
+                      [TYPE.BOOSTER]: 'BST',
+                      [TYPE.STRATAGEM]: 'STR'
+                    };
+                    return (
+                      <div
+                        key={item.id}
+                        style={{
+                          padding: '6px 10px',
+                          backgroundColor: 'rgba(15, 23, 42, 0.8)',
+                          border: `1px solid ${typeColors[item.type] || '#64748b'}`,
+                          borderRadius: '4px',
+                          fontSize: '11px',
+                          color: '#e2e8f0',
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: '8px'
+                        }}
+                      >
+                        <span style={{
+                          padding: '2px 6px',
+                          borderRadius: '3px',
+                          backgroundColor: typeColors[item.type] || '#64748b',
+                          color: 'white',
+                          fontSize: '9px',
+                          fontWeight: 'bold',
+                          fontFamily: 'monospace',
+                          flexShrink: 0
+                        }}>
+                          {typeLabels[item.type] || 'UNK'}
+                        </span>
+                        <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', flex: 1 }}>
+                          {item.name}
+                        </span>
+                      </div>
+                    );
+                  })
+                }
+              </div>
+              <div style={{ 
+                marginTop: '12px', 
+                fontSize: '11px', 
+                color: '#64748b',
+                fontStyle: 'italic',
+                textAlign: 'center'
+              }}>
+                Burned cards: {burnedCards.length} | Remaining: {MASTER_DB.length - burnedCards.length}
+              </div>
             </div>
           )}
         </div>

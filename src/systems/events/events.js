@@ -26,7 +26,8 @@ export const OUTCOME_TYPES = {
   DUPLICATE_STRATAGEM_TO_ANOTHER_HELLDIVER: 'duplicate_stratagem_to_another_helldiver',
   SWAP_STRATAGEM_WITH_PLAYER: 'swap_stratagem_with_player',
   RESTRICT_TO_SINGLE_WEAPON: 'restrict_to_single_weapon',
-  REDRAFT: 'redraft'
+  REDRAFT: 'redraft',
+  TRANSFORM_LOADOUT: 'transform_loadout'
 };
 
 // Event structure:
@@ -251,6 +252,32 @@ export const EVENTS = [
         text: 'Reinvest Assets',
         outcomes: [
           { type: OUTCOME_TYPES.REDRAFT, value: 1, targetPlayer: 'choose' }
+        ]
+      }
+    ]
+  },
+
+  // 9. Quantum Anomaly
+  {
+    id: 'quantum_anomaly',
+    name: 'Quantum Equipment Anomaly',
+    description: 'Your destroyer\'s cargo bay has been exposed to a quantum fluctuation field during FTL travel. Science Officer reports: "Your equipment is undergoing spontaneous molecular reconfiguration. We can attempt to stabilize one item, or let the entire loadout phase-shift. The results are... unpredictable, but statistically favorable."',
+    type: EVENT_TYPES.CHOICE,
+    minDifficulty: 2,
+    maxDifficulty: 10,
+    weight: 10,
+    targetPlayer: 'single',
+    choices: [
+      {
+        text: 'Stabilize Single Item',
+        outcomes: [
+          { type: OUTCOME_TYPES.TRANSFORM_LOADOUT, value: 1, targetPlayer: 'choose' }
+        ]
+      },
+      {
+        text: 'Full Loadout Phase-Shift',
+        outcomes: [
+          { type: OUTCOME_TYPES.TRANSFORM_LOADOUT, value: -1, targetPlayer: 'choose' }
         ]
       }
     ]

@@ -142,6 +142,17 @@ export const processEventOutcome = (outcome, choice, state, selections = {}) => 
       }
       break;
 
+    case OUTCOME_TYPES.TRANSFORM_LOADOUT:
+      if (eventPlayerChoice !== null) {
+        const transformResult = applyTransformLoadout(players, eventPlayerChoice, outcome.value, gameConfig, state.burnedCards || []);
+        updates.players = transformResult.players;
+        updates.transformedSlots = transformResult.transformedSlots;
+        if (transformResult.burnedCards.length > 0) {
+          updates.newBurnedCards = transformResult.burnedCards;
+        }
+      }
+      break;
+
     case OUTCOME_TYPES.REMOVE_ITEM:
       if (outcome.targetPlayer === 'choose' && eventPlayerChoice !== null) {
         const newPlayers = [...players];
@@ -381,6 +392,117 @@ const applyDuplicateStratagem = (players, eventPlayerChoice, selections = {}) =>
 };
 
 /**
+ * Apply transform loadout outcome - replace slots with random items of same type
+ * @param {Array} players - Array of player objects
+ * @param {number} eventPlayerChoice - The player index to transform
+ * @param {number} slotCount - Number of slots to transform (-1 for all)
+ * @param {Object} gameConfig - Game configuration
+ * @param {Array} burnedCards - Currently burned cards
+ * @returns {Object} {players, transformedSlots, burnedCards}
+ */
+const applyTransformLoadout = (players, eventPlayerChoice, slotCount, gameConfig, burnedCards) => {
+  if (eventPlayerChoice === null) return { players, transformedSlots: [], burnedCards: [] };
+
+  const newPlayers = [...players];
+  const player = newPlayers[eventPlayerChoice];
+  const transformedSlots = [];
+  const newBurnedCards = [];
+  const useBurnMode = gameConfig.burnMode;
+
+  // Collect all applicable slots (everything but empty stratagems)
+  const applicableSlots = [];
+  
+  if (player.loadout.primary) {
+    applicableSlots.push({ slot: 'primary', type: TYPE.PRIMARY, current: player.loadout.primary });
+  }
+  if (player.loadout.secondary) {
+    applicableSlots.push({ slot: 'secondary', type: TYPE.SECONDARY, current: player.loadout.secondary });
+  }
+  if (player.loadout.grenade) {
+    applicableSlots.push({ slot: 'grenade', type: TYPE.GRENADE, current: player.loadout.grenade });
+  }
+  if (player.loadout.armor) {
+    applicableSlots.push({ slot: 'armor', type: TYPE.ARMOR, current: player.loadout.armor });
+  }
+  if (player.loadout.booster) {
+    applicableSlots.push({ slot: 'booster', type: TYPE.BOOSTER, current: player.loadout.booster });
+  }
+  player.loadout.stratagems.forEach((stratagemId, index) => {
+    if (stratagemId) {
+      applicableSlots.push({ slot: `stratagem_${index}`, slotIndex: index, type: TYPE.STRATAGEM, current: stratagemId });
+    }
+  });
+
+  // Shuffle the slots
+  const shuffled = [...applicableSlots].sort(() => Math.random() - 0.5);
+
+  // Determine how many slots to transform
+  const transformCount = slotCount === -1 ? shuffled.length : Math.min(slotCount, shuffled.length);
+
+  // Track currently burned cards (include existing + new burns)
+  const currentBurnedCards = [...burnedCards];
+
+  // Transform slots
+  for (let i = 0; i < transformCount; i++) {
+    const slotInfo = shuffled[i];
+    
+    // Get all items of this type that aren't burned
+    const availableItems = MASTER_DB.filter(item => {
+      if (item.type !== slotInfo.type) return false;
+      if (useBurnMode && currentBurnedCards.includes(item.id)) return false;
+      return true;
+    });
+
+    if (availableItems.length > 0) {
+      // Randomly select a new item
+      const randomItem = availableItems[Math.floor(Math.random() * availableItems.length)];
+      
+      // Get item name for display
+      const oldItem = MASTER_DB.find(i => i.id === slotInfo.current);
+      
+      // Update the slot
+      if (slotInfo.slot === 'primary') {
+        player.loadout.primary = randomItem.id;
+      } else if (slotInfo.slot === 'secondary') {
+        player.loadout.secondary = randomItem.id;
+      } else if (slotInfo.slot === 'grenade') {
+        player.loadout.grenade = randomItem.id;
+      } else if (slotInfo.slot === 'armor') {
+        player.loadout.armor = randomItem.id;
+      } else if (slotInfo.slot === 'booster') {
+        player.loadout.booster = randomItem.id;
+      } else if (slotInfo.slot.startsWith('stratagem_')) {
+        player.loadout.stratagems[slotInfo.slotIndex] = randomItem.id;
+      }
+
+      // Update inventory - remove old, add new
+      const oldInvIndex = player.inventory.indexOf(slotInfo.current);
+      if (oldInvIndex !== -1) {
+        player.inventory.splice(oldInvIndex, 1);
+      }
+      if (!player.inventory.includes(randomItem.id)) {
+        player.inventory.push(randomItem.id);
+      }
+
+      // Track transformation
+      transformedSlots.push({
+        slot: slotInfo.slot,
+        oldItem: oldItem ? oldItem.name : 'Unknown',
+        newItem: randomItem.name
+      });
+
+      // Burn the new card if burn mode is enabled
+      if (useBurnMode && !currentBurnedCards.includes(randomItem.id)) {
+        currentBurnedCards.push(randomItem.id);
+        newBurnedCards.push(randomItem.id);
+      }
+    }
+  }
+
+  return { players: newPlayers, transformedSlots, burnedCards: newBurnedCards };
+};
+
+/**
  * Ensure loadout has required fallback equipment
  * - If no armor → default to B-01 Tactical
  * - If no primary AND no secondary → default to P-2 Peacemaker
@@ -442,11 +564,7 @@ const getLiquidatedItems = (player) => {
     if (item) items.push(item.name);
   }
   
-  // Booster
-  if (player.loadout.booster) {
-    const item = MASTER_DB.find(i => i.id === player.loadout.booster);
-    if (item) items.push(item.name);
-  }
+  // Boosters are NOT affected by redraft - they are kept
   
   // Stratagems
   player.loadout.stratagems.forEach(stratagemId => {
@@ -490,11 +608,16 @@ const applyRedraft = (players, eventPlayerChoice) => {
     secondary: STARTING_LOADOUT.secondary,
     grenade: STARTING_LOADOUT.grenade,
     armor: STARTING_LOADOUT.armor,
-    booster: STARTING_LOADOUT.booster,
+    booster: player.loadout.booster,  // Preserve current booster
     stratagems: [...STARTING_LOADOUT.stratagems]
   };
 
   const baseInventory = [STARTING_LOADOUT.secondary, STARTING_LOADOUT.grenade, STARTING_LOADOUT.armor].filter(id => id !== null);
+  
+  // Add current booster to inventory if it exists
+  if (player.loadout.booster && !baseInventory.includes(player.loadout.booster)) {
+    baseInventory.push(player.loadout.booster);
+  }
 
   const { loadout, inventory } = ensureValidLoadout(baseLoadout, baseInventory);
 
@@ -665,6 +788,11 @@ export const formatOutcome = (outcome) => {
       return `Use only 1 weapon next mission (no stratagems)`;
     case OUTCOME_TYPES.REDRAFT:
       return `Redraft: Discard all items, draft ${outcome.value ? Math.ceil(1 / outcome.value) : 1}x per discarded`;
+    case OUTCOME_TYPES.TRANSFORM_LOADOUT:
+      if (outcome.value === -1) {
+        return `Transform entire loadout randomly`;
+      }
+      return `Transform ${outcome.value} random item${outcome.value > 1 ? 's' : ''}`;
     default:
       return '';
   }
