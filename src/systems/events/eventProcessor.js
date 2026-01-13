@@ -89,8 +89,28 @@ export const processEventOutcome = (outcome, choice, state, selections = {}) => 
       break;
 
     case OUTCOME_TYPES.REDRAFT:
-      updates.players = applyRedraft(players, eventPlayerChoice);
-      updates.bonusRequisition = calculateRedraftBonus(players[eventPlayerChoice], outcome.value);
+      // Get list of items being liquidated
+      const liquidatedItems = getLiquidatedItems(players[eventPlayerChoice]);
+      updates.liquidatedItems = liquidatedItems;
+      
+      if (liquidatedItems.length > 0) {
+        // Calculate number of drafts based on liquidated items
+        const draftCount = Math.ceil(liquidatedItems.length / (outcome.value || 1));
+        
+        // Calculate bonus requisition from items being discarded
+        updates.bonusRequisition = calculateRedraftBonus(players[eventPlayerChoice], outcome.value);
+        
+        // Signal that we need to immediately start a redraft for this player
+        updates.needsRedraft = true;
+        updates.redraftPlayerIndex = eventPlayerChoice;
+        updates.redraftCount = draftCount;
+        
+        // Reset player's inventory and loadout, and store draft count
+        const newPlayers = applyRedraft(players, eventPlayerChoice);
+        // Store the number of redrafts in the player object
+        newPlayers[eventPlayerChoice].redraftRounds = draftCount;
+        updates.players = newPlayers;
+      }
       break;
 
     case OUTCOME_TYPES.SWAP_STRATAGEM_WITH_PLAYER:
@@ -126,21 +146,54 @@ export const processEventOutcome = (outcome, choice, state, selections = {}) => 
       if (outcome.targetPlayer === 'choose' && eventPlayerChoice !== null) {
         const newPlayers = [...players];
         const player = newPlayers[eventPlayerChoice];
-        if (player.inventory.length > 0) {
-          const randomIndex = Math.floor(Math.random() * player.inventory.length);
-          const removedItem = player.inventory[randomIndex];
-          player.inventory.splice(randomIndex, 1);
-          
-          // Remove from loadout if equipped
-          Object.keys(player.loadout).forEach(slot => {
-            if (player.loadout[slot] === removedItem) {
-              player.loadout[slot] = null;
-            } else if (Array.isArray(player.loadout[slot])) {
-              const idx = player.loadout[slot].indexOf(removedItem);
-              if (idx !== -1) player.loadout[slot][idx] = null;
-            }
-          });
+        
+        // Collect removable items (primary, secondary, grenade, stratagems - not armor or booster)
+        const removableItems = [];
+        
+        if (player.loadout.primary) {
+          removableItems.push({ type: 'primary', id: player.loadout.primary, slot: 'primary' });
         }
+        if (player.loadout.secondary) {
+          removableItems.push({ type: 'secondary', id: player.loadout.secondary, slot: 'secondary' });
+        }
+        if (player.loadout.grenade) {
+          removableItems.push({ type: 'grenade', id: player.loadout.grenade, slot: 'grenade' });
+        }
+        player.loadout.stratagems.forEach((stratagemId, index) => {
+          if (stratagemId) {
+            removableItems.push({ type: 'stratagem', id: stratagemId, slot: index });
+          }
+        });
+        
+        if (removableItems.length > 0) {
+          // Randomly select one to remove
+          const randomIndex = Math.floor(Math.random() * removableItems.length);
+          const itemToRemove = removableItems[randomIndex];
+          
+          // Get item name for display
+          const item = MASTER_DB.find(i => i.id === itemToRemove.id);
+          updates.removedItemName = item ? item.name : 'Unknown Item';
+          updates.removedItemType = itemToRemove.type;
+          
+          // Remove from loadout
+          if (itemToRemove.type === 'stratagem') {
+            player.loadout.stratagems[itemToRemove.slot] = null;
+          } else {
+            player.loadout[itemToRemove.slot] = null;
+          }
+          
+          // Remove from inventory
+          const invIndex = player.inventory.indexOf(itemToRemove.id);
+          if (invIndex !== -1) {
+            player.inventory.splice(invIndex, 1);
+          }
+          
+          // Ensure loadout remains valid after removal
+          const validated = ensureValidLoadout(player.loadout, player.inventory);
+          player.loadout = validated.loadout;
+          player.inventory = validated.inventory;
+        }
+        
         updates.players = newPlayers;
       }
       break;
@@ -328,6 +381,102 @@ const applyDuplicateStratagem = (players, eventPlayerChoice, selections = {}) =>
 };
 
 /**
+ * Ensure loadout has required fallback equipment
+ * - If no armor → default to B-01 Tactical
+ * - If no primary AND no secondary → default to P-2 Peacemaker
+ * - Primaries, grenades, stratagems can be empty
+ * - Secondaries can be empty if primary exists
+ */
+const ensureValidLoadout = (loadout, inventory) => {
+  const validLoadout = { ...loadout };
+  const validInventory = [...inventory];
+
+  // If no armor, default to B-01 Tactical
+  if (!validLoadout.armor) {
+    validLoadout.armor = 'a_b01';
+    if (!validInventory.includes('a_b01')) {
+      validInventory.push('a_b01');
+    }
+  }
+
+  // If no primary AND no secondary, default to P-2 Peacemaker
+  if (!validLoadout.primary && !validLoadout.secondary) {
+    validLoadout.secondary = 's_peacemaker';
+    if (!validInventory.includes('s_peacemaker')) {
+      validInventory.push('s_peacemaker');
+    }
+  }
+
+  return { loadout: validLoadout, inventory: validInventory };
+};
+
+/**
+ * Get list of items being liquidated during redraft
+ */
+const getLiquidatedItems = (player) => {
+  if (!player) return [];
+  
+  const items = [];
+  
+  // Collect all non-default loadout items
+  if (player.loadout.primary && player.loadout.primary !== STARTING_LOADOUT.primary) {
+    const item = MASTER_DB.find(i => i.id === player.loadout.primary);
+    if (item) items.push(item.name);
+  }
+  
+  // Secondary is only liquidated if it's not the default peacemaker
+  if (player.loadout.secondary && player.loadout.secondary !== STARTING_LOADOUT.secondary) {
+    const item = MASTER_DB.find(i => i.id === player.loadout.secondary);
+    if (item) items.push(item.name);
+  }
+  
+  // Grenade is only liquidated if it's not the default HE grenade
+  if (player.loadout.grenade && player.loadout.grenade !== STARTING_LOADOUT.grenade) {
+    const item = MASTER_DB.find(i => i.id === player.loadout.grenade);
+    if (item) items.push(item.name);
+  }
+  
+  // Armor is only liquidated if it's not the default B-01
+  if (player.loadout.armor && player.loadout.armor !== STARTING_LOADOUT.armor) {
+    const item = MASTER_DB.find(i => i.id === player.loadout.armor);
+    if (item) items.push(item.name);
+  }
+  
+  // Booster
+  if (player.loadout.booster) {
+    const item = MASTER_DB.find(i => i.id === player.loadout.booster);
+    if (item) items.push(item.name);
+  }
+  
+  // Stratagems
+  player.loadout.stratagems.forEach(stratagemId => {
+    if (stratagemId) {
+      const item = MASTER_DB.find(i => i.id === stratagemId);
+      if (item) items.push(item.name);
+    }
+  });
+  
+  // Inventory items (excluding those already in loadout)
+  player.inventory.forEach(itemId => {
+    // Skip if already in loadout or is a default item
+    const alreadyInLoadout = 
+      itemId === player.loadout.primary ||
+      itemId === player.loadout.secondary ||
+      itemId === player.loadout.grenade ||
+      itemId === player.loadout.armor ||
+      itemId === player.loadout.booster ||
+      player.loadout.stratagems.includes(itemId);
+    
+    if (!alreadyInLoadout) {
+      const item = MASTER_DB.find(i => i.id === itemId);
+      if (item) items.push(item.name);
+    }
+  });
+  
+  return items;
+};
+
+/**
  * Apply redraft outcome
  */
 const applyRedraft = (players, eventPlayerChoice) => {
@@ -336,17 +485,23 @@ const applyRedraft = (players, eventPlayerChoice) => {
   const player = players[eventPlayerChoice];
   const newPlayers = [...players];
 
+  const baseLoadout = {
+    primary: STARTING_LOADOUT.primary,
+    secondary: STARTING_LOADOUT.secondary,
+    grenade: STARTING_LOADOUT.grenade,
+    armor: STARTING_LOADOUT.armor,
+    booster: STARTING_LOADOUT.booster,
+    stratagems: [...STARTING_LOADOUT.stratagems]
+  };
+
+  const baseInventory = [STARTING_LOADOUT.secondary, STARTING_LOADOUT.grenade, STARTING_LOADOUT.armor].filter(id => id !== null);
+
+  const { loadout, inventory } = ensureValidLoadout(baseLoadout, baseInventory);
+
   newPlayers[eventPlayerChoice] = {
     ...player,
-    inventory: [STARTING_LOADOUT.secondary, STARTING_LOADOUT.grenade, STARTING_LOADOUT.armor].filter(id => id !== null),
-    loadout: {
-      primary: STARTING_LOADOUT.primary,
-      secondary: STARTING_LOADOUT.secondary,
-      grenade: STARTING_LOADOUT.grenade,
-      armor: STARTING_LOADOUT.armor,
-      booster: STARTING_LOADOUT.booster,
-      stratagems: [...STARTING_LOADOUT.stratagems]
-    }
+    inventory,
+    loadout
   };
 
   return newPlayers;
@@ -446,12 +601,25 @@ const applySwapStratagem = (players, eventPlayerChoice, selections = {}) => {
  * Check if a choice can be afforded
  * @param {Object} choice - The choice object
  * @param {number} requisition - Current requisition amount
+ * @param {Array} players - Array of player objects
+ * @param {number} eventPlayerChoice - Currently selected player index
  * @returns {boolean} True if choice can be afforded
  */
-export const canAffordChoice = (choice, requisition) => {
+export const canAffordChoice = (choice, requisition, players = null, eventPlayerChoice = null) => {
   if (choice.requiresRequisition && requisition < choice.requiresRequisition) {
     return false;
   }
+  
+  // Check if REDRAFT choice has items to sacrifice
+  if (choice.outcomes && choice.outcomes.some(o => o.type === OUTCOME_TYPES.REDRAFT)) {
+    if (players && eventPlayerChoice !== null && players[eventPlayerChoice]) {
+      const liquidatedItems = getLiquidatedItems(players[eventPlayerChoice]);
+      if (liquidatedItems.length === 0) {
+        return false;
+      }
+    }
+  }
+  
   return true;
 };
 

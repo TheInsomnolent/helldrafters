@@ -630,7 +630,7 @@ export default function EventDisplay({
               )}
               <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
                 {currentEvent.choices.map((choice, idx) => {
-                const affordable = canAffordChoice(choice, requisition);
+                const affordable = canAffordChoice(choice, requisition, players, eventPlayerChoice);
                 const outcomeText = formatOutcomes(choice.outcomes);
                 const reqCost = choice.requiresRequisition;
                 return (

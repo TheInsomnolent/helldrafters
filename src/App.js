@@ -259,6 +259,36 @@ export default function HelldiversRoguelite() {
     const currentPlayer = updatedPlayers[currentPlayerIdx];
     const currentExtraRound = draftState.extraDraftRound || 0;
     
+    // Check if current player has more redraft rounds to complete
+    if (currentPlayer.redraftRounds && currentPlayer.redraftRounds > 1) {
+      const remainingRounds = currentPlayer.redraftRounds - 1;
+      const clearedPlayers = [...updatedPlayers];
+      clearedPlayers[currentPlayerIdx] = { ...currentPlayer, redraftRounds: remainingRounds };
+      dispatch(actions.setPlayers(clearedPlayers));
+      
+      // Continue with next redraft round for same player
+      dispatch(actions.setDraftState({
+        activePlayerIndex: currentPlayerIdx,
+        roundCards: generateDraftHandForPlayer(currentPlayerIdx),
+        isRerolling: false,
+        pendingStratagem: null,
+        extraDraftRound: 0,
+        isRedrafting: true
+      }));
+      return;
+    }
+    
+    // Clear redraft rounds for this player
+    if (currentPlayer.redraftRounds) {
+      const clearedPlayers = [...updatedPlayers];
+      clearedPlayers[currentPlayerIdx] = { ...currentPlayer, redraftRounds: 0 };
+      dispatch(actions.setPlayers(clearedPlayers));
+      
+      // After redraft completes, go back to dashboard
+      dispatch(actions.setPhase('DASHBOARD'));
+      return;
+    }
+    
     // Check if current player has more extra drafts to complete
     if (currentPlayer.extraDraftCards && currentExtraRound < currentPlayer.extraDraftCards) {
       // Continue with next extra draft for same player
@@ -1399,6 +1429,55 @@ export default function HelldiversRoguelite() {
       if (updates.faction !== undefined) dispatch(actions.updateGameConfig({ faction: updates.faction }));
       if (updates.bonusRequisition !== undefined) dispatch(actions.addRequisition(updates.bonusRequisition));
       
+      // Check if we need to immediately start a redraft
+      if (updates.needsRedraft && updates.redraftPlayerIndex !== undefined) {
+        // Show liquidated items message
+        if (updates.liquidatedItems && updates.liquidatedItems.length > 0) {
+          const itemsList = updates.liquidatedItems.join('\n• ');
+          const draftCount = updates.redraftCount || 1;
+          setTimeout(() => {
+            alert(`Assets Liquidated (${updates.liquidatedItems.length} items):\n\n• ${itemsList}\n\nYou will now complete ${draftCount} draft round${draftCount > 1 ? 's' : ''} to rebuild your loadout.`);
+          }, 100);
+        }
+        
+        // Close event
+        dispatch(actions.setCurrentEvent(null));
+        dispatch(actions.setEventPlayerChoice(null));
+        dispatch(actions.resetEventSelections());
+        
+        // Start first draft round for the redrafting player
+        const redraftHand = generateDraftHand(
+          updates.players[updates.redraftPlayerIndex],
+          currentDiff,
+          gameConfig,
+          burnedCards,
+          updates.players,
+          (cardId) => dispatch(actions.addBurnedCard(cardId)),
+          getDraftHandSize(gameConfig.starRating)
+        );
+        
+        dispatch(actions.setDraftState({
+          activePlayerIndex: updates.redraftPlayerIndex,
+          roundCards: redraftHand,
+          isRerolling: false,
+          pendingStratagem: null,
+          extraDraftRound: 0,
+          isRedrafting: true  // Flag to indicate this is a redraft
+        }));
+        dispatch(actions.setPhase('DRAFT'));
+        return;
+      }
+      
+      // Display removed item notification
+      if (updates.removedItemName) {
+        const itemType = updates.removedItemType === 'stratagem' ? 'Stratagem' : 
+                        updates.removedItemType === 'primary' ? 'Primary Weapon' :
+                        updates.removedItemType === 'secondary' ? 'Secondary Weapon' : 'Grenade';
+        setTimeout(() => {
+          alert(`Equipment Confiscated: ${updates.removedItemName} (${itemType}) has been removed from your loadout.`);
+        }, 100);
+      }
+      
       // Handle game over
       if (updates.triggerGameOver) {
         setTimeout(() => dispatch(actions.setPhase('GAMEOVER')), 100);
@@ -1688,6 +1767,23 @@ export default function HelldiversRoguelite() {
                 </div>
                 <div style={{ color: '#94a3b8', fontSize: '11px', marginTop: '4px' }}>
                   Priority Access Equipment
+                </div>
+              </div>
+            )}
+            {(draftState.isRedrafting && player.redraftRounds > 0) && (
+              <div style={{
+                backgroundColor: 'rgba(239, 68, 68, 0.15)',
+                border: '2px solid rgba(239, 68, 68, 0.4)',
+                borderRadius: '8px',
+                padding: '12px 24px',
+                marginBottom: '16px',
+                display: 'inline-block'
+              }}>
+                <div style={{ color: factionColors.PRIMARY, fontSize: '14px', fontWeight: 'bold', textTransform: 'uppercase', letterSpacing: '1px' }}>
+                  🔄 ASSET REINVESTMENT
+                </div>
+                <div style={{ color: '#94a3b8', fontSize: '11px', marginTop: '4px' }}>
+                  Draft {player.redraftRounds} of {player.redraftRounds} Remaining
                 </div>
               </div>
             )}
