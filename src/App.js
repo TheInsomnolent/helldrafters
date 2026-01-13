@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { Shield, Target, Flame, Crosshair, Zap, Skull, Settings, RefreshCw, Users, AlertTriangle, CheckCircle, XCircle, RotateCcw, ChevronRight, Trophy } from 'lucide-react';
+import { selectRandomEvent, OUTCOME_TYPES, EVENT_TYPES } from './events';
 
 // --- DATA CONSTANTS ---
 
@@ -236,8 +237,8 @@ const DIFFICULTY_CONFIG = [
 
 export default function HelldiversRoguelite() {
   // --- STATE ---
-  const [phase, setPhase] = useState('MENU'); // MENU, CUSTOM_SETUP, DASHBOARD, DRAFT, GAMEOVER
-  const [gameConfig, setGameConfig] = useState({ playerCount: 1, faction: FACTION.BUGS, starRating: 3, globalUniqueness: false, burnCards: false, customStart: false });
+  const [phase, setPhase] = useState('MENU'); // MENU, CUSTOM_SETUP, DASHBOARD, DRAFT, EVENT, GAMEOVER
+  const [gameConfig, setGameConfig] = useState({ playerCount: 1, faction: FACTION.BUGS, starRating: 3, globalUniqueness: true, burnCards: true, customStart: false });
   const [currentDiff, setCurrentDiff] = useState(1);
   const [requisition, setRequisition] = useState(0); // Reroll currency
   const [lives, setLives] = useState(3);
@@ -258,6 +259,9 @@ export default function HelldiversRoguelite() {
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [disabledWarbonds, setDisabledWarbonds] = useState([]); // For future expansion logic
   const [selectedPlayer, setSelectedPlayer] = useState(0); // For custom setup phase
+  const [eventsEnabled, setEventsEnabled] = useState(true);
+  const [currentEvent, setCurrentEvent] = useState(null);
+  const [eventPlayerChoice, setEventPlayerChoice] = useState(null);
   
   // Load game state from localStorage on mount
   useEffect(() => {
@@ -274,6 +278,9 @@ export default function HelldiversRoguelite() {
           setBurnedCards(state.burnedCards || []);
           setPlayers(state.players || []);
           setDraftState(state.draftState || { activePlayerIndex: 0, roundCards: [], isRerolling: false, pendingStratagem: null });
+          setEventsEnabled(state.eventsEnabled || false);
+          setCurrentEvent(state.currentEvent || null);
+          setEventPlayerChoice(state.eventPlayerChoice || null);
         }
       }
     } catch (error) {
@@ -293,7 +300,10 @@ export default function HelldiversRoguelite() {
           lives,
           burnedCards,
           players,
-          draftState
+          draftState,
+          eventsEnabled,
+          currentEvent,
+          eventPlayerChoice
         };
         localStorage.setItem('helldraftersGameState', JSON.stringify(state));
       } catch (error) {
@@ -311,6 +321,78 @@ export default function HelldiversRoguelite() {
     if (rating <= 2) return 2;
     if (rating <= 4) return 3;
     return 4;
+  };
+
+  // --- SAVE/LOAD FUNCTIONS ---
+
+  const exportGameState = () => {
+    const state = {
+      phase,
+      gameConfig,
+      currentDiff,
+      requisition,
+      lives,
+      burnedCards,
+      players,
+      draftState,
+      eventsEnabled,
+      currentEvent,
+      eventPlayerChoice,
+      customSetup,
+      selectedPlayer,
+      exportedAt: new Date().toISOString()
+    };
+    
+    const dataStr = JSON.stringify(state, null, 2);
+    const dataBlob = new Blob([dataStr], { type: 'application/json' });
+    const url = URL.createObjectURL(dataBlob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `helldrafters-save-${new Date().toISOString().split('T')[0]}.json`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+  };
+
+  const importGameState = (event) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      try {
+        const state = JSON.parse(e.target?.result);
+        
+        // Validate the state has required properties
+        if (!state.phase || !state.gameConfig || !state.players) {
+          alert('Invalid save file format');
+          return;
+        }
+
+        // Restore all state
+        setPhase(state.phase);
+        setGameConfig(state.gameConfig);
+        setCurrentDiff(state.currentDiff || 1);
+        setRequisition(state.requisition || 0);
+        setLives(state.lives || 3);
+        setBurnedCards(state.burnedCards || []);
+        setPlayers(state.players || []);
+        setDraftState(state.draftState || { activePlayerIndex: 0, roundCards: [], isRerolling: false, pendingStratagem: null });
+        setEventsEnabled(state.eventsEnabled !== undefined ? state.eventsEnabled : true);
+        setCurrentEvent(state.currentEvent || null);
+        setEventPlayerChoice(state.eventPlayerChoice || null);
+        setCustomSetup(state.customSetup || { difficulty: 1, loadouts: [] });
+        setSelectedPlayer(state.selectedPlayer || 0);
+
+        alert('Game loaded successfully!');
+      } catch (error) {
+        console.error('Failed to load game:', error);
+        alert('Failed to load save file. File may be corrupted.');
+      }
+    };
+    reader.readAsText(file);
+    event.target.value = ''; // Reset input
   };
 
   // --- INITIALIZATION ---
@@ -372,8 +454,8 @@ export default function HelldiversRoguelite() {
   const getItemById = (id) => MASTER_DB.find(item => item.id === id);
 
   const getWeightedPool = (player, difficulty) => {
-    // 1. Filter out already owned items
-    let candidates = MASTER_DB.filter(item => !player.inventory.includes(item.id));
+    // 1. Filter out already owned items and boosters (boosters only come from events)
+    let candidates = MASTER_DB.filter(item => !player.inventory.includes(item.id) && item.type !== TYPE.BOOSTER);
 
     // 2. Filter out burned cards (if burn mode enabled)
     if (gameConfig.burnCards) {
@@ -544,6 +626,16 @@ export default function HelldiversRoguelite() {
         pendingStratagem: null
       });
     } else {
+      // Draft complete - check for event
+      if (eventsEnabled && Math.random() < 0.4) { // 40% chance
+        const event = selectRandomEvent(currentDiff, players.length > 1);
+        if (event) {
+          setCurrentEvent(event);
+          setEventPlayerChoice(null);
+          setPhase('EVENT');
+          return;
+        }
+      }
       setPhase('DASHBOARD');
     }
   };
@@ -572,6 +664,16 @@ export default function HelldiversRoguelite() {
         pendingStratagem: null
       });
     } else {
+      // Draft complete - check for event
+      if (eventsEnabled && Math.random() < 0.4) { // 40% chance
+        const event = selectRandomEvent(currentDiff, players.length > 1);
+        if (event) {
+          setCurrentEvent(event);
+          setEventPlayerChoice(null);
+          setPhase('EVENT');
+          return;
+        }
+      }
       setPhase('DASHBOARD');
     }
   };
@@ -741,6 +843,75 @@ export default function HelldiversRoguelite() {
 
   // --- RENDER PHASES ---
 
+  if (phase === 'GAMEOVER') {
+    return (
+      <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', backgroundColor: '#0f1419', padding: '24px' }}>
+        <div style={{ maxWidth: '600px', textAlign: 'center' }}>
+          <div style={{ marginBottom: '40px' }}>
+            <div style={{ fontSize: '80px', marginBottom: '16px' }}>💀</div>
+            <h1 style={{ fontSize: '64px', fontWeight: '900', color: '#ef4444', margin: '0 0 16px 0', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+              KIA
+            </h1>
+            <h2 style={{ fontSize: '24px', fontWeight: 'bold', color: '#94a3b8', margin: '0 0 8px 0' }}>
+              MISSION FAILED
+            </h2>
+            <p style={{ fontSize: '16px', color: '#64748b', lineHeight: '1.6', margin: '0' }}>
+              All Helldivers have been eliminated.
+              <br/>
+              Super Earth is disappointed in your performance.
+            </p>
+          </div>
+
+          <div style={{ backgroundColor: '#1a2332', padding: '24px', borderRadius: '8px', border: '1px solid rgba(239, 68, 68, 0.3)', marginBottom: '32px' }}>
+            <div style={{ fontSize: '14px', color: '#94a3b8', marginBottom: '16px', textTransform: 'uppercase' }}>
+              Final Stats
+            </div>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px', textAlign: 'left' }}>
+              <div>
+                <div style={{ fontSize: '12px', color: '#64748b', marginBottom: '4px' }}>Difficulty Reached</div>
+                <div style={{ fontSize: '24px', fontWeight: 'bold', color: '#F5C642' }}>{currentDiff}</div>
+              </div>
+              <div>
+                <div style={{ fontSize: '12px', color: '#64748b', marginBottom: '4px' }}>Requisition Earned</div>
+                <div style={{ fontSize: '24px', fontWeight: 'bold', color: '#F5C642' }}>{requisition}</div>
+              </div>
+              <div>
+                <div style={{ fontSize: '12px', color: '#64748b', marginBottom: '4px' }}>Squad Size</div>
+                <div style={{ fontSize: '24px', fontWeight: 'bold', color: 'white' }}>{players.length}</div>
+              </div>
+              <div>
+                <div style={{ fontSize: '12px', color: '#64748b', marginBottom: '4px' }}>Theater</div>
+                <div style={{ fontSize: '20px', fontWeight: 'bold', color: 'white' }}>{gameConfig.faction}</div>
+              </div>
+            </div>
+          </div>
+
+          <button
+            onClick={() => setPhase('MENU')}
+            style={{
+              width: '100%',
+              padding: '20px',
+              backgroundColor: '#F5C642',
+              color: 'black',
+              border: 'none',
+              borderRadius: '4px',
+              fontWeight: '900',
+              fontSize: '18px',
+              textTransform: 'uppercase',
+              letterSpacing: '0.2em',
+              cursor: 'pointer',
+              transition: 'all 0.2s'
+            }}
+            onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#ffd95a'}
+            onMouseLeave={(e) => e.currentTarget.style.backgroundColor = '#F5C642'}
+          >
+            Return to Menu
+          </button>
+        </div>
+      </div>
+    );
+  }
+
   if (phase === 'MENU') {
     return (
       <div style={{ minHeight: '100vh', padding: '80px 24px' }}>
@@ -861,6 +1032,18 @@ export default function HelldiversRoguelite() {
                     <div style={{ color: '#94a3b8', fontSize: '11px', marginTop: '4px' }}>Choose starting difficulty and loadouts for each player</div>
                   </div>
                 </label>
+                <label style={{ display: 'flex', alignItems: 'center', gap: '12px', cursor: 'pointer', padding: '12px', backgroundColor: eventsEnabled ? 'rgba(245, 198, 66, 0.1)' : 'transparent', borderRadius: '4px', border: '1px solid rgba(100, 116, 139, 0.5)' }}>
+                  <input 
+                    type="checkbox" 
+                    checked={eventsEnabled}
+                    onChange={(e) => setEventsEnabled(e.target.checked)}
+                    style={{ width: '20px', height: '20px', cursor: 'pointer' }}
+                  />
+                  <div>
+                    <div style={{ color: '#F5C642', fontWeight: 'bold', fontSize: '14px' }}>Enable Events</div>
+                    <div style={{ color: '#94a3b8', fontSize: '11px', marginTop: '4px' }}>Random high-risk, high-reward events between missions</div>
+                  </div>
+                </label>
               </div>
             </div>
 
@@ -885,6 +1068,75 @@ export default function HelldiversRoguelite() {
             >
               Initialize Operation
             </button>
+
+            {/* Save/Load Section */}
+            <div style={{ marginTop: '24px', paddingTop: '24px', borderTop: '1px solid rgba(100, 116, 139, 0.3)' }}>
+              <label style={{ display: 'block', fontSize: '11px', fontWeight: 'bold', color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.15em', marginBottom: '12px', textAlign: 'center' }}>
+                Save / Load Game
+              </label>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+                <button
+                  onClick={exportGameState}
+                  style={{
+                    padding: '12px',
+                    backgroundColor: 'transparent',
+                    color: '#94a3b8',
+                    border: '1px solid rgba(100, 116, 139, 0.5)',
+                    borderRadius: '4px',
+                    fontWeight: 'bold',
+                    fontSize: '12px',
+                    textTransform: 'uppercase',
+                    cursor: 'pointer',
+                    transition: 'all 0.2s'
+                  }}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.borderColor = '#F5C642';
+                    e.currentTarget.style.color = '#F5C642';
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.borderColor = 'rgba(100, 116, 139, 0.5)';
+                    e.currentTarget.style.color = '#94a3b8';
+                  }}
+                >
+                  Export Game
+                </button>
+                <label
+                  style={{
+                    padding: '12px',
+                    backgroundColor: 'transparent',
+                    color: '#94a3b8',
+                    border: '1px solid rgba(100, 116, 139, 0.5)',
+                    borderRadius: '4px',
+                    fontWeight: 'bold',
+                    fontSize: '12px',
+                    textTransform: 'uppercase',
+                    cursor: 'pointer',
+                    transition: 'all 0.2s',
+                    textAlign: 'center',
+                    display: 'block'
+                  }}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.borderColor = '#F5C642';
+                    e.currentTarget.style.color = '#F5C642';
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.borderColor = 'rgba(100, 116, 139, 0.5)';
+                    e.currentTarget.style.color = '#94a3b8';
+                  }}
+                >
+                  Import Game
+                  <input
+                    type="file"
+                    accept=".json"
+                    onChange={importGameState}
+                    style={{ display: 'none' }}
+                  />
+                </label>
+              </div>
+              <p style={{ fontSize: '10px', color: '#64748b', marginTop: '8px', textAlign: 'center', margin: '8px 0 0 0' }}>
+                Export saves your current game to a file. Import loads a saved game.
+              </p>
+            </div>
           </div>
         </div>
       </div>
@@ -1174,12 +1426,474 @@ export default function HelldiversRoguelite() {
     );
   }
 
+  if (phase === 'EVENT') {
+    if (!currentEvent) {
+      setPhase('DRAFT');
+      return null;
+    }
+
+    const handleEventChoice = (choice) => {
+      // Process outcomes
+      choice.outcomes.forEach(outcome => {
+        processOutcome(outcome, choice);
+      });
+      
+      // After event, proceed to draft
+      setCurrentEvent(null);
+      setEventPlayerChoice(null);
+      startDraftPhase();
+    };
+
+    const processOutcome = (outcome, choice) => {
+      switch (outcome.type) {
+        case OUTCOME_TYPES.ADD_REQUISITION:
+          setRequisition(prev => prev + outcome.value);
+          break;
+        
+        case OUTCOME_TYPES.SPEND_REQUISITION:
+          setRequisition(prev => Math.max(0, prev - outcome.value));
+          break;
+        
+        case OUTCOME_TYPES.GAIN_LIFE:
+          setLives(prev => prev + outcome.value);
+          break;
+        
+        case OUTCOME_TYPES.LOSE_LIFE:
+          setLives(prev => {
+            const newLives = Math.max(0, prev - outcome.value);
+            if (newLives === 0) {
+              setTimeout(() => setPhase('GAMEOVER'), 100);
+            }
+            return newLives;
+          });
+          break;
+        
+        case OUTCOME_TYPES.CHANGE_FACTION:
+          setGameConfig(prev => ({ ...prev, faction: outcome.value }));
+          break;
+        
+        case OUTCOME_TYPES.EXTRA_DRAFT:
+          // Will be handled by adding extra cards to draft
+          break;
+        
+        case OUTCOME_TYPES.SKIP_DIFFICULTY:
+          setCurrentDiff(prev => Math.min(10, prev + outcome.value));
+          break;
+        
+        case OUTCOME_TYPES.REPLAY_DIFFICULTY:
+          setCurrentDiff(prev => Math.max(1, prev - outcome.value));
+          break;
+        
+        case OUTCOME_TYPES.SACRIFICE_ITEM:
+          if (outcome.targetPlayer === 'choose' && eventPlayerChoice !== null) {
+            // Remove a stratagem from chosen player
+            const player = players[eventPlayerChoice];
+            if (player.loadout.stratagems.length > 0) {
+              const newPlayers = [...players];
+              newPlayers[eventPlayerChoice].loadout.stratagems.pop();
+              setPlayers(newPlayers);
+            }
+          }
+          break;
+        
+        case OUTCOME_TYPES.GAIN_BOOSTER:
+          if (outcome.targetPlayer === 'choose' && eventPlayerChoice !== null) {
+            // Grant a random booster to chosen player
+            const boosters = MASTER_DB.filter(item => item.type === TYPE.BOOSTER);
+            if (boosters.length > 0) {
+              const randomBooster = boosters[Math.floor(Math.random() * boosters.length)];
+              const newPlayers = [...players];
+              newPlayers[eventPlayerChoice].loadout.booster = randomBooster.id;
+              newPlayers[eventPlayerChoice].inventory.push(randomBooster.id);
+              setPlayers(newPlayers);
+            }
+          } else if (!outcome.targetPlayer || outcome.targetPlayer === 'all') {
+            // Grant to all players
+            const boosters = MASTER_DB.filter(item => item.type === TYPE.BOOSTER);
+            if (boosters.length > 0) {
+              const randomBooster = boosters[Math.floor(Math.random() * boosters.length)];
+              const newPlayers = players.map(p => ({
+                ...p,
+                loadout: { ...p.loadout, booster: randomBooster.id },
+                inventory: [...p.inventory, randomBooster.id]
+              }));
+              setPlayers(newPlayers);
+            }
+          }
+          break;
+        
+        case OUTCOME_TYPES.LOSE_ALL_BUT_ONE_LIFE:
+          setLives(1);
+          break;
+        
+        case OUTCOME_TYPES.DUPLICATE_STRATAGEM_TO_ANOTHER_HELLDIVER:
+          // Only works in multiplayer
+          if (players.length > 1 && eventPlayerChoice !== null) {
+            const sourcePlayer = players[eventPlayerChoice];
+            const availableStratagems = sourcePlayer.loadout.stratagems.filter(s => s !== null);
+            
+            if (availableStratagems.length > 0) {
+              // Pick random stratagem from source player
+              const randomStratagem = availableStratagems[Math.floor(Math.random() * availableStratagems.length)];
+              
+              // Find other players (not self)
+              const otherPlayers = players.map((p, idx) => ({ player: p, idx })).filter((_, idx) => idx !== eventPlayerChoice);
+              
+              if (otherPlayers.length > 0) {
+                // Pick random other player
+                const targetPlayerData = otherPlayers[Math.floor(Math.random() * otherPlayers.length)];
+                const newPlayers = [...players];
+                
+                // Add stratagem to target player
+                const emptySlot = newPlayers[targetPlayerData.idx].loadout.stratagems.indexOf(null);
+                if (emptySlot !== -1) {
+                  newPlayers[targetPlayerData.idx].loadout.stratagems[emptySlot] = randomStratagem;
+                  newPlayers[targetPlayerData.idx].inventory.push(randomStratagem);
+                  setPlayers(newPlayers);
+                }
+              }
+            }
+          }
+          break;
+        
+        case OUTCOME_TYPES.REDRAFT:
+          // Discard all items from chosen player, then draft Math.ceil(discardedCount / outcome.value) cards
+          if (eventPlayerChoice !== null) {
+            const player = players[eventPlayerChoice];
+            const discardedCount = player.inventory.length;
+            const draftsToGrant = Math.ceil(discardedCount / (outcome.value || 1));
+            
+            // Clear player's inventory and loadout
+            const newPlayers = [...players];
+            newPlayers[eventPlayerChoice] = {
+              ...player,
+              inventory: [STARTING_LOADOUT.secondary, STARTING_LOADOUT.grenade, STARTING_LOADOUT.armor].filter(id => id !== null),
+              loadout: {
+                primary: STARTING_LOADOUT.primary,
+                secondary: STARTING_LOADOUT.secondary,
+                grenade: STARTING_LOADOUT.grenade,
+                armor: STARTING_LOADOUT.armor,
+                booster: STARTING_LOADOUT.booster,
+                stratagems: [...STARTING_LOADOUT.stratagems]
+              }
+            };
+            setPlayers(newPlayers);
+            
+            // Grant extra drafts (this would need to be tracked separately for proper implementation)
+            // For now, we'll just give requisition as a proxy
+            setRequisition(prev => prev + draftsToGrant);
+          }
+          break;
+        
+        default:
+          break;
+      }
+    };
+
+    const canAffordChoice = (choice) => {
+      if (choice.requiresRequisition && requisition < choice.requiresRequisition) {
+        return false;
+      }
+      return true;
+    };
+
+    const formatOutcome = (outcome) => {
+      switch (outcome.type) {
+        case OUTCOME_TYPES.ADD_REQUISITION:
+          return `+${outcome.value} Requisition`;
+        case OUTCOME_TYPES.SPEND_REQUISITION:
+          return `-${outcome.value} Requisition`;
+        case OUTCOME_TYPES.GAIN_LIFE:
+          return `+${outcome.value} Life`;
+        case OUTCOME_TYPES.LOSE_LIFE:
+          return `-${outcome.value} Life`;
+        case OUTCOME_TYPES.LOSE_ALL_BUT_ONE_LIFE:
+          return `Lives reduced to 1`;
+        case OUTCOME_TYPES.CHANGE_FACTION:
+          return `Switch to ${outcome.value}`;
+        case OUTCOME_TYPES.EXTRA_DRAFT:
+          return `Draft ${outcome.value} extra card${outcome.value > 1 ? 's' : ''}`;
+        case OUTCOME_TYPES.SKIP_DIFFICULTY:
+          return `Skip ${outcome.value} difficulty level${outcome.value > 1 ? 's' : ''}`;
+        case OUTCOME_TYPES.REPLAY_DIFFICULTY:
+          return `Replay current difficulty`;
+        case OUTCOME_TYPES.SACRIFICE_ITEM:
+          return `Remove a ${outcome.value}`;
+        case OUTCOME_TYPES.GAIN_BOOSTER:
+          const target = outcome.targetPlayer === 'all' ? '(All Helldivers)' : '';
+          return `Gain random Booster ${target}`;
+        case OUTCOME_TYPES.REMOVE_ITEM:
+          return `Remove an item`;
+        case OUTCOME_TYPES.GAIN_SPECIFIC_ITEM:
+          return `Gain specific item`;
+        case OUTCOME_TYPES.DUPLICATE_STRATAGEM_TO_ANOTHER_HELLDIVER:
+          return `Copy stratagem to another Helldiver`;
+        case OUTCOME_TYPES.REDRAFT:
+          return `Redraft: Discard all items, draft ${outcome.value ? Math.ceil(1 / outcome.value) : 1}x per discarded`;
+        default:
+          return '';
+      }
+    };
+
+    const formatOutcomes = (outcomes) => {
+      if (!outcomes || outcomes.length === 0) return 'No effect';
+      return outcomes.map(formatOutcome).filter(o => o).join(', ');
+    };
+
+    const needsPlayerChoice = currentEvent.targetPlayer === 'single' && 
+      currentEvent.choices && 
+      currentEvent.choices.some(c => c.outcomes.some(o => o.targetPlayer === 'choose'));
+
+    return (
+      <div style={{ minHeight: '100vh', backgroundColor: '#1a2332', color: '#e0e0e0', padding: '24px' }}>
+        {/* Header */}
+        <div style={{ 
+          position: 'fixed', 
+          top: 0, 
+          left: 0, 
+          right: 0, 
+          backgroundColor: '#0f1419', 
+          padding: '16px 24px',
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'center',
+          borderBottom: '2px solid #F5C642',
+          zIndex: 100
+        }}>
+          <div style={{ fontSize: '20px', fontWeight: 'bold', color: '#F5C642' }}>
+            EVENT - DIFFICULTY {currentDiff}
+          </div>
+          <div style={{ display: 'flex', gap: '16px', alignItems: 'center' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <Trophy size={20} color="#F5C642" />
+              <span style={{ fontWeight: 'bold' }}>{requisition}</span>
+            </div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <AlertTriangle size={20} color="#ff4444" />
+              <span style={{ fontWeight: 'bold' }}>{lives} Lives</span>
+            </div>
+          </div>
+        </div>
+
+        {/* Event Content */}
+        <div style={{ 
+          maxWidth: '800px', 
+          margin: '100px auto 0',
+          display: 'flex',
+          flexDirection: 'column',
+          gap: '24px'
+        }}>
+          {/* Event Card */}
+          <div style={{
+            backgroundColor: '#283548',
+            border: '2px solid #F5C642',
+            borderRadius: '8px',
+            padding: '32px',
+            textAlign: 'center'
+          }}>
+            <h2 style={{ 
+              fontSize: '32px', 
+              color: '#F5C642', 
+              marginBottom: '16px',
+              fontWeight: 'bold'
+            }}>
+              {currentEvent.name}
+            </h2>
+            <p style={{ 
+              fontSize: '18px', 
+              lineHeight: '1.6',
+              marginBottom: '32px',
+              color: '#b0b0b0'
+            }}>
+              {currentEvent.description}
+            </p>
+
+            {/* Player Selection (if needed) */}
+            {needsPlayerChoice && eventPlayerChoice === null && (
+              <div style={{ marginBottom: '24px' }}>
+                <div style={{ fontSize: '16px', marginBottom: '12px', color: '#F5C642' }}>
+                  Choose a Helldiver:
+                </div>
+                <div style={{ display: 'flex', gap: '12px', justifyContent: 'center', flexWrap: 'wrap' }}>
+                  {players.map((player, idx) => (
+                    <button
+                      key={idx}
+                      onClick={() => setEventPlayerChoice(idx)}
+                      style={{
+                        padding: '12px 24px',
+                        fontSize: '16px',
+                        fontWeight: 'bold',
+                        backgroundColor: '#1a2332',
+                        color: '#F5C642',
+                        border: '2px solid #F5C642',
+                        borderRadius: '4px',
+                        cursor: 'pointer',
+                        transition: 'all 0.2s'
+                      }}
+                      onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#283548'}
+                      onMouseLeave={(e) => e.currentTarget.style.backgroundColor = '#1a2332'}
+                    >
+                      HELLDIVER {idx + 1}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Choices */}
+            {currentEvent.type === EVENT_TYPES.CHOICE && (!needsPlayerChoice || eventPlayerChoice !== null) && (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                {currentEvent.choices.map((choice, idx) => {
+                  const affordable = canAffordChoice(choice);
+                  const outcomeText = formatOutcomes(choice.outcomes);
+                  return (
+                    <button
+                      key={idx}
+                      onClick={() => handleEventChoice(choice)}
+                      disabled={!affordable}
+                      style={{
+                        padding: '16px',
+                        fontSize: '16px',
+                        fontWeight: 'bold',
+                        backgroundColor: affordable ? '#F5C642' : '#555',
+                        color: affordable ? '#0f1419' : '#888',
+                        border: 'none',
+                        borderRadius: '4px',
+                        cursor: affordable ? 'pointer' : 'not-allowed',
+                        transition: 'all 0.2s',
+                        textAlign: 'left',
+                        display: 'flex',
+                        flexDirection: 'column',
+                        gap: '8px'
+                      }}
+                      onMouseEnter={(e) => affordable && (e.target.style.backgroundColor = '#ffd95a')}
+                      onMouseLeave={(e) => affordable && (e.target.style.backgroundColor = '#F5C642')}
+                    >
+                      <div style={{ fontSize: '16px' }}>
+                        {choice.text}
+                      </div>
+                      <div style={{ 
+                        fontSize: '13px', 
+                        fontWeight: 'normal',
+                        opacity: 0.85,
+                        fontStyle: 'italic'
+                      }}>
+                        {outcomeText}
+                      </div>
+                    </button>
+                  );
+                })}
+              </div>
+            )}
+
+            {/* Random/Beneficial/Detrimental events auto-proceed */}
+            {currentEvent.type !== EVENT_TYPES.CHOICE && (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '16px', alignItems: 'center' }}>
+                {currentEvent.outcomes && currentEvent.outcomes.length > 0 && (
+                  <div style={{
+                    backgroundColor: '#1f2937',
+                    padding: '12px 24px',
+                    borderRadius: '4px',
+                    border: '1px solid rgba(245, 198, 66, 0.3)'
+                  }}>
+                    <div style={{ fontSize: '12px', color: '#64748b', marginBottom: '4px', textTransform: 'uppercase' }}>
+                      {currentEvent.type === EVENT_TYPES.RANDOM ? 'Possible Outcomes:' : 'Outcome:'}
+                    </div>
+                    <div style={{ fontSize: '14px', color: '#F5C642' }}>
+                      {currentEvent.type === EVENT_TYPES.RANDOM 
+                        ? currentEvent.outcomes.map((o, i) => (
+                            <div key={i}>
+                              {formatOutcome(o)} {o.weight ? `(${o.weight}% chance)` : ''}
+                            </div>
+                          ))
+                        : formatOutcomes(currentEvent.outcomes)
+                      }
+                    </div>
+                  </div>
+                )}
+                <button
+                  onClick={() => {
+                    if (currentEvent.outcomes) {
+                      if (currentEvent.type === EVENT_TYPES.RANDOM) {
+                        // Pick weighted random outcome
+                        const totalWeight = currentEvent.outcomes.reduce((sum, o) => sum + (o.weight || 1), 0);
+                        let random = Math.random() * totalWeight;
+                        for (const outcome of currentEvent.outcomes) {
+                          random -= (outcome.weight || 1);
+                          if (random <= 0) {
+                            processOutcome(outcome, null);
+                            break;
+                          }
+                        }
+                      } else {
+                        // Process all outcomes for BENEFICIAL/DETRIMENTAL
+                        currentEvent.outcomes.forEach(outcome => {
+                          processOutcome(outcome, null);
+                        });
+                      }
+                    }
+                    setCurrentEvent(null);
+                    setEventPlayerChoice(null);
+                    startDraftPhase();
+                  }}
+                  style={{
+                    padding: '16px 32px',
+                    fontSize: '16px',
+                    fontWeight: 'bold',
+                    backgroundColor: '#F5C642',
+                    color: '#0f1419',
+                    border: 'none',
+                    borderRadius: '4px',
+                    cursor: 'pointer',
+                    transition: 'all 0.2s'
+                  }}
+                  onMouseEnter={(e) => e.target.style.backgroundColor = '#ffd95a'}
+                  onMouseLeave={(e) => e.target.style.backgroundColor = '#F5C642'}
+                >
+                  Continue
+                </button>
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   if (phase === 'DRAFT') {
     const player = players[draftState.activePlayerIndex];
     
     return (
       <div style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column', padding: '24px' }}>
-        <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: '16px' }}>
+        <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: '16px', gap: '12px' }}>
+          <button
+            onClick={exportGameState}
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: '8px',
+              padding: '8px 16px',
+              backgroundColor: 'rgba(100, 116, 139, 0.3)',
+              color: '#94a3b8',
+              border: '1px solid rgba(100, 116, 139, 0.5)',
+              borderRadius: '4px',
+              fontWeight: 'bold',
+              textTransform: 'uppercase',
+              fontSize: '12px',
+              cursor: 'pointer',
+              transition: 'all 0.2s'
+            }}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.backgroundColor = 'rgba(100, 116, 139, 0.5)';
+              e.currentTarget.style.color = '#F5C642';
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.backgroundColor = 'rgba(100, 116, 139, 0.3)';
+              e.currentTarget.style.color = '#94a3b8';
+            }}
+          >
+            💾 Export
+          </button>
           <button
             onClick={() => {
               if (window.confirm('Are you sure you want to cancel this run? All progress will be lost.')) {
@@ -1403,6 +2117,34 @@ export default function HelldiversRoguelite() {
               <span style={{ fontFamily: 'monospace', fontWeight: 'bold', fontSize: '20px' }}>{lives} Lives</span>
             </div>
             <button
+              onClick={exportGameState}
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '8px',
+                padding: '8px 16px',
+                backgroundColor: 'rgba(100, 116, 139, 0.3)',
+                color: '#94a3b8',
+                border: '1px solid rgba(100, 116, 139, 0.5)',
+                borderRadius: '4px',
+                fontWeight: 'bold',
+                textTransform: 'uppercase',
+                fontSize: '12px',
+                cursor: 'pointer',
+                transition: 'all 0.2s'
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.backgroundColor = 'rgba(100, 116, 139, 0.5)';
+                e.currentTarget.style.color = '#F5C642';
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.backgroundColor = 'rgba(100, 116, 139, 0.3)';
+                e.currentTarget.style.color = '#94a3b8';
+              }}
+            >
+              💾 Export
+            </button>
+            <button
               onClick={() => {
                 if (window.confirm('Are you sure you want to cancel this run? All progress will be lost.')) {
                   setPhase('MENU');
@@ -1553,11 +2295,13 @@ export default function HelldiversRoguelite() {
             <div style={{ display: 'flex', gap: '16px', justifyContent: 'center' }}>
               <button 
                 onClick={() => {
-                   setLives(l => l - 1);
-                   if (lives <= 1) {
-                     setPhase('MENU');
-                     alert("Missions Failed. Super Earth is disappointed. (Game Over)");
-                   }
+                   setLives(l => {
+                     const newLives = l - 1;
+                     if (newLives === 0) {
+                       setTimeout(() => setPhase('GAMEOVER'), 100);
+                     }
+                     return newLives;
+                   });
                 }}
                 style={{
                   display: 'flex',
