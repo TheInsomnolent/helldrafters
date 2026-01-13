@@ -1,6 +1,6 @@
 import React from 'react';
 import { Trophy, AlertTriangle } from 'lucide-react';
-import { EVENT_TYPES } from '../events';
+import { EVENT_TYPES } from '../systems/events/events';
 
 /**
  * EventDisplay component for showing and handling event interactions

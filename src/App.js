@@ -1,6 +1,6 @@
 import React, { useReducer, useEffect } from 'react';
 import { RefreshCw, AlertTriangle, CheckCircle, XCircle, Trophy } from 'lucide-react';
-import { selectRandomEvent, EVENT_TYPES } from './events';
+import { selectRandomEvent, EVENT_TYPES } from './systems/events/events';
 import { RARITY, TYPE, FACTION } from './constants/types';
 import { MASTER_DB } from './data/items';
 import { STARTING_LOADOUT, DIFFICULTY_CONFIG } from './constants/gameConfig';

@@ -6,7 +6,7 @@ import {
   formatOutcomes,
   needsPlayerChoice
 } from './eventProcessor';
-import { OUTCOME_TYPES } from '../../events';
+import { OUTCOME_TYPES } from './events';
 import { FACTION } from '../../constants/types';
 
 describe('Systems - Event Processor', () => {

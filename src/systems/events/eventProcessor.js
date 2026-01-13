@@ -1,4 +1,4 @@
-import { OUTCOME_TYPES } from '../../events';
+import { OUTCOME_TYPES } from './events';
 import { MASTER_DB } from '../../data/items';
 import { TYPE } from '../../constants/types';
 import { STARTING_LOADOUT } from '../../constants/gameConfig';
