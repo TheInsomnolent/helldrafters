@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { CheckCircle, ChevronRight } from 'lucide-react';
 import { WARBONDS, WARBOND_TYPE, DEFAULT_WARBONDS } from '../constants/warbonds';
-import { COLORS, SHADOWS, GRADIENTS, BUTTON_STYLES } from '../constants/theme';
+import { COLORS, SHADOWS, GRADIENTS, BUTTON_STYLES, getFactionColors } from '../constants/theme';
 
 /**
  * GameLobby component for configuring players before starting a run
@@ -11,6 +11,7 @@ export default function GameLobby({
   onStartRun,
   onCancel
 }) {
+  const factionColors = getFactionColors(gameConfig.faction);
   const [players, setPlayers] = useState(
     Array.from({ length: gameConfig.playerCount }, (_, i) => ({
       name: `Helldiver ${i + 1}`,
@@ -61,7 +62,7 @@ export default function GameLobby({
       <div style={{ maxWidth: '1400px', margin: '0 auto' }}>
         {/* Header */}
         <div style={{ textAlign: 'center', marginBottom: '48px' }}>
-          <h1 style={{ fontSize: '72px', fontWeight: '900', color: COLORS.PRIMARY, margin: '0 0 8px 0', letterSpacing: '0.05em', textTransform: 'uppercase', textShadow: SHADOWS.GLOW_PRIMARY }}>
+          <h1 style={{ fontSize: '72px', fontWeight: '900', color: factionColors.PRIMARY, margin: '0 0 8px 0', letterSpacing: '0.05em', textTransform: 'uppercase', textShadow: factionColors.GLOW }}>
             GAME LOBBY
           </h1>
           <div style={{ background: GRADIENTS.HEADER_BAR, padding: '12px', margin: '0 auto 24px auto', maxWidth: '500px' }}>
@@ -85,12 +86,12 @@ export default function GameLobby({
                 textTransform: 'uppercase',
                 letterSpacing: '0.1em',
                 transition: 'all 0.2s',
-                backgroundColor: i === currentPlayerIndex ? COLORS.PRIMARY : 'transparent',
+                backgroundColor: i === currentPlayerIndex ? factionColors.PRIMARY : 'transparent',
                 color: i === currentPlayerIndex ? 'black' : COLORS.TEXT_MUTED,
-                border: i === currentPlayerIndex ? `2px solid ${COLORS.PRIMARY}` : `2px solid ${COLORS.CARD_BORDER}`,
+                border: i === currentPlayerIndex ? `2px solid ${factionColors.PRIMARY}` : `2px solid ${COLORS.CARD_BORDER}`,
                 cursor: 'pointer',
                 transform: i === currentPlayerIndex ? 'scale(1.05)' : 'scale(1)',
-                boxShadow: i === currentPlayerIndex ? SHADOWS.BUTTON_PRIMARY : 'none'
+                boxShadow: i === currentPlayerIndex ? factionColors.SHADOW : 'none'
               }}
               onMouseEnter={(e) => {
                 if (i !== currentPlayerIndex) {
@@ -128,15 +129,15 @@ export default function GameLobby({
                   width: '100%',
                   padding: '20px 24px',
                   backgroundColor: COLORS.BG_MAIN,
-                  border: `3px solid ${COLORS.PRIMARY}`,
+                  border: `3px solid ${factionColors.PRIMARY}`,
                   borderRadius: '4px',
                   fontSize: '28px',
                   fontWeight: '900',
-                  color: COLORS.PRIMARY,
+                  color: factionColors.PRIMARY,
                   textTransform: 'uppercase',
                   letterSpacing: '0.05em',
                   outline: 'none',
-                  boxShadow: SHADOWS.GLOW_PRIMARY
+                  boxShadow: factionColors.GLOW
                 }}
                 autoFocus
                 maxLength={30}
@@ -160,8 +161,8 @@ export default function GameLobby({
                   transition: 'all 0.2s'
                 }}
                 onMouseEnter={(e) => {
-                  e.currentTarget.style.borderColor = COLORS.PRIMARY;
-                  e.currentTarget.style.color = COLORS.PRIMARY;
+                  e.currentTarget.style.borderColor = factionColors.PRIMARY;
+                  e.currentTarget.style.color = factionColors.PRIMARY;
                 }}
                 onMouseLeave={(e) => {
                   e.currentTarget.style.borderColor = COLORS.CARD_BORDER;
@@ -175,13 +176,13 @@ export default function GameLobby({
 
           {/* Warbond Selection */}
           <div>
-            <h2 style={{ fontSize: '32px', fontWeight: '900', color: COLORS.PRIMARY, marginBottom: '32px', textTransform: 'uppercase', letterSpacing: '0.1em', textShadow: SHADOWS.GLOW_PRIMARY }}>
+            <h2 style={{ fontSize: '32px', fontWeight: '900', color: factionColors.PRIMARY, marginBottom: '32px', textTransform: 'uppercase', letterSpacing: '0.1em', textShadow: factionColors.GLOW }}>
               ▸ SELECT WARBONDS
             </h2>
             
             {/* Standard Warbonds */}
             <div style={{ marginBottom: '32px' }}>
-              <h3 style={{ fontSize: '14px', fontWeight: 'bold', color: COLORS.TEXT_SECONDARY, marginBottom: '16px', textTransform: 'uppercase', letterSpacing: '0.15em', borderLeft: `4px solid ${COLORS.PRIMARY}`, paddingLeft: '12px' }}>
+              <h3 style={{ fontSize: '14px', fontWeight: 'bold', color: COLORS.TEXT_SECONDARY, marginBottom: '16px', textTransform: 'uppercase', letterSpacing: '0.15em', borderLeft: `4px solid ${factionColors.PRIMARY}`, paddingLeft: '12px' }}>
                 STANDARD (FREE)
               </h3>
               <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: '12px' }}>
@@ -192,6 +193,7 @@ export default function GameLobby({
                     selected={currentPlayer.warbonds.includes(wb.id)}
                     onToggle={() => toggleWarbond(wb.id)}
                     disabled={wb.id === 'helldivers_mobilize'} // Always include
+                    factionColors={factionColors}
                   />
                 ))}
               </div>
@@ -209,6 +211,7 @@ export default function GameLobby({
                     warbond={wb}
                     selected={currentPlayer.warbonds.includes(wb.id)}
                     onToggle={() => toggleWarbond(wb.id)}
+                    factionColors={factionColors}
                   />
                 ))}
               </div>
@@ -226,6 +229,7 @@ export default function GameLobby({
                     warbond={wb}
                     selected={currentPlayer.warbonds.includes(wb.id)}
                     onToggle={() => toggleWarbond(wb.id)}
+                    factionColors={factionColors}
                   />
                 ))}
               </div>
@@ -327,14 +331,14 @@ export default function GameLobby({
                 gap: '12px'
               }}
               onMouseEnter={(e) => {
-                e.currentTarget.style.backgroundColor = COLORS.PRIMARY_HOVER;
+                e.currentTarget.style.backgroundColor = factionColors.PRIMARY_HOVER;
                 e.currentTarget.style.transform = 'translateY(-2px)';
-                e.currentTarget.style.boxShadow = SHADOWS.BUTTON_PRIMARY_HOVER;
+                e.currentTarget.style.boxShadow = factionColors.SHADOW_HOVER;
               }}
               onMouseLeave={(e) => {
-                e.currentTarget.style.backgroundColor = COLORS.PRIMARY;
+                e.currentTarget.style.backgroundColor = factionColors.PRIMARY;
                 e.currentTarget.style.transform = 'translateY(0)';
-                e.currentTarget.style.boxShadow = SHADOWS.BUTTON_PRIMARY;
+                e.currentTarget.style.boxShadow = factionColors.SHADOW;
               }}
             >
               {currentPlayerIndex < players.length - 1 ? (
@@ -352,7 +356,7 @@ export default function GameLobby({
 
         {/* Player Summary */}
         <div style={{ backgroundColor: COLORS.CARD_BG, borderRadius: '8px', padding: '32px', border: '1px solid rgba(100, 116, 139, 0.5)', boxShadow: SHADOWS.CARD }}>
-          <h3 style={{ fontSize: '24px', fontWeight: '900', color: COLORS.PRIMARY, marginBottom: '24px', textTransform: 'uppercase', letterSpacing: '0.1em' }}>
+          <h3 style={{ fontSize: '24px', fontWeight: '900', color: factionColors.PRIMARY, marginBottom: '24px', textTransform: 'uppercase', letterSpacing: '0.1em' }}>
             ▸ SQUAD SUMMARY
           </h3>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))', gap: '16px' }}>
@@ -363,12 +367,12 @@ export default function GameLobby({
                   backgroundColor: COLORS.BG_MAIN,
                   borderRadius: '4px',
                   padding: '20px',
-                  border: i === currentPlayerIndex ? `2px solid ${COLORS.PRIMARY}` : `1px solid ${COLORS.CARD_BORDER}`,
-                  boxShadow: i === currentPlayerIndex ? SHADOWS.GLOW_PRIMARY : 'none',
+                  border: i === currentPlayerIndex ? `2px solid ${factionColors.PRIMARY}` : `1px solid ${COLORS.CARD_BORDER}`,
+                  boxShadow: i === currentPlayerIndex ? factionColors.GLOW : 'none',
                   transition: 'all 0.2s'
                 }}
               >
-                <div style={{ fontWeight: '900', fontSize: '18px', marginBottom: '8px', color: i === currentPlayerIndex ? COLORS.PRIMARY : 'white', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                <div style={{ fontWeight: '900', fontSize: '18px', marginBottom: '8px', color: i === currentPlayerIndex ? factionColors.PRIMARY : 'white', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
                   {p.name}
                 </div>
                 <div style={{ fontSize: '13px', color: COLORS.TEXT_MUTED, fontWeight: 'bold' }}>
@@ -385,13 +389,13 @@ export default function GameLobby({
 }
 
 // Warbond selection card component
-function WarbondCard({ warbond, selected, onToggle, disabled = false }) {
+function WarbondCard({ warbond, selected, onToggle, disabled = false, factionColors }) {
   const getBorderColor = () => {
     if (disabled) return COLORS.CARD_BORDER;
     if (selected) {
       if (warbond.type === WARBOND_TYPE.LEGENDARY) return COLORS.ACCENT_PURPLE;
       if (warbond.type === WARBOND_TYPE.PREMIUM) return COLORS.ACCENT_BLUE;
-      return COLORS.PRIMARY;
+      return factionColors.PRIMARY;
     }
     return COLORS.CARD_BORDER;
   };
@@ -399,13 +403,13 @@ function WarbondCard({ warbond, selected, onToggle, disabled = false }) {
   const getGlowColor = () => {
     if (warbond.type === WARBOND_TYPE.LEGENDARY) return SHADOWS.GLOW_PURPLE;
     if (warbond.type === WARBOND_TYPE.PREMIUM) return SHADOWS.GLOW_BLUE;
-    return SHADOWS.GLOW_PRIMARY;
+    return factionColors.GLOW;
   };
 
   const getTextColor = () => {
     if (warbond.type === WARBOND_TYPE.LEGENDARY) return '#c084fc';
     if (warbond.type === WARBOND_TYPE.PREMIUM) return '#60a5fa';
-    return COLORS.PRIMARY;
+    return factionColors.PRIMARY;
   };
 
   return (
@@ -506,7 +510,7 @@ function WarbondCard({ warbond, selected, onToggle, disabled = false }) {
           backgroundColor: 'rgba(0, 0, 0, 0.7)',
           borderRadius: '4px'
         }}>
-          <span style={{ fontSize: '11px', fontWeight: 'bold', color: COLORS.PRIMARY, textTransform: 'uppercase', letterSpacing: '0.1em' }}>
+          <span style={{ fontSize: '11px', fontWeight: 'bold', color: factionColors.PRIMARY, textTransform: 'uppercase', letterSpacing: '0.1em' }}>
             ● REQUIRED
           </span>
         </div>

@@ -78,10 +78,13 @@ describe('Systems - Event Processor', () => {
     });
 
     it('should change faction', () => {
-      const outcome = { type: OUTCOME_TYPES.CHANGE_FACTION, value: FACTION.BOTS };
+      const outcome = { type: OUTCOME_TYPES.CHANGE_FACTION };
       const updates = processEventOutcome(outcome, {}, mockState);
       
-      expect(updates.faction).toBe(FACTION.BOTS);
+      // Should change to a different faction than BUGS
+      expect(updates.faction).toBeDefined();
+      expect(updates.faction).not.toBe(FACTION.BUGS);
+      expect(Object.values(FACTION)).toContain(updates.faction);
     });
 
     it('should skip difficulty', () => {
@@ -171,8 +174,8 @@ describe('Systems - Event Processor', () => {
     });
 
     it('should format CHANGE_FACTION', () => {
-      const outcome = { type: OUTCOME_TYPES.CHANGE_FACTION, value: FACTION.SQUIDS };
-      expect(formatOutcome(outcome)).toBe(`Switch to ${FACTION.SQUIDS}`);
+      const outcome = { type: OUTCOME_TYPES.CHANGE_FACTION };
+      expect(formatOutcome(outcome)).toBe('Switch to different theater');
     });
 
     it('should format SKIP_DIFFICULTY with plural', () => {

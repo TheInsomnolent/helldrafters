@@ -1,6 +1,7 @@
 import React from 'react';
 import { AlertTriangle, XCircle } from 'lucide-react';
 import { DIFFICULTY_CONFIG } from '../constants/gameConfig';
+import { getFactionColors } from '../constants/theme';
 
 /**
  * Game header component showing current difficulty, stats, and action buttons
@@ -14,10 +15,11 @@ export default function GameHeader({
   onExport,
   onCancelRun 
 }) {
+  const factionColors = getFactionColors(faction);
   return (
     <div style={{ 
       backgroundColor: '#0f1419', 
-      borderBottom: '1px solid rgba(245, 198, 66, 0.3)', 
+      borderBottom: `1px solid ${factionColors.PRIMARY}4D`, 
       padding: '16px', 
       position: 'sticky', 
       top: 0, 
@@ -32,7 +34,7 @@ export default function GameHeader({
       }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
           <div style={{ 
-            backgroundColor: '#F5C642', 
+            backgroundColor: factionColors.PRIMARY, 
             color: 'black', 
             padding: '4px 12px', 
             fontWeight: '900', 
@@ -54,7 +56,7 @@ export default function GameHeader({
             </h1>
             <div style={{ 
               fontSize: '12px', 
-              color: '#F5C642', 
+              color: factionColors.PRIMARY, 
               fontFamily: 'monospace' 
             }}>
               Theater: {faction}
@@ -64,7 +66,7 @@ export default function GameHeader({
         
         <div style={{ display: 'flex', alignItems: 'center', gap: '24px' }}>
           {/* Requisition */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: '#F5C642' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: factionColors.PRIMARY }}>
             <img 
               src="https://helldivers.wiki.gg/images/Requisition_Slip.svg" 
               alt="Requisition" 
@@ -142,7 +144,7 @@ export default function GameHeader({
             }}
             onMouseEnter={(e) => {
               e.currentTarget.style.backgroundColor = 'rgba(100, 116, 139, 0.5)';
-              e.currentTarget.style.color = '#F5C642';
+              e.currentTarget.style.color = factionColors.PRIMARY;
             }}
             onMouseLeave={(e) => {
               e.currentTarget.style.backgroundColor = 'rgba(100, 116, 139, 0.3)';

@@ -1,9 +1,12 @@
 import React from 'react';
+import { getFactionColors } from '../constants/theme';
 
 /**
  * Player loadout display component
  */
-export default function LoadoutDisplay({ player, getItemById, getArmorComboDisplayName }) {
+export default function LoadoutDisplay({ player, getItemById, getArmorComboDisplayName, faction }) {
+  const factionColors = getFactionColors(faction);
+  
   // Get the equipped armor
   const equippedArmor = getItemById(player.loadout.armor);
   
@@ -22,7 +25,7 @@ export default function LoadoutDisplay({ player, getItemById, getArmorComboDispl
         {/* Primary */}
         <div style={{ gridColumn: 'span 2' }}>
           <div style={{ fontSize: '10px', color: '#64748b', textTransform: 'uppercase', marginBottom: '4px' }}>Primary</div>
-          <div style={{ fontSize: '14px', fontWeight: 'bold', color: '#F5C642', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={getItemById(player.loadout.primary)?.name}>
+          <div style={{ fontSize: '14px', fontWeight: 'bold', color: factionColors.PRIMARY, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={getItemById(player.loadout.primary)?.name}>
             {getItemById(player.loadout.primary)?.name || 'None'}
           </div>
         </div>

@@ -1,6 +1,6 @@
 import React, { useReducer, useEffect } from 'react';
 import { RefreshCw, CheckCircle, XCircle } from 'lucide-react';
-import { selectRandomEvent, EVENT_TYPES } from './systems/events/events';
+import { selectRandomEvent, EVENT_TYPES, EVENTS } from './systems/events/events';
 import { RARITY, TYPE, FACTION } from './constants/types';
 import { MASTER_DB } from './data/itemsByWarbond';
 import { STARTING_LOADOUT, DIFFICULTY_CONFIG } from './constants/gameConfig';
@@ -16,7 +16,7 @@ import LoadoutDisplay from './components/LoadoutDisplay';
 import GameLobby from './components/GameLobby';
 import { gameReducer, initialState } from './state/gameReducer';
 import * as actions from './state/actions';
-import { COLORS, SHADOWS, BUTTON_STYLES } from './constants/theme';
+import { COLORS, SHADOWS, BUTTON_STYLES, getFactionColors } from './constants/theme';
 
 // --- DATA CONSTANTS (imported from modules) ---
 
@@ -49,8 +49,15 @@ export default function HelldiversRoguelite() {
     draftState,
     eventsEnabled,
     currentEvent,
-    eventPlayerChoice
+    eventPlayerChoice,
+    eventStratagemSelection,
+    eventTargetPlayerSelection,
+    eventTargetStratagemSelection,
+    seenEvents
   } = state;
+  
+  // Get faction-specific colors
+  const factionColors = getFactionColors(gameConfig.faction);
   
   // UI-only state (not part of game state)
   const [selectedPlayer, setSelectedPlayer] = React.useState(0); // For custom setup phase
@@ -139,7 +146,8 @@ export default function HelldiversRoguelite() {
         loadout: initialLoadouts[i],
         inventory: Object.values(initialLoadouts[i]).flat().filter(id => id !== null),
         warbonds: lp.warbonds,
-        includeSuperstore: lp.includeSuperstore
+        includeSuperstore: lp.includeSuperstore,
+        weaponRestricted: false
       }));
       dispatch(actions.setPlayers(newPlayers));
       dispatch(actions.setPhase('CUSTOM_SETUP'));
@@ -158,7 +166,8 @@ export default function HelldiversRoguelite() {
         },
         inventory: Object.values(STARTING_LOADOUT).flat().filter(id => id !== null),
         warbonds: lp.warbonds,
-        includeSuperstore: lp.includeSuperstore
+        includeSuperstore: lp.includeSuperstore,
+        weaponRestricted: false
       }));
       dispatch(actions.setPlayers(newPlayers));
       dispatch(actions.setDifficulty(1));
@@ -174,7 +183,8 @@ export default function HelldiversRoguelite() {
       id: i + 1,
       name: `Helldiver ${i + 1}`,
       loadout: { ...loadout },
-      inventory: Object.values(loadout).flat().filter(id => id !== null)
+      inventory: Object.values(loadout).flat().filter(id => id !== null),
+      weaponRestricted: false
     }));
     dispatch(actions.setPlayers(newPlayers));
     dispatch(actions.setDifficulty(customSetup.difficulty));
@@ -285,9 +295,10 @@ export default function HelldiversRoguelite() {
         const totalChance = Math.min(1.0, baseChance + sampleBonus);
 
         if (Math.random() < totalChance) {
-          const event = selectRandomEvent(currentDiff, players.length > 1);
+          const event = selectRandomEvent(currentDiff, players.length > 1, seenEvents);
           if (event) {
             dispatch(actions.resetSamples());
+            dispatch(actions.addSeenEvent(event.id));
             dispatch(actions.setCurrentEvent(event));
             dispatch(actions.setEventPlayerChoice(null));
             dispatch(actions.setPhase('EVENT'));
@@ -334,9 +345,10 @@ export default function HelldiversRoguelite() {
         const totalChance = Math.min(1.0, baseChance + sampleBonus);
 
         if (Math.random() < totalChance) {
-          const event = selectRandomEvent(currentDiff, players.length > 1);
+          const event = selectRandomEvent(currentDiff, players.length > 1, seenEvents);
           if (event) {
             dispatch(actions.resetSamples());
+            dispatch(actions.addSeenEvent(event.id));
             dispatch(actions.setCurrentEvent(event));
             dispatch(actions.setEventPlayerChoice(null));
             dispatch(actions.setPhase('EVENT'));
@@ -523,18 +535,18 @@ export default function HelldiversRoguelite() {
             flexDirection: 'column',
             paddingTop: onRemove ? '32px' : '0'
           }}
-          onMouseEnter={(e) => onSelect && (e.currentTarget.parentElement.style.borderColor = '#F5C642')}
+          onMouseEnter={(e) => onSelect && (e.currentTarget.parentElement.style.borderColor = factionColors.PRIMARY)}
           onMouseLeave={(e) => onSelect && (e.currentTarget.parentElement.style.borderColor = 'rgba(100, 116, 139, 0.5)')}
         >
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '8px' }}>
             <RarityBadge rarity={displayItem.rarity} />
-            <div style={{ color: '#F5C642', fontSize: '12px', fontFamily: 'monospace', marginRight: onRemove ? '8px' : '0' }}>
+            <div style={{ color: factionColors.PRIMARY, fontSize: '12px', fontFamily: 'monospace', marginRight: onRemove ? '8px' : '0' }}>
               {displayItem.type}{isArmorCombo ? ` (×${item.items.length})` : ''}
             </div>
           </div>
           
           <h3 style={{ 
-            color: '#F5C642', 
+            color: factionColors.PRIMARY, 
             fontWeight: 'bold', 
             fontSize: isArmorCombo ? '14px' : '18px', 
             lineHeight: '1.2', 
@@ -561,7 +573,7 @@ export default function HelldiversRoguelite() {
           </div>
           
           <div style={{ marginTop: '16px', paddingTop: '16px', borderTop: '1px solid rgba(71, 85, 105, 0.5)', textAlign: 'center' }}>
-            <span style={{ color: '#F5C642', fontWeight: 'bold', textTransform: 'uppercase', letterSpacing: '2px', fontSize: '14px' }}>
+            <span style={{ color: factionColors.PRIMARY, fontWeight: 'bold', textTransform: 'uppercase', letterSpacing: '2px', fontSize: '14px' }}>
               REQUISITION
             </span>
           </div>
@@ -578,7 +590,7 @@ export default function HelldiversRoguelite() {
         <div style={{ maxWidth: '900px', width: '100%', textAlign: 'center' }}>
           <div style={{ marginBottom: '40px' }}>
             <div style={{ fontSize: '80px', marginBottom: '16px' }}>🎖️</div>
-            <h1 style={{ fontSize: '64px', fontWeight: '900', color: '#F5C642', margin: '0 0 16px 0', textTransform: 'uppercase', letterSpacing: '0.05em', textShadow: '0 0 20px rgba(245, 198, 66, 0.5)' }}>
+            <h1 style={{ fontSize: '64px', fontWeight: '900', color: factionColors.PRIMARY, margin: '0 0 16px 0', textTransform: 'uppercase', letterSpacing: '0.05em', textShadow: factionColors.GLOW }}>
               DEMOCRACY MANIFESTED
             </h1>
             <h2 style={{ fontSize: '24px', fontWeight: 'bold', color: '#22c55e', margin: '0 0 8px 0' }}>
@@ -589,19 +601,19 @@ export default function HelldiversRoguelite() {
               <br/>
               Super Earth salutes your unwavering dedication to Liberty and Freedom.
               <br/>
-              <span style={{ color: '#F5C642', fontWeight: 'bold' }}>Managed Democracy prevails!</span>
+              <span style={{ color: factionColors.PRIMARY, fontWeight: 'bold' }}>Managed Democracy prevails!</span>
             </p>
           </div>
 
           {/* Final Stats */}
-          <div style={{ backgroundColor: 'rgba(26, 35, 50, 0.8)', padding: '24px', borderRadius: '8px', border: '2px solid rgba(245, 198, 66, 0.4)', marginBottom: '32px' }}>
-            <div style={{ fontSize: '14px', color: '#F5C642', marginBottom: '16px', textTransform: 'uppercase', fontWeight: 'bold', letterSpacing: '0.1em' }}>
+          <div style={{ backgroundColor: 'rgba(26, 35, 50, 0.8)', padding: '24px', borderRadius: '8px', border: `2px solid ${factionColors.PRIMARY}66`, marginBottom: '32px' }}>
+            <div style={{ fontSize: '14px', color: factionColors.PRIMARY, marginBottom: '16px', textTransform: 'uppercase', fontWeight: 'bold', letterSpacing: '0.1em' }}>
               Mission Statistics
             </div>
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '16px', textAlign: 'center' }}>
               <div>
                 <div style={{ fontSize: '12px', color: '#64748b', marginBottom: '4px' }}>Difficulty Cleared</div>
-                <div style={{ fontSize: '32px', fontWeight: 'bold', color: '#F5C642' }}>D10</div>
+                <div style={{ fontSize: '32px', fontWeight: 'bold', color: factionColors.PRIMARY }}>D10</div>
                 <div style={{ fontSize: '11px', color: '#94a3b8', marginTop: '2px' }}>Super Helldive</div>
               </div>
               <div>
@@ -621,7 +633,7 @@ export default function HelldiversRoguelite() {
 
           {/* Final Loadouts */}
           <div style={{ backgroundColor: 'rgba(26, 35, 50, 0.8)', padding: '24px', borderRadius: '8px', border: '1px solid rgba(100, 116, 139, 0.5)', marginBottom: '32px' }}>
-            <div style={{ fontSize: '14px', color: '#F5C642', marginBottom: '20px', textTransform: 'uppercase', fontWeight: 'bold', letterSpacing: '0.1em' }}>
+            <div style={{ fontSize: '14px', color: factionColors.PRIMARY, marginBottom: '20px', textTransform: 'uppercase', fontWeight: 'bold', letterSpacing: '0.1em' }}>
               Final Loadouts
             </div>
             <div style={{ display: 'grid', gridTemplateColumns: players.length > 2 ? 'repeat(2, 1fr)' : 'repeat(' + players.length + ', 1fr)', gap: '16px' }}>
@@ -635,8 +647,8 @@ export default function HelldiversRoguelite() {
                 const stratagems = loadout.stratagems.map(s => getItemById(s)).filter(Boolean);
 
                 return (
-                  <div key={idx} style={{ backgroundColor: 'rgba(40, 53, 72, 0.6)', padding: '16px', borderRadius: '6px', border: '1px solid rgba(245, 198, 66, 0.3)' }}>
-                    <div style={{ fontSize: '16px', fontWeight: 'bold', color: '#F5C642', marginBottom: '12px', textAlign: 'left' }}>
+                  <div key={idx} style={{ backgroundColor: 'rgba(40, 53, 72, 0.6)', padding: '16px', borderRadius: '6px', border: `1px solid ${factionColors.PRIMARY}4D` }}>
+                    <div style={{ fontSize: '16px', fontWeight: 'bold', color: factionColors.PRIMARY, marginBottom: '12px', textAlign: 'left' }}>
                       {player.name}
                     </div>
                     <div style={{ fontSize: '11px', color: '#cbd5e1', textAlign: 'left', lineHeight: '1.8' }}>
@@ -664,7 +676,7 @@ export default function HelldiversRoguelite() {
               width: '100%',
               maxWidth: '400px',
               padding: '20px',
-              backgroundColor: '#F5C642',
+              backgroundColor: factionColors.PRIMARY,
               color: 'black',
               border: 'none',
               borderRadius: '4px',
@@ -674,15 +686,15 @@ export default function HelldiversRoguelite() {
               letterSpacing: '0.2em',
               cursor: 'pointer',
               transition: 'all 0.2s',
-              boxShadow: '0 0 30px rgba(245, 198, 66, 0.4)'
+              boxShadow: factionColors.SHADOW
             }}
             onMouseEnter={(e) => {
-              e.currentTarget.style.backgroundColor = '#ffd95a';
-              e.currentTarget.style.boxShadow = '0 0 40px rgba(245, 198, 66, 0.6)';
+              e.currentTarget.style.backgroundColor = factionColors.PRIMARY_HOVER;
+              e.currentTarget.style.boxShadow = factionColors.SHADOW_HOVER;
             }}
             onMouseLeave={(e) => {
-              e.currentTarget.style.backgroundColor = '#F5C642';
-              e.currentTarget.style.boxShadow = '0 0 30px rgba(245, 198, 66, 0.4)';
+              e.currentTarget.style.backgroundColor = factionColors.PRIMARY;
+              e.currentTarget.style.boxShadow = factionColors.SHADOW;
             }}
           >
             Return to Menu
@@ -720,11 +732,11 @@ export default function HelldiversRoguelite() {
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px', textAlign: 'left' }}>
               <div>
                 <div style={{ fontSize: '12px', color: '#64748b', marginBottom: '4px' }}>Difficulty Reached</div>
-                <div style={{ fontSize: '24px', fontWeight: 'bold', color: '#F5C642' }}>{currentDiff}</div>
+                <div style={{ fontSize: '24px', fontWeight: 'bold', color: factionColors.PRIMARY }}>{currentDiff}</div>
               </div>
               <div>
                 <div style={{ fontSize: '12px', color: '#64748b', marginBottom: '4px' }}>Requisition Earned</div>
-                <div style={{ fontSize: '24px', fontWeight: 'bold', color: '#F5C642' }}>{requisition}</div>
+                <div style={{ fontSize: '24px', fontWeight: 'bold', color: factionColors.PRIMARY }}>{requisition}</div>
               </div>
               <div>
                 <div style={{ fontSize: '12px', color: '#64748b', marginBottom: '4px' }}>Squad Size</div>
@@ -742,7 +754,7 @@ export default function HelldiversRoguelite() {
             style={{
               width: '100%',
               padding: '20px',
-              backgroundColor: '#F5C642',
+              backgroundColor: factionColors.PRIMARY,
               color: 'black',
               border: 'none',
               borderRadius: '4px',
@@ -753,8 +765,8 @@ export default function HelldiversRoguelite() {
               cursor: 'pointer',
               transition: 'all 0.2s'
             }}
-            onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#ffd95a'}
-            onMouseLeave={(e) => e.currentTarget.style.backgroundColor = '#F5C642'}
+            onMouseEnter={(e) => e.currentTarget.style.backgroundColor = factionColors.PRIMARY_HOVER}
+            onMouseLeave={(e) => e.currentTarget.style.backgroundColor = factionColors.PRIMARY}
           >
             Return to Menu
           </button>
@@ -767,7 +779,7 @@ export default function HelldiversRoguelite() {
     return (
       <div style={{ minHeight: '100vh', padding: '80px 24px' }}>
         <div style={{ maxWidth: '600px', margin: '0 auto', textAlign: 'center' }}>
-          <h1 style={{ fontSize: '72px', fontWeight: '900', color: '#F5C642', margin: '0 0 0 0', letterSpacing: '0.02em', textTransform: 'uppercase' }}>
+          <h1 style={{ fontSize: '72px', fontWeight: '900', color: factionColors.PRIMARY, margin: '0 0 0 0', letterSpacing: '0.02em', textTransform: 'uppercase' }}>
             HELLDRAFTERS
           </h1>
           <div style={{ background: 'linear-gradient(to right, #5a5142, #6b6052)', padding: '12px', marginBottom: '60px', maxWidth: '620px', margin: '0 auto 60px auto' }}>
@@ -785,27 +797,31 @@ export default function HelldiversRoguelite() {
                 Select Theater of War
               </label>
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '16px' }}>
-                {Object.values(FACTION).map(f => (
-                  <button 
-                    key={f}
-                    onClick={() => dispatch(actions.updateGameConfig({ faction: f }))}
-                    style={{
-                      padding: '16px',
-                      borderRadius: '4px',
-                      fontWeight: 'bold',
-                      textTransform: 'uppercase',
-                      transition: 'all 0.2s',
-                      fontSize: '14px',
-                      letterSpacing: '1px',
-                      backgroundColor: gameConfig.faction === f ? 'rgba(245, 198, 66, 0.05)' : 'transparent',
-                      color: gameConfig.faction === f ? '#F5C642' : '#64748b',
-                      border: gameConfig.faction === f ? '2px solid #F5C642' : '1px solid rgba(100, 116, 139, 0.5)',
-                      cursor: 'pointer'
-                    }}
-                  >
-                    {f}
-                  </button>
-                ))}
+                {Object.values(FACTION).map(f => {
+                  const isSelected = gameConfig.faction === f;
+                  const btnColors = getFactionColors(f);
+                  return (
+                    <button 
+                      key={f}
+                      onClick={() => dispatch(actions.updateGameConfig({ faction: f }))}
+                      style={{
+                        padding: '16px',
+                        borderRadius: '4px',
+                        fontWeight: 'bold',
+                        textTransform: 'uppercase',
+                        transition: 'all 0.2s',
+                        fontSize: '14px',
+                        letterSpacing: '1px',
+                        backgroundColor: isSelected ? `${btnColors.PRIMARY}15` : 'transparent',
+                        color: isSelected ? btnColors.PRIMARY : '#64748b',
+                        border: isSelected ? `2px solid ${btnColors.PRIMARY}` : '1px solid rgba(100, 116, 139, 0.5)',
+                        cursor: 'pointer'
+                      }}
+                    >
+                      {f}
+                    </button>
+                  );
+                })}
               </div>
             </div>
 
@@ -829,9 +845,9 @@ export default function HelldiversRoguelite() {
                       alignItems: 'center',
                       justifyContent: 'center',
                       transition: 'all 0.2s',
-                      backgroundColor: gameConfig.playerCount === n ? '#F5C642' : 'transparent',
+                      backgroundColor: gameConfig.playerCount === n ? factionColors.PRIMARY : 'transparent',
                       color: gameConfig.playerCount === n ? 'black' : '#64748b',
-                      border: gameConfig.playerCount === n ? '2px solid #F5C642' : '1px solid rgba(100, 116, 139, 0.5)',
+                      border: gameConfig.playerCount === n ? `2px solid ${factionColors.PRIMARY}` : '1px solid rgba(100, 116, 139, 0.5)',
                       cursor: 'pointer'
                     }}
                   >
@@ -847,7 +863,7 @@ export default function HelldiversRoguelite() {
                 Game Mode Options
               </label>
               <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', textAlign: 'left' }}>
-                <label style={{ display: 'flex', alignItems: 'center', gap: '12px', cursor: 'pointer', padding: '12px', backgroundColor: gameConfig.globalUniqueness ? 'rgba(245, 198, 66, 0.1)' : 'transparent', borderRadius: '4px', border: '1px solid rgba(100, 116, 139, 0.5)' }}>
+                <label style={{ display: 'flex', alignItems: 'center', gap: '12px', cursor: 'pointer', padding: '12px', backgroundColor: gameConfig.globalUniqueness ? `${factionColors.PRIMARY}1A` : 'transparent', borderRadius: '4px', border: '1px solid rgba(100, 116, 139, 0.5)' }}>
                   <input 
                     type="checkbox" 
                     checked={gameConfig.globalUniqueness}
@@ -855,11 +871,11 @@ export default function HelldiversRoguelite() {
                     style={{ width: '20px', height: '20px', cursor: 'pointer' }}
                   />
                   <div>
-                    <div style={{ color: '#F5C642', fontWeight: 'bold', fontSize: '14px' }}>Global Card Uniqueness</div>
+                    <div style={{ color: factionColors.PRIMARY, fontWeight: 'bold', fontSize: '14px' }}>Global Card Uniqueness</div>
                     <div style={{ color: '#94a3b8', fontSize: '11px', marginTop: '4px' }}>Cards drafted by one player cannot appear for other players</div>
                   </div>
                 </label>
-                <label style={{ display: 'flex', alignItems: 'center', gap: '12px', cursor: 'pointer', padding: '12px', backgroundColor: gameConfig.burnCards ? 'rgba(245, 198, 66, 0.1)' : 'transparent', borderRadius: '4px', border: '1px solid rgba(100, 116, 139, 0.5)' }}>
+                <label style={{ display: 'flex', alignItems: 'center', gap: '12px', cursor: 'pointer', padding: '12px', backgroundColor: gameConfig.burnCards ? `${factionColors.PRIMARY}1A` : 'transparent', borderRadius: '4px', border: '1px solid rgba(100, 116, 139, 0.5)' }}>
                   <input 
                     type="checkbox" 
                     checked={gameConfig.burnCards}
@@ -867,11 +883,11 @@ export default function HelldiversRoguelite() {
                     style={{ width: '20px', height: '20px', cursor: 'pointer' }}
                   />
                   <div>
-                    <div style={{ color: '#F5C642', fontWeight: 'bold', fontSize: '14px' }}>Burn Cards After Viewing</div>
+                    <div style={{ color: factionColors.PRIMARY, fontWeight: 'bold', fontSize: '14px' }}>Burn Cards After Viewing</div>
                     <div style={{ color: '#94a3b8', fontSize: '11px', marginTop: '4px' }}>Once a card appears in a draft, it cannot appear again this run</div>
                   </div>
                 </label>
-                <label style={{ display: 'flex', alignItems: 'center', gap: '12px', cursor: 'pointer', padding: '12px', backgroundColor: gameConfig.customStart ? 'rgba(245, 198, 66, 0.1)' : 'transparent', borderRadius: '4px', border: '1px solid rgba(100, 116, 139, 0.5)' }}>
+                <label style={{ display: 'flex', alignItems: 'center', gap: '12px', cursor: 'pointer', padding: '12px', backgroundColor: gameConfig.customStart ? `${factionColors.PRIMARY}1A` : 'transparent', borderRadius: '4px', border: '1px solid rgba(100, 116, 139, 0.5)' }}>
                   <input 
                     type="checkbox" 
                     checked={gameConfig.customStart}
@@ -879,11 +895,11 @@ export default function HelldiversRoguelite() {
                     style={{ width: '20px', height: '20px', cursor: 'pointer' }}
                   />
                   <div>
-                    <div style={{ color: '#F5C642', fontWeight: 'bold', fontSize: '14px' }}>Custom Start Mode</div>
+                    <div style={{ color: factionColors.PRIMARY, fontWeight: 'bold', fontSize: '14px' }}>Custom Start Mode</div>
                     <div style={{ color: '#94a3b8', fontSize: '11px', marginTop: '4px' }}>Choose starting difficulty and loadouts for each player</div>
                   </div>
                 </label>
-                <label style={{ display: 'flex', alignItems: 'center', gap: '12px', cursor: 'pointer', padding: '12px', backgroundColor: eventsEnabled ? 'rgba(245, 198, 66, 0.1)' : 'transparent', borderRadius: '4px', border: '1px solid rgba(100, 116, 139, 0.5)' }}>
+                <label style={{ display: 'flex', alignItems: 'center', gap: '12px', cursor: 'pointer', padding: '12px', backgroundColor: eventsEnabled ? `${factionColors.PRIMARY}1A` : 'transparent', borderRadius: '4px', border: '1px solid rgba(100, 116, 139, 0.5)' }}>
                   <input 
                     type="checkbox" 
                     checked={eventsEnabled}
@@ -891,11 +907,11 @@ export default function HelldiversRoguelite() {
                     style={{ width: '20px', height: '20px', cursor: 'pointer' }}
                   />
                   <div>
-                    <div style={{ color: '#F5C642', fontWeight: 'bold', fontSize: '14px' }}>Enable Events</div>
+                    <div style={{ color: factionColors.PRIMARY, fontWeight: 'bold', fontSize: '14px' }}>Enable Events</div>
                     <div style={{ color: '#94a3b8', fontSize: '11px', marginTop: '4px' }}>Random high-risk, high-reward events between missions</div>
                   </div>
                 </label>
-                <label style={{ display: 'flex', alignItems: 'center', gap: '12px', cursor: 'pointer', padding: '12px', backgroundColor: gameConfig.endlessMode ? 'rgba(245, 198, 66, 0.1)' : 'transparent', borderRadius: '4px', border: '1px solid rgba(100, 116, 139, 0.5)' }}>
+                <label style={{ display: 'flex', alignItems: 'center', gap: '12px', cursor: 'pointer', padding: '12px', backgroundColor: gameConfig.endlessMode ? `${factionColors.PRIMARY}1A` : 'transparent', borderRadius: '4px', border: '1px solid rgba(100, 116, 139, 0.5)' }}>
                   <input 
                     type="checkbox" 
                     checked={gameConfig.endlessMode}
@@ -903,8 +919,20 @@ export default function HelldiversRoguelite() {
                     style={{ width: '20px', height: '20px', cursor: 'pointer' }}
                   />
                   <div>
-                    <div style={{ color: '#F5C642', fontWeight: 'bold', fontSize: '14px' }}>Endless Mode</div>
+                    <div style={{ color: factionColors.PRIMARY, fontWeight: 'bold', fontSize: '14px' }}>Endless Mode</div>
                     <div style={{ color: '#94a3b8', fontSize: '11px', marginTop: '4px' }}>Continue running D10 missions indefinitely. Otherwise, win after completing D10</div>
+                  </div>
+                </label>
+                <label style={{ display: 'flex', alignItems: 'center', gap: '12px', cursor: 'pointer', padding: '12px', backgroundColor: gameConfig.debugEventsMode ? `${factionColors.PRIMARY}1A` : 'transparent', borderRadius: '4px', border: '1px solid rgba(100, 116, 139, 0.5)' }}>
+                  <input 
+                    type="checkbox" 
+                    checked={gameConfig.debugEventsMode}
+                    onChange={(e) => dispatch(actions.updateGameConfig({ debugEventsMode: e.target.checked }))}
+                    style={{ width: '20px', height: '20px', cursor: 'pointer' }}
+                  />
+                  <div>
+                    <div style={{ color: factionColors.PRIMARY, fontWeight: 'bold', fontSize: '14px' }}>Debug Events Mode</div>
+                    <div style={{ color: '#94a3b8', fontSize: '11px', marginTop: '4px' }}>Manually trigger events from dashboard for testing</div>
                   </div>
                 </label>
               </div>
@@ -954,8 +982,8 @@ export default function HelldiversRoguelite() {
                     transition: 'all 0.2s'
                   }}
                   onMouseEnter={(e) => {
-                    e.currentTarget.style.borderColor = '#F5C642';
-                    e.currentTarget.style.color = '#F5C642';
+                    e.currentTarget.style.borderColor = factionColors.PRIMARY;
+                    e.currentTarget.style.color = factionColors.PRIMARY;
                   }}
                   onMouseLeave={(e) => {
                     e.currentTarget.style.borderColor = 'rgba(100, 116, 139, 0.5)';
@@ -980,8 +1008,8 @@ export default function HelldiversRoguelite() {
                     display: 'block'
                   }}
                   onMouseEnter={(e) => {
-                    e.currentTarget.style.borderColor = '#F5C642';
-                    e.currentTarget.style.color = '#F5C642';
+                    e.currentTarget.style.borderColor = factionColors.PRIMARY;
+                    e.currentTarget.style.color = factionColors.PRIMARY;
                   }}
                   onMouseLeave={(e) => {
                     e.currentTarget.style.borderColor = 'rgba(100, 116, 139, 0.5)';
@@ -1045,7 +1073,7 @@ export default function HelldiversRoguelite() {
       <div style={{ minHeight: '100vh', padding: '24px', backgroundColor: '#1a2332' }}>
         <div style={{ maxWidth: '1200px', margin: '0 auto' }}>
           <div style={{ textAlign: 'center', marginBottom: '32px' }}>
-            <h1 style={{ fontSize: '48px', fontWeight: '900', color: '#F5C642', margin: '0 0 16px 0' }}>
+            <h1 style={{ fontSize: '48px', fontWeight: '900', color: factionColors.PRIMARY, margin: '0 0 16px 0' }}>
               CUSTOM START SETUP
             </h1>
             <p style={{ color: '#94a3b8', margin: 0 }}>Configure starting difficulty and loadouts</p>
@@ -1063,9 +1091,9 @@ export default function HelldiversRoguelite() {
                   onClick={() => dispatch(actions.updateCustomSetup({ difficulty: diff.level }))}
                   style={{
                     padding: '12px 8px',
-                    backgroundColor: customSetup.difficulty === diff.level ? '#F5C642' : 'transparent',
+                    backgroundColor: customSetup.difficulty === diff.level ? factionColors.PRIMARY : 'transparent',
                     color: customSetup.difficulty === diff.level ? 'black' : '#cbd5e1',
-                    border: customSetup.difficulty === diff.level ? '2px solid #F5C642' : '1px solid rgba(100, 116, 139, 0.5)',
+                    border: customSetup.difficulty === diff.level ? `2px solid ${factionColors.PRIMARY}` : '1px solid rgba(100, 116, 139, 0.5)',
                     borderRadius: '4px',
                     fontWeight: 'bold',
                     fontSize: '16px',
@@ -1078,7 +1106,7 @@ export default function HelldiversRoguelite() {
                 </button>
               ))}
             </div>
-            <div style={{ marginTop: '8px', textAlign: 'center', color: '#F5C642', fontSize: '14px' }}>
+            <div style={{ marginTop: '8px', textAlign: 'center', color: factionColors.PRIMARY, fontSize: '14px' }}>
               {DIFFICULTY_CONFIG[customSetup.difficulty - 1]?.name}
             </div>
           </div>
@@ -1091,7 +1119,7 @@ export default function HelldiversRoguelite() {
                 onClick={() => setSelectedPlayer(i)}
                 style={{
                   padding: '12px 24px',
-                  backgroundColor: selectedPlayer === i ? '#F5C642' : '#283548',
+                  backgroundColor: selectedPlayer === i ? factionColors.PRIMARY : '#283548',
                   color: selectedPlayer === i ? 'black' : '#cbd5e1',
                   border: '1px solid rgba(100, 116, 139, 0.5)',
                   borderRadius: '4px',
@@ -1107,7 +1135,7 @@ export default function HelldiversRoguelite() {
 
           {/* Loadout Editor */}
           <div style={{ backgroundColor: '#283548', padding: '24px', borderRadius: '8px', border: '1px solid rgba(100, 116, 139, 0.5)' }}>
-            <h3 style={{ color: '#F5C642', marginBottom: '16px', fontSize: '18px' }}>Loadout Configuration</h3>
+            <h3 style={{ color: factionColors.PRIMARY, marginBottom: '16px', fontSize: '18px' }}>Loadout Configuration</h3>
             
             {/* Primary */}
             <div style={{ marginBottom: '16px' }}>
@@ -1119,7 +1147,7 @@ export default function HelldiversRoguelite() {
                   width: '100%',
                   padding: '8px',
                   backgroundColor: '#1f2937',
-                  color: '#F5C642',
+                  color: factionColors.PRIMARY,
                   border: '1px solid rgba(100, 116, 139, 0.5)',
                   borderRadius: '4px',
                   fontSize: '14px'
@@ -1310,7 +1338,13 @@ export default function HelldiversRoguelite() {
     }
 
     const handleEventChoice = (choice) => {
-      // Process outcomes using the event processor
+      // Process outcomes using the event processor with selections
+      const selections = {
+        stratagemSelection: eventStratagemSelection,
+        targetPlayerSelection: eventTargetPlayerSelection,
+        targetStratagemSelection: eventTargetStratagemSelection
+      };
+
       const updates = processAllOutcomes(choice.outcomes, choice, {
         players,
         eventPlayerChoice,
@@ -1318,7 +1352,7 @@ export default function HelldiversRoguelite() {
         lives,
         currentDiff,
         gameConfig
-      });
+      }, selections);
 
       // Apply state updates
       if (updates.requisition !== undefined) dispatch(actions.setRequisition(updates.requisition));
@@ -1337,6 +1371,7 @@ export default function HelldiversRoguelite() {
       // After event, proceed to dashboard
       dispatch(actions.setCurrentEvent(null));
       dispatch(actions.setEventPlayerChoice(null));
+      dispatch(actions.resetEventSelections());
       dispatch(actions.setPhase('DASHBOARD'));
     };
 
@@ -1387,6 +1422,7 @@ export default function HelldiversRoguelite() {
       
       dispatch(actions.setCurrentEvent(null));
       dispatch(actions.setEventPlayerChoice(null));
+      dispatch(actions.resetEventSelections());
       dispatch(actions.setPhase('DASHBOARD'));
     };
 
@@ -1394,6 +1430,9 @@ export default function HelldiversRoguelite() {
       <EventDisplay
         currentEvent={currentEvent}
         eventPlayerChoice={eventPlayerChoice}
+        eventStratagemSelection={eventStratagemSelection}
+        eventTargetPlayerSelection={eventTargetPlayerSelection}
+        eventTargetStratagemSelection={eventTargetStratagemSelection}
         players={players}
         currentDiff={currentDiff}
         requisition={requisition}
@@ -1405,6 +1444,10 @@ export default function HelldiversRoguelite() {
         onPlayerChoice={(choice) => dispatch(actions.setEventPlayerChoice(choice))}
         onEventChoice={handleEventChoice}
         onAutoContinue={handleAutoContinue}
+        onStratagemSelection={(selection) => dispatch(actions.setEventStratagemSelection(selection))}
+        onTargetPlayerSelection={(playerIndex) => dispatch(actions.setEventTargetPlayerSelection(playerIndex))}
+        onTargetStratagemSelection={(selection) => dispatch(actions.setEventTargetStratagemSelection(selection))}
+        onConfirmSelections={handleEventChoice}
       />
     );
   }
@@ -1434,7 +1477,7 @@ export default function HelldiversRoguelite() {
             }}
             onMouseEnter={(e) => {
               e.currentTarget.style.backgroundColor = 'rgba(100, 116, 139, 0.5)';
-              e.currentTarget.style.color = '#F5C642';
+              e.currentTarget.style.color = factionColors.PRIMARY;
             }}
             onMouseLeave={(e) => {
               e.currentTarget.style.backgroundColor = 'rgba(100, 116, 139, 0.3)';
@@ -1490,12 +1533,12 @@ export default function HelldiversRoguelite() {
             <div style={{
               backgroundColor: '#283548',
               borderRadius: '12px',
-              border: '2px solid #F5C642',
+              border: `2px solid ${factionColors.PRIMARY}`,
               padding: '32px',
               maxWidth: '800px',
               width: '100%'
             }}>
-              <h2 style={{ color: '#F5C642', fontSize: '24px', fontWeight: 'bold', textAlign: 'center', marginBottom: '16px' }}>
+              <h2 style={{ color: factionColors.PRIMARY, fontSize: '24px', fontWeight: 'bold', textAlign: 'center', marginBottom: '16px' }}>
                 Replace Stratagem
               </h2>
               <p style={{ color: '#cbd5e1', textAlign: 'center', marginBottom: '24px' }}>
@@ -1508,7 +1551,7 @@ export default function HelldiversRoguelite() {
                 marginBottom: '24px',
                 textAlign: 'center'
               }}>
-                <div style={{ color: '#F5C642', fontWeight: 'bold', fontSize: '18px' }}>
+                <div style={{ color: factionColors.PRIMARY, fontWeight: 'bold', fontSize: '18px' }}>
                   {draftState.pendingStratagem.name}
                 </div>
                 <div style={{ color: '#64748b', fontSize: '12px', marginTop: '4px' }}>
@@ -1532,7 +1575,7 @@ export default function HelldiversRoguelite() {
                         transition: 'all 0.2s',
                         textAlign: 'left'
                       }}
-                      onMouseEnter={(e) => e.currentTarget.style.borderColor = '#F5C642'}
+                      onMouseEnter={(e) => e.currentTarget.style.borderColor = factionColors.PRIMARY}
                       onMouseLeave={(e) => e.currentTarget.style.borderColor = 'rgba(100, 116, 139, 0.5)'}
                     >
                       <div style={{ fontSize: '10px', color: '#64748b', textTransform: 'uppercase', marginBottom: '4px' }}>
@@ -1576,7 +1619,7 @@ export default function HelldiversRoguelite() {
         
         <div style={{ width: '100%', maxWidth: '1200px', margin: '0 auto', flexGrow: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
           <div style={{ textAlign: 'center', marginBottom: '40px' }}>
-            <h2 style={{ color: '#F5C642', fontSize: '14px', fontFamily: 'monospace', textTransform: 'uppercase', marginBottom: '8px', letterSpacing: '1px' }}>
+            <h2 style={{ color: factionColors.PRIMARY, fontSize: '14px', fontFamily: 'monospace', textTransform: 'uppercase', marginBottom: '8px', letterSpacing: '1px' }}>
               Priority Requisition Authorized
             </h2>
             <h1 style={{ fontSize: '36px', fontWeight: '900', color: 'white', textTransform: 'uppercase', margin: '0 0 8px 0' }}>
@@ -1631,7 +1674,7 @@ export default function HelldiversRoguelite() {
           </div>
           
           <div style={{ marginTop: '32px', textAlign: 'center' }}>
-            <span style={{ color: '#F5C642', fontFamily: 'monospace' }}>Current Requisition: {requisition} R</span>
+            <span style={{ color: factionColors.PRIMARY, fontFamily: 'monospace' }}>Current Requisition: {requisition} R</span>
           </div>
         </div>
       </div>
@@ -1658,7 +1701,7 @@ export default function HelldiversRoguelite() {
         {/* PLAYER ROSTER */}
         <div style={{ display: 'grid', gridTemplateColumns: gameConfig.playerCount > 1 ? 'repeat(auto-fit, minmax(400px, 1fr))' : '1fr', gap: '32px', marginBottom: '48px' }}>
           {players.map(player => (
-            <LoadoutDisplay key={player.id} player={player} getItemById={getItemById} getArmorComboDisplayName={getArmorComboDisplayName} />
+            <LoadoutDisplay key={player.id} player={player} getItemById={getItemById} getArmorComboDisplayName={getArmorComboDisplayName} faction={gameConfig.faction} />
           ))}
         </div>
 
@@ -1687,9 +1730,9 @@ export default function HelldiversRoguelite() {
                       alignItems: 'center',
                       justifyContent: 'center',
                       transition: 'all 0.2s',
-                      backgroundColor: gameConfig.starRating === n ? '#F5C642' : 'transparent',
+                      backgroundColor: gameConfig.starRating === n ? factionColors.PRIMARY : 'transparent',
                       color: gameConfig.starRating === n ? 'black' : '#64748b',
-                      border: gameConfig.starRating === n ? '2px solid #F5C642' : '1px solid rgba(100, 116, 139, 0.5)',
+                      border: gameConfig.starRating === n ? `2px solid ${factionColors.PRIMARY}` : '1px solid rgba(100, 116, 139, 0.5)',
                       cursor: 'pointer'
                     }}
                     onMouseEnter={(e) => {
@@ -1883,6 +1926,13 @@ export default function HelldiversRoguelite() {
                   
                   dispatch(actions.addRequisition(1));
                   
+                  // Clear weapon restrictions from all players
+                  const updatedPlayers = players.map(p => ({
+                    ...p,
+                    weaponRestricted: false
+                  }));
+                  dispatch(actions.setPlayers(updatedPlayers));
+                  
                   // Check for victory condition
                   if (currentDiff === 10 && !gameConfig.endlessMode) {
                     dispatch(actions.setPhase('VICTORY'));
@@ -1921,6 +1971,82 @@ export default function HelldiversRoguelite() {
               <br/>Reporting failure consumes 1 Life.
             </p>
           </div>
+
+          {/* Debug Events Mode UI */}
+          {gameConfig.debugEventsMode && (
+            <div style={{ width: '100%', maxWidth: '800px', backgroundColor: '#1a2332', padding: '24px', borderRadius: '12px', border: '2px solid #ef4444', marginTop: '24px' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
+                <h3 style={{ fontSize: '16px', fontWeight: 'bold', color: '#ef4444', textTransform: 'uppercase', margin: 0 }}>
+                  🔧 Debug: Manual Event Trigger
+                </h3>
+                <button
+                  onClick={() => dispatch(actions.resetSeenEvents())}
+                  style={{
+                    padding: '8px 16px',
+                    backgroundColor: '#ef4444',
+                    color: 'white',
+                    border: 'none',
+                    borderRadius: '4px',
+                    fontSize: '11px',
+                    fontWeight: 'bold',
+                    cursor: 'pointer',
+                    textTransform: 'uppercase',
+                    transition: 'all 0.2s'
+                  }}
+                  onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#dc2626'}
+                  onMouseLeave={(e) => e.currentTarget.style.backgroundColor = '#ef4444'}
+                >
+                  Reset Seen Events
+                </button>
+              </div>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: '12px' }}>
+                {EVENTS.map(event => (
+                  <button
+                    key={event.id}
+                    onClick={() => {
+                      dispatch(actions.addSeenEvent(event.id));
+                      dispatch(actions.setCurrentEvent(event));
+                      dispatch(actions.setEventPlayerChoice(null));
+                      dispatch(actions.setPhase('EVENT'));
+                    }}
+                    style={{
+                      padding: '12px',
+                      backgroundColor: seenEvents.includes(event.id) ? '#374151' : '#283548',
+                      color: seenEvents.includes(event.id) ? '#6b7280' : '#cbd5e1',
+                      border: '1px solid rgba(239, 68, 68, 0.3)',
+                      borderRadius: '4px',
+                      fontSize: '11px',
+                      cursor: seenEvents.includes(event.id) ? 'not-allowed' : 'pointer',
+                      transition: 'all 0.2s',
+                      textAlign: 'left',
+                      opacity: seenEvents.includes(event.id) ? 0.5 : 1
+                    }}
+                    disabled={seenEvents.includes(event.id)}
+                    onMouseEnter={(e) => {
+                      if (!seenEvents.includes(event.id)) {
+                        e.currentTarget.style.borderColor = '#ef4444';
+                        e.currentTarget.style.backgroundColor = '#374151';
+                      }
+                    }}
+                    onMouseLeave={(e) => {
+                      if (!seenEvents.includes(event.id)) {
+                        e.currentTarget.style.borderColor = 'rgba(239, 68, 68, 0.3)';
+                        e.currentTarget.style.backgroundColor = '#283548';
+                      }
+                    }}
+                  >
+                    <div style={{ fontWeight: 'bold', marginBottom: '4px', fontSize: '12px' }}>{event.name}</div>
+                    <div style={{ fontSize: '9px', color: '#64748b' }}>
+                      {event.id} {seenEvents.includes(event.id) ? '(SEEN)' : ''}
+                    </div>
+                  </button>
+                ))}
+              </div>
+              <p style={{ fontSize: '10px', color: '#64748b', marginTop: '12px', textAlign: 'center', fontStyle: 'italic' }}>
+                Events marked as SEEN have already been triggered this run
+              </p>
+            </div>
+          )}
         </div>
 
       </div>

@@ -24,6 +24,8 @@ export const OUTCOME_TYPES = {
   REMOVE_ITEM: 'remove_item',
   GAIN_SPECIFIC_ITEM: 'gain_specific_item',
   DUPLICATE_STRATAGEM_TO_ANOTHER_HELLDIVER: 'duplicate_stratagem_to_another_helldiver',
+  SWAP_STRATAGEM_WITH_PLAYER: 'swap_stratagem_with_player',
+  RESTRICT_TO_SINGLE_WEAPON: 'restrict_to_single_weapon',
   REDRAFT: 'redraft'
 };
 
@@ -57,40 +59,206 @@ export const OUTCOME_TYPES = {
 // }
 
 export const EVENTS = [
-  // === EXAMPLE EVENT ===
+  // 1. Yearly Bonus
   {
-    id: 'supply_cache',
-    name: 'Supply Cache',
-    description: 'Your squad stumbles upon an abandoned Super Earth supply cache. The contents could be valuable.',
-    type: EVENT_TYPES.CHOICE,
+    id: 'yearly_bonus',
+    name: 'Annual Requisition Payment',
+    description: 'Super Earth\'s fiscal year has ended, and your yearly bonus requisition payment has been processed. Most Helldivers don\'t survive long enough to see this day.',
+    type: EVENT_TYPES.BENEFICIAL,
     minDifficulty: 1,
+    maxDifficulty: 10,
+    weight: 8,
+    targetPlayer: 'all',
+    outcomes: [
+      { type: OUTCOME_TYPES.ADD_REQUISITION, value: 1 }
+    ]
+  },
+
+  // 2. Enemy Counter Attack
+  {
+    id: 'enemy_counterattack',
+    name: 'Enemy Counteroffensive',
+    description: 'Intelligence reports a massive enemy counterattack in response to your recent victories. Command demands you hold your position at all costs, but retreat is also an option.',
+    type: EVENT_TYPES.CHOICE,
+    minDifficulty: 4,
     maxDifficulty: 10,
     weight: 10,
     targetPlayer: 'all',
     choices: [
       {
-        text: 'Open carefully',
+        text: 'Hold the Line',
         outcomes: [
-          { type: OUTCOME_TYPES.ADD_REQUISITION, value: 2 }
+          { type: OUTCOME_TYPES.LOSE_ALL_BUT_ONE_LIFE }
         ]
       },
       {
-        text: 'Force it open (Risky)',
+        text: 'Tactical Retreat',
         outcomes: [
-          { type: OUTCOME_TYPES.ADD_REQUISITION, value: 4 },
-          { type: OUTCOME_TYPES.LOSE_LIFE, value: 1 }
+          { type: OUTCOME_TYPES.CHANGE_FACTION }
+        ]
+      }
+    ]
+  },
+
+  // 3. Teamwork Event
+  {
+    id: 'teamwork_training',
+    name: 'Coordinated Tactics Training',
+    description: 'Your squad has been selected for an experimental tactical coordination program. You can either learn to duplicate your stratagem deployment techniques with a squadmate, or practice equipment swapping protocols.',
+    type: EVENT_TYPES.CHOICE,
+    minDifficulty: 2,
+    maxDifficulty: 10,
+    weight: 12,
+    requiresMultiplayer: true,
+    targetPlayer: 'single',
+    choices: [
+      {
+        text: 'Duplicate Stratagem Training',
+        requiresRequisition: 1,
+        outcomes: [
+          { type: OUTCOME_TYPES.DUPLICATE_STRATAGEM_TO_ANOTHER_HELLDIVER, targetPlayer: 'choose' }
         ]
       },
       {
-        text: 'Leave it',
+        text: 'Equipment Swap Protocol',
+        outcomes: [
+          { type: OUTCOME_TYPES.SWAP_STRATAGEM_WITH_PLAYER, targetPlayer: 'choose' }
+        ]
+      }
+    ]
+  },
+
+  // 4. National Holiday
+  {
+    id: 'national_holiday',
+    name: 'Democracy Day Celebration',
+    description: 'Today marks a national holiday celebrating the foundation of Managed Democracy! Special benefits are being distributed to active combat personnel.',
+    type: EVENT_TYPES.CHOICE,
+    minDifficulty: 4,
+    maxDifficulty: 6,
+    weight: 50,
+    targetPlayer: 'all',
+    choices: [
+      {
+        text: 'Request Tactical Booster',
+        outcomes: [
+          { type: OUTCOME_TYPES.GAIN_BOOSTER, targetPlayer: 'all' }
+        ]
+      },
+      {
+        text: 'Request Medical Reinforcement',
+        outcomes: [
+          { type: OUTCOME_TYPES.GAIN_LIFE, value: 1 }
+        ]
+      }
+    ]
+  },
+
+  // 5. Cloaked Figure Deal
+  {
+    id: 'mysterious_deal',
+    name: 'A Shadowy Proposition',
+    description: 'A cloaked figure approaches you in the armory. They whisper: "Prove your skill with a single weapon in your next engagement, and I\'ll ensure you receive... priority access to equipment." Their voice sends chills down your spine.',
+    type: EVENT_TYPES.CHOICE,
+    minDifficulty: 3,
+    maxDifficulty: 10,
+    weight: 8,
+    targetPlayer: 'single',
+    choices: [
+      {
+        text: 'Accept the Deal',
+        outcomes: [
+          { type: OUTCOME_TYPES.RESTRICT_TO_SINGLE_WEAPON, targetPlayer: 'choose' },
+          { type: OUTCOME_TYPES.EXTRA_DRAFT, value: 2 }
+        ]
+      },
+      {
+        text: 'Decline Politely',
         outcomes: []
+      }
+    ]
+  },
+
+  // 6. Democracy Officer Promotion
+  {
+    id: 'promotion_offer',
+    name: 'Career Advancement Opportunity',
+    description: 'The Democracy Officer summons you to their office. "Your performance has been... noted. We can fast-track your progression, but it comes with elevated expectations. Alternatively, if you refuse this opportunity, we\'ll need to reassess your current equipment clearance."',
+    type: EVENT_TYPES.CHOICE,
+    minDifficulty: 2,
+    maxDifficulty: 9,
+    weight: 10,
+    targetPlayer: 'single',
+    choices: [
+      {
+        text: 'Accept Promotion',
+        outcomes: [
+          { type: OUTCOME_TYPES.SKIP_DIFFICULTY, value: 1 }
+        ]
+      },
+      {
+        text: 'Decline (Demotion)',
+        outcomes: [
+          { type: OUTCOME_TYPES.REMOVE_ITEM, value: 1, targetPlayer: 'choose' }
+        ]
+      }
+    ]
+  },
+
+  // 7. Combat Footage Review
+  {
+    id: 'combat_review',
+    name: 'Performance Review',
+    description: 'The Democracy Officer shows you combat footage from your last mission. "Your tactical positioning and weapon handling are... suboptimal. I\'m offering you a chance to repeat this difficulty tier and demonstrate improvement. What do you say?"',
+    type: EVENT_TYPES.CHOICE,
+    minDifficulty: 2,
+    maxDifficulty: 10,
+    weight: 9,
+    targetPlayer: 'all',
+    choices: [
+      {
+        text: 'Accept Remedial Training',
+        requiresRequisition: 1,
+        outcomes: [
+          { type: OUTCOME_TYPES.REPLAY_DIFFICULTY, value: 1 }
+        ]
+      },
+      {
+        text: 'Receive Corporal Punishment',
+        outcomes: []
+      }
+    ]
+  },
+
+  // 8. End of Financial Year
+  {
+    id: 'fiscal_year_end',
+    name: 'Budget Allocation Decision',
+    description: 'Your commanding officer pulls you aside: "End of fiscal year means use it or lose it. We have leftover funding for either a new recruit to reinforce your squad, or we can liquidate your current assets and reinvest in fresh equipment. Your call, Helldiver."',
+    type: EVENT_TYPES.CHOICE,
+    minDifficulty: 3,
+    maxDifficulty: 10,
+    weight: 8,
+    targetPlayer: 'single',
+    choices: [
+      {
+        text: 'Recruit New Squad Member',
+        outcomes: [
+          { type: OUTCOME_TYPES.GAIN_LIFE, value: 1 }
+        ]
+      },
+      {
+        text: 'Reinvest Assets',
+        outcomes: [
+          { type: OUTCOME_TYPES.REDRAFT, value: 1, targetPlayer: 'choose' }
+        ]
       }
     ]
   }
 ];
 
 // Helper function to get available events for current difficulty
-export function getAvailableEvents(difficulty, isMultiplayer) {
+export function getAvailableEvents(difficulty, isMultiplayer, seenEvents = []) {
   return EVENTS.filter(event => {
     if (event.minDifficulty > difficulty || event.maxDifficulty < difficulty) {
       return false;
@@ -98,13 +266,16 @@ export function getAvailableEvents(difficulty, isMultiplayer) {
     if (event.requiresMultiplayer && !isMultiplayer) {
       return false;
     }
+    if (seenEvents.includes(event.id)) {
+      return false;
+    }
     return true;
   });
 }
 
 // Helper function to select a random event weighted by difficulty
-export function selectRandomEvent(difficulty, isMultiplayer) {
-  const available = getAvailableEvents(difficulty, isMultiplayer);
+export function selectRandomEvent(difficulty, isMultiplayer, seenEvents = []) {
+  const available = getAvailableEvents(difficulty, isMultiplayer, seenEvents);
   if (available.length === 0) return null;
 
   const totalWeight = available.reduce((sum, event) => sum + event.weight, 0);

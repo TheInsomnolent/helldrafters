@@ -72,6 +72,26 @@ export const setSamples = (samples) => ({
   payload: samples
 });
 
+// Event selections
+export const setEventStratagemSelection = (selection) => ({
+  type: types.SET_EVENT_STRATAGEM_SELECTION,
+  payload: selection
+});
+
+export const setEventTargetPlayerSelection = (playerIndex) => ({
+  type: types.SET_EVENT_TARGET_PLAYER_SELECTION,
+  payload: playerIndex
+});
+
+export const setEventTargetStratagemSelection = (selection) => ({
+  type: types.SET_EVENT_TARGET_STRATAGEM_SELECTION,
+  payload: selection
+});
+
+export const resetEventSelections = () => ({
+  type: types.RESET_EVENT_SELECTIONS
+});
+
 // Players management
 export const setPlayers = (players) => ({
   type: types.SET_PLAYERS,
@@ -148,6 +168,15 @@ export const setEventPlayerChoice = (choice) => ({
 export const setEventsEnabled = (enabled) => ({
   type: types.SET_EVENTS_ENABLED,
   payload: enabled
+});
+
+export const addSeenEvent = (eventId) => ({
+  type: types.ADD_SEEN_EVENT,
+  payload: eventId
+});
+
+export const resetSeenEvents = () => ({
+  type: types.RESET_SEEN_EVENTS
 });
 
 // Custom setup

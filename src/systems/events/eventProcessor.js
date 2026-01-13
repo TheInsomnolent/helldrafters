@@ -1,6 +1,6 @@
 import { OUTCOME_TYPES } from './events';
 import { MASTER_DB } from '../../data/itemsByWarbond';
-import { TYPE } from '../../constants/types';
+import { TYPE, FACTION } from '../../constants/types';
 import { STARTING_LOADOUT } from '../../constants/gameConfig';
 import { getFirstEmptyStratagemSlot } from '../../utils/loadoutHelpers';
 
@@ -9,10 +9,11 @@ import { getFirstEmptyStratagemSlot } from '../../utils/loadoutHelpers';
  * @param {Object} outcome - The outcome object to process
  * @param {Object} choice - The choice that was made
  * @param {Object} state - Current game state
+ * @param {Object} selections - User selections for stratagem/player choices
  * @returns {Object} State updates to apply
  */
-export const processEventOutcome = (outcome, choice, state) => {
-  const { players, eventPlayerChoice, requisition, lives, currentDiff } = state;
+export const processEventOutcome = (outcome, choice, state, selections = {}) => {
+  const { players, eventPlayerChoice, requisition, lives, currentDiff, gameConfig } = state;
   const updates = {};
 
   switch (outcome.type) {
@@ -36,7 +37,11 @@ export const processEventOutcome = (outcome, choice, state) => {
       break;
 
     case OUTCOME_TYPES.CHANGE_FACTION:
-      updates.faction = outcome.value;
+      const currentFaction = gameConfig?.faction;
+      const allFactions = Object.values(FACTION);
+      const otherFactions = allFactions.filter(f => f !== currentFaction);
+      const randomFaction = otherFactions[Math.floor(Math.random() * otherFactions.length)];
+      updates.faction = randomFaction;
       break;
 
     case OUTCOME_TYPES.EXTRA_DRAFT:
@@ -72,12 +77,61 @@ export const processEventOutcome = (outcome, choice, state) => {
       break;
 
     case OUTCOME_TYPES.DUPLICATE_STRATAGEM_TO_ANOTHER_HELLDIVER:
-      updates.players = applyDuplicateStratagem(players, eventPlayerChoice);
+      updates.players = applyDuplicateStratagem(players, eventPlayerChoice, selections);
       break;
 
     case OUTCOME_TYPES.REDRAFT:
       updates.players = applyRedraft(players, eventPlayerChoice);
       updates.bonusRequisition = calculateRedraftBonus(players[eventPlayerChoice], outcome.value);
+      break;
+
+    case OUTCOME_TYPES.SWAP_STRATAGEM_WITH_PLAYER:
+      updates.players = applySwapStratagem(players, eventPlayerChoice, selections);
+      break;
+
+    case OUTCOME_TYPES.RESTRICT_TO_SINGLE_WEAPON:
+      if (outcome.targetPlayer === 'choose' && eventPlayerChoice !== null) {
+        const newPlayers = [...players];
+        const player = newPlayers[eventPlayerChoice];
+        
+        // Clear all stratagems
+        player.loadout.stratagems = [null, null, null, null];
+        
+        // Keep only one weapon: primary if they have it, otherwise secondary
+        if (!player.loadout.primary) {
+          player.loadout.primary = null;
+        } else {
+          player.loadout.secondary = null;
+        }
+        
+        // Set restriction flag
+        player.weaponRestricted = true;
+        
+        updates.players = newPlayers;
+      }
+      break;
+
+    case OUTCOME_TYPES.REMOVE_ITEM:
+      if (outcome.targetPlayer === 'choose' && eventPlayerChoice !== null) {
+        const newPlayers = [...players];
+        const player = newPlayers[eventPlayerChoice];
+        if (player.inventory.length > 0) {
+          const randomIndex = Math.floor(Math.random() * player.inventory.length);
+          const removedItem = player.inventory[randomIndex];
+          player.inventory.splice(randomIndex, 1);
+          
+          // Remove from loadout if equipped
+          Object.keys(player.loadout).forEach(slot => {
+            if (player.loadout[slot] === removedItem) {
+              player.loadout[slot] = null;
+            } else if (Array.isArray(player.loadout[slot])) {
+              const idx = player.loadout[slot].indexOf(removedItem);
+              if (idx !== -1) player.loadout[slot][idx] = null;
+            }
+          });
+        }
+        updates.players = newPlayers;
+      }
       break;
 
     default:
@@ -92,16 +146,22 @@ export const processEventOutcome = (outcome, choice, state) => {
  * @param {Array} outcomes - Array of outcome objects
  * @param {Object} choice - The choice that was made
  * @param {Object} state - Current game state
+ * @param {Object} selections - User selections {stratagemSelection, targetPlayerSelection, targetStratagemSelection}
  * @returns {Object} Combined state updates
  */
-export const processAllOutcomes = (outcomes, choice, state) => {
+export const processAllOutcomes = (outcomes, choice, state, selections = {}) => {
   const allUpdates = {};
+
+  // Spend requisition if the choice requires it
+  if (choice && choice.requiresRequisition) {
+    allUpdates.requisition = Math.max(0, state.requisition - choice.requiresRequisition);
+  }
 
   outcomes.forEach(outcome => {
     const updates = processEventOutcome(outcome, choice, {
       ...state,
       ...allUpdates // Apply previous updates
-    });
+    }, selections);
     Object.assign(allUpdates, updates);
   });
 
@@ -135,10 +195,43 @@ const applyGainBooster = (players, outcome, eventPlayerChoice) => {
 
 /**
  * Apply duplicate stratagem outcome
+ * @param {Array} players - Array of player objects
+ * @param {number} eventPlayerChoice - The source player index
+ * @param {Object} selections - User selections {stratagemSelection, targetPlayerSelection, targetStratagemSelection}
  */
-const applyDuplicateStratagem = (players, eventPlayerChoice) => {
+const applyDuplicateStratagem = (players, eventPlayerChoice, selections = {}) => {
   if (players.length <= 1 || eventPlayerChoice === null) return players;
 
+  const { stratagemSelection, targetPlayerSelection, targetStratagemSelection } = selections;
+
+  // If we have selections, use them
+  if (stratagemSelection && targetPlayerSelection !== null && targetPlayerSelection !== undefined) {
+    const newPlayers = [...players];
+    const { stratagemId } = stratagemSelection;
+    
+    // Check if we have a target stratagem selection (for overwrite)
+    if (targetStratagemSelection) {
+      // Overwrite the selected slot
+      const { stratagemSlotIndex } = targetStratagemSelection;
+      newPlayers[targetPlayerSelection].loadout.stratagems[stratagemSlotIndex] = stratagemId;
+      if (!newPlayers[targetPlayerSelection].inventory.includes(stratagemId)) {
+        newPlayers[targetPlayerSelection].inventory.push(stratagemId);
+      }
+    } else {
+      // Find first empty slot and add there
+      const emptySlot = getFirstEmptyStratagemSlot(newPlayers[targetPlayerSelection].loadout);
+      if (emptySlot !== -1) {
+        newPlayers[targetPlayerSelection].loadout.stratagems[emptySlot] = stratagemId;
+        if (!newPlayers[targetPlayerSelection].inventory.includes(stratagemId)) {
+          newPlayers[targetPlayerSelection].inventory.push(stratagemId);
+        }
+      }
+    }
+
+    return newPlayers;
+  }
+
+  // Fallback to random selection (old behavior)
   const sourcePlayer = players[eventPlayerChoice];
   const availableStratagems = sourcePlayer.loadout.stratagems.filter(s => s !== null);
 
@@ -196,6 +289,87 @@ const calculateRedraftBonus = (player, divisionValue) => {
 };
 
 /**
+ * Apply swap stratagem outcome
+ * @param {Array} players - Array of player objects
+ * @param {number} eventPlayerChoice - The source player index
+ * @param {Object} selections - User selections {stratagemSelection, targetPlayerSelection, targetStratagemSelection}
+ */
+const applySwapStratagem = (players, eventPlayerChoice, selections = {}) => {
+  if (players.length <= 1 || eventPlayerChoice === null) return players;
+
+  const { stratagemSelection, targetPlayerSelection, targetStratagemSelection } = selections;
+
+  // If we have all selections, use them
+  if (stratagemSelection && targetPlayerSelection !== null && targetPlayerSelection !== undefined && targetStratagemSelection) {
+    const newPlayers = [...players];
+    const { stratagemSlotIndex } = stratagemSelection;
+    const { stratagemSlotIndex: targetStratagemSlotIndex } = targetStratagemSelection;
+
+    // Perform swap
+    const temp = newPlayers[eventPlayerChoice].loadout.stratagems[stratagemSlotIndex];
+    newPlayers[eventPlayerChoice].loadout.stratagems[stratagemSlotIndex] = 
+      newPlayers[targetPlayerSelection].loadout.stratagems[targetStratagemSlotIndex];
+    newPlayers[targetPlayerSelection].loadout.stratagems[targetStratagemSlotIndex] = temp;
+
+    return newPlayers;
+  }
+
+  // If we have partial selections (old behavior for duplicate), use them
+  if (stratagemSelection && targetPlayerSelection !== null && targetPlayerSelection !== undefined) {
+    const newPlayers = [...players];
+    const { stratagemSlotIndex, stratagemId } = stratagemSelection;
+    
+    // Find target player's stratagem to swap (first non-null stratagem)
+    const targetStratagems = newPlayers[targetPlayerSelection].loadout.stratagems
+      .map((s, idx) => ({ stratagem: s, idx }))
+      .filter(s => s.stratagem !== null);
+
+    if (targetStratagems.length === 0) return players;
+
+    // Use first available stratagem from target player
+    const targetStratData = targetStratagems[0];
+
+    // Perform swap
+    const temp = newPlayers[eventPlayerChoice].loadout.stratagems[stratagemSlotIndex];
+    newPlayers[eventPlayerChoice].loadout.stratagems[stratagemSlotIndex] = 
+      newPlayers[targetPlayerSelection].loadout.stratagems[targetStratData.idx];
+    newPlayers[targetPlayerSelection].loadout.stratagems[targetStratData.idx] = temp;
+
+    return newPlayers;
+  }
+
+  // Fallback to random selection (old behavior)
+  const sourcePlayer = players[eventPlayerChoice];
+  const availableStratagems = sourcePlayer.loadout.stratagems
+    .map((s, idx) => ({ stratagem: s, idx }))
+    .filter(s => s.stratagem !== null);
+
+  if (availableStratagems.length === 0) return players;
+
+  const otherPlayers = players.map((p, idx) => ({ player: p, idx })).filter((_, idx) => idx !== eventPlayerChoice);
+  if (otherPlayers.length === 0) return players;
+
+  const targetPlayerData = otherPlayers[Math.floor(Math.random() * otherPlayers.length)];
+  const targetStratagems = targetPlayerData.player.loadout.stratagems
+    .map((s, idx) => ({ stratagem: s, idx }))
+    .filter(s => s.stratagem !== null);
+
+  if (targetStratagems.length === 0) return players;
+
+  // Pick random stratagems to swap
+  const sourceStratData = availableStratagems[Math.floor(Math.random() * availableStratagems.length)];
+  const targetStratData = targetStratagems[Math.floor(Math.random() * targetStratagems.length)];
+
+  const newPlayers = [...players];
+  const temp = newPlayers[eventPlayerChoice].loadout.stratagems[sourceStratData.idx];
+  newPlayers[eventPlayerChoice].loadout.stratagems[sourceStratData.idx] = 
+    newPlayers[targetPlayerData.idx].loadout.stratagems[targetStratData.idx];
+  newPlayers[targetPlayerData.idx].loadout.stratagems[targetStratData.idx] = temp;
+
+  return newPlayers;
+};
+
+/**
  * Check if a choice can be afforded
  * @param {Object} choice - The choice object
  * @param {number} requisition - Current requisition amount
@@ -226,7 +400,7 @@ export const formatOutcome = (outcome) => {
     case OUTCOME_TYPES.LOSE_ALL_BUT_ONE_LIFE:
       return `Lives reduced to 1`;
     case OUTCOME_TYPES.CHANGE_FACTION:
-      return `Switch to ${outcome.value}`;
+      return `Switch to different theater`;
     case OUTCOME_TYPES.EXTRA_DRAFT:
       return `Draft ${outcome.value} extra card${outcome.value > 1 ? 's' : ''}`;
     case OUTCOME_TYPES.SKIP_DIFFICULTY:
@@ -244,6 +418,10 @@ export const formatOutcome = (outcome) => {
       return `Gain specific item`;
     case OUTCOME_TYPES.DUPLICATE_STRATAGEM_TO_ANOTHER_HELLDIVER:
       return `Copy stratagem to another Helldiver`;
+    case OUTCOME_TYPES.SWAP_STRATAGEM_WITH_PLAYER:
+      return `Swap stratagem with another Helldiver`;
+    case OUTCOME_TYPES.RESTRICT_TO_SINGLE_WEAPON:
+      return `Use only 1 weapon next mission (no stratagems)`;
     case OUTCOME_TYPES.REDRAFT:
       return `Redraft: Discard all items, draft ${outcome.value ? Math.ceil(1 / outcome.value) : 1}x per discarded`;
     default:
@@ -270,4 +448,14 @@ export const needsPlayerChoice = (event) => {
   return event.targetPlayer === 'single' && 
     event.choices && 
     event.choices.some(c => c.outcomes.some(o => o.targetPlayer === 'choose'));
+};
+
+/**
+ * Check if an outcome requires stratagem/player selection dialogue
+ * @param {Object} outcome - The outcome object
+ * @returns {boolean} True if selection dialogue is needed
+ */
+export const needsSelectionDialogue = (outcome) => {
+  return outcome.type === OUTCOME_TYPES.DUPLICATE_STRATAGEM_TO_ANOTHER_HELLDIVER ||
+         outcome.type === OUTCOME_TYPES.SWAP_STRATAGEM_WITH_PLAYER;
 };

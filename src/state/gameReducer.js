@@ -13,7 +13,8 @@ export const initialState = {
     globalUniqueness: true,
     burnCards: true,
     customStart: false,
-    endlessMode: false
+    endlessMode: false,
+    debugEventsMode: false
   },
   currentDiff: 1,
   requisition: 0,
@@ -39,6 +40,10 @@ export const initialState = {
   eventsEnabled: true,
   currentEvent: null,
   eventPlayerChoice: null,
+  eventStratagemSelection: null, // { sourcePlayerIndex, stratagemSlotIndex, stratagemId }
+  eventTargetPlayerSelection: null, // targetPlayerIndex
+  eventTargetStratagemSelection: null, // { stratagemSlotIndex, stratagemId }
+  seenEvents: [],
   settingsOpen: false,
   disabledWarbonds: []
 };
@@ -50,7 +55,12 @@ export function gameReducer(state, action) {
   switch (action.type) {
     // Phase management
     case types.SET_PHASE:
-      return { ...state, phase: action.payload };
+      return { 
+        ...state, 
+        phase: action.payload,
+        // Clear seen events when returning to menu
+        seenEvents: action.payload === 'MENU' ? [] : state.seenEvents
+      };
 
     // Game configuration
     case types.UPDATE_GAME_CONFIG:
@@ -237,6 +247,29 @@ export function gameReducer(state, action) {
     case types.SET_EVENTS_ENABLED:
       return { ...state, eventsEnabled: action.payload };
 
+    case types.ADD_SEEN_EVENT:
+      return { ...state, seenEvents: [...state.seenEvents, action.payload] };
+
+    case types.RESET_SEEN_EVENTS:
+      return { ...state, seenEvents: [] };
+
+    case types.SET_EVENT_STRATAGEM_SELECTION:
+      return { ...state, eventStratagemSelection: action.payload };
+
+    case types.SET_EVENT_TARGET_PLAYER_SELECTION:
+      return { ...state, eventTargetPlayerSelection: action.payload };
+
+    case types.SET_EVENT_TARGET_STRATAGEM_SELECTION:
+      return { ...state, eventTargetStratagemSelection: action.payload };
+
+    case types.RESET_EVENT_SELECTIONS:
+      return { 
+        ...state, 
+        eventStratagemSelection: null,
+        eventTargetPlayerSelection: null,
+        eventTargetStratagemSelection: null
+      };
+
     // Custom setup
     case types.SET_CUSTOM_SETUP:
       return { ...state, customSetup: action.payload };
@@ -262,7 +295,17 @@ export function gameReducer(state, action) {
 
     // Full state operations
     case types.LOAD_GAME_STATE:
-      return { ...state, ...action.payload };
+      return { 
+        ...state, 
+        ...action.payload,
+        // Ensure new fields exist with defaults
+        samples: action.payload.samples || { common: 0, rare: 0, superRare: 0 },
+        seenEvents: action.payload.seenEvents || [],
+        players: (action.payload.players || []).map(p => ({
+          ...p,
+          weaponRestricted: p.weaponRestricted || false
+        }))
+      };
 
     case types.RESET_GAME:
       return { ...initialState };

@@ -38,9 +38,39 @@ export const COLORS = {
   VERYRARE: '#F5C642',
   
   // Faction colors
-  BUGS: '#e67e22',
-  BOTS: '#c0392b',
-  SQUIDS: '#9b59b6'
+  TERMINIDS: '#e67e22',
+  AUTOMATONS: '#c0392b',
+  ILLUMINATE: '#9b59b6'
+};
+
+// Faction color mapping (maps faction names to their theme colors)
+export const FACTION_COLORS = {
+  'Terminids': {
+    PRIMARY: '#e67e22',
+    PRIMARY_HOVER: '#d87519',
+    SHADOW: '0 4px 16px rgba(230, 126, 34, 0.4)',
+    SHADOW_HOVER: '0 6px 20px rgba(230, 126, 34, 0.5)',
+    GLOW: '0 4px 20px rgba(230, 126, 34, 0.3)'
+  },
+  'Automatons': {
+    PRIMARY: '#c0392b',
+    PRIMARY_HOVER: '#a93226',
+    SHADOW: '0 4px 16px rgba(192, 57, 43, 0.4)',
+    SHADOW_HOVER: '0 6px 20px rgba(192, 57, 43, 0.5)',
+    GLOW: '0 4px 20px rgba(192, 57, 43, 0.3)'
+  },
+  'Illuminate': {
+    PRIMARY: '#9b59b6',
+    PRIMARY_HOVER: '#8e44ad',
+    SHADOW: '0 4px 16px rgba(155, 89, 182, 0.4)',
+    SHADOW_HOVER: '0 6px 20px rgba(155, 89, 182, 0.5)',
+    GLOW: '0 4px 20px rgba(155, 89, 182, 0.3)'
+  }
+};
+
+// Helper function to get faction-specific colors
+export const getFactionColors = (factionName) => {
+  return FACTION_COLORS[factionName] || FACTION_COLORS['Terminids'];
 };
 
 export const SHADOWS = {

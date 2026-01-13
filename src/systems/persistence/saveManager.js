@@ -10,12 +10,14 @@ export const createSaveState = (state) => {
     currentDiff: state.currentDiff,
     requisition: state.requisition,
     lives: state.lives,
+    samples: state.samples,
     burnedCards: state.burnedCards,
     players: state.players,
     draftState: state.draftState,
     eventsEnabled: state.eventsEnabled,
     currentEvent: state.currentEvent,
     eventPlayerChoice: state.eventPlayerChoice,
+    seenEvents: state.seenEvents,
     customSetup: state.customSetup,
     selectedPlayer: state.selectedPlayer,
     exportedAt: new Date().toISOString()
@@ -110,6 +112,7 @@ export const normalizeLoadedState = (loadedState) => {
     currentDiff: loadedState.currentDiff || 1,
     requisition: loadedState.requisition || 0,
     lives: loadedState.lives || 3,
+    samples: loadedState.samples || { common: 0, rare: 0, superRare: 0 },
     burnedCards: loadedState.burnedCards || [],
     players: loadedState.players || [],
     draftState: loadedState.draftState || {
@@ -121,6 +124,7 @@ export const normalizeLoadedState = (loadedState) => {
     eventsEnabled: loadedState.eventsEnabled !== undefined ? loadedState.eventsEnabled : true,
     currentEvent: loadedState.currentEvent || null,
     eventPlayerChoice: loadedState.eventPlayerChoice || null,
+    seenEvents: loadedState.seenEvents || [],
     customSetup: loadedState.customSetup || { difficulty: 1, loadouts: [] },
     selectedPlayer: loadedState.selectedPlayer || 0
   };
