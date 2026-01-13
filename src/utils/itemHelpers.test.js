@@ -8,7 +8,7 @@ import {
   getItemsWithTag,
   countItemsByType
 } from './itemHelpers';
-import { MASTER_DB } from '../data/items';
+import { MASTER_DB } from '../data/itemsByWarbond';
 import { TYPE, RARITY, TAGS } from '../constants/types';
 
 describe('Utils - Item Helpers', () => {

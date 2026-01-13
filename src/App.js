@@ -2,7 +2,7 @@ import React, { useReducer, useEffect } from 'react';
 import { RefreshCw, AlertTriangle, CheckCircle, XCircle, Trophy } from 'lucide-react';
 import { selectRandomEvent, EVENT_TYPES } from './systems/events/events';
 import { RARITY, TYPE, FACTION } from './constants/types';
-import { MASTER_DB } from './data/items';
+import { MASTER_DB } from './data/itemsByWarbond';
 import { STARTING_LOADOUT, DIFFICULTY_CONFIG } from './constants/gameConfig';
 import { getItemById } from './utils/itemHelpers';
 import { getDraftHandSize, getWeightedPool, generateDraftHand } from './utils/draftHelpers';
@@ -13,8 +13,10 @@ import GameHeader from './components/GameHeader';
 import EventDisplay from './components/EventDisplay';
 import DraftDisplay from './components/DraftDisplay';
 import LoadoutDisplay from './components/LoadoutDisplay';
+import GameLobby from './components/GameLobby';
 import { gameReducer, initialState } from './state/gameReducer';
 import * as actions from './state/actions';
+import { COLORS, SHADOWS, BUTTON_STYLES } from './constants/theme';
 
 // --- DATA CONSTANTS (imported from modules) ---
 
@@ -115,8 +117,13 @@ export default function HelldiversRoguelite() {
   // --- INITIALIZATION ---
 
   const startGame = () => {
+    // Go to lobby to configure players
+    dispatch(actions.setPhase('LOBBY'));
+  };
+
+  const startGameFromLobby = (lobbyPlayers) => {
     if (gameConfig.customStart) {
-      // Go to custom setup screen
+      // Go to custom setup screen with configured players
       const initialLoadouts = Array.from({ length: gameConfig.playerCount }, () => ({
         primary: STARTING_LOADOUT.primary,
         secondary: STARTING_LOADOUT.secondary,
@@ -126,12 +133,23 @@ export default function HelldiversRoguelite() {
         stratagems: [...STARTING_LOADOUT.stratagems]
       }));
       dispatch(actions.setCustomSetup({ difficulty: 1, loadouts: initialLoadouts }));
+      
+      // Create players with warbond selections
+      const newPlayers = lobbyPlayers.map((lp, i) => ({
+        id: i + 1,
+        name: lp.name,
+        loadout: initialLoadouts[i],
+        inventory: Object.values(initialLoadouts[i]).flat().filter(id => id !== null),
+        warbonds: lp.warbonds,
+        includeSuperstore: lp.includeSuperstore
+      }));
+      dispatch(actions.setPlayers(newPlayers));
       dispatch(actions.setPhase('CUSTOM_SETUP'));
     } else {
-      // Normal start
-      const newPlayers = Array.from({ length: gameConfig.playerCount }, (_, i) => ({
+      // Normal start with configured players
+      const newPlayers = lobbyPlayers.map((lp, i) => ({
         id: i + 1,
-        name: `Helldiver ${i + 1}`,
+        name: lp.name,
         loadout: { 
           primary: STARTING_LOADOUT.primary,
           secondary: STARTING_LOADOUT.secondary,
@@ -140,7 +158,9 @@ export default function HelldiversRoguelite() {
           booster: STARTING_LOADOUT.booster,
           stratagems: [...STARTING_LOADOUT.stratagems]
         },
-        inventory: Object.values(STARTING_LOADOUT).flat().filter(id => id !== null)
+        inventory: Object.values(STARTING_LOADOUT).flat().filter(id => id !== null),
+        warbonds: lp.warbonds,
+        includeSuperstore: lp.includeSuperstore
       }));
       dispatch(actions.setPlayers(newPlayers));
       dispatch(actions.setDifficulty(1));
@@ -665,21 +685,22 @@ export default function HelldiversRoguelite() {
             <button 
               onClick={startGame}
               style={{
+                ...BUTTON_STYLES.PRIMARY,
                 width: '100%',
                 padding: '16px',
-                backgroundColor: '#F5C642',
-                color: 'black',
-                fontWeight: '900',
                 fontSize: '18px',
-                textTransform: 'uppercase',
                 letterSpacing: '0.2em',
                 borderRadius: '4px',
-                border: 'none',
-                cursor: 'pointer',
-                transition: 'all 0.2s'
+                border: 'none'
               }}
-              onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#f7d058'}
-              onMouseLeave={(e) => e.currentTarget.style.backgroundColor = '#F5C642'}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.backgroundColor = COLORS.PRIMARY_HOVER;
+                e.currentTarget.style.boxShadow = SHADOWS.BUTTON_PRIMARY_HOVER;
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.backgroundColor = COLORS.PRIMARY;
+                e.currentTarget.style.boxShadow = SHADOWS.BUTTON_PRIMARY;
+              }}
             >
               Initialize Operation
             </button>
@@ -755,6 +776,16 @@ export default function HelldiversRoguelite() {
           </div>
         </div>
       </div>
+    );
+  }
+
+  if (phase === 'LOBBY') {
+    return (
+      <GameLobby
+        gameConfig={gameConfig}
+        onStartRun={startGameFromLobby}
+        onCancel={() => dispatch(actions.setPhase('MENU'))}
+      />
     );
   }
 
@@ -1019,18 +1050,21 @@ export default function HelldiversRoguelite() {
             <button
               onClick={startGameFromCustomSetup}
               style={{
+                ...BUTTON_STYLES.PRIMARY,
                 flex: 2,
                 padding: '16px',
-                backgroundColor: '#F5C642',
-                color: 'black',
                 border: 'none',
                 borderRadius: '4px',
-                fontWeight: '900',
                 fontSize: '18px',
-                textTransform: 'uppercase',
-                letterSpacing: '0.1em',
-                cursor: 'pointer',
-                transition: 'all 0.2s'
+                letterSpacing: '0.1em'
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.backgroundColor = COLORS.PRIMARY_HOVER;
+                e.currentTarget.style.boxShadow = SHADOWS.BUTTON_PRIMARY_HOVER;
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.backgroundColor = COLORS.PRIMARY;
+                e.currentTarget.style.boxShadow = SHADOWS.BUTTON_PRIMARY;
               }}
             >
               Start Operation
@@ -1485,22 +1519,23 @@ export default function HelldiversRoguelite() {
                   startDraftPhase();
                 }}
                 style={{
+                  ...BUTTON_STYLES.PRIMARY,
                   display: 'flex',
                   alignItems: 'center',
                   gap: '8px',
                   padding: '16px 32px',
-                  backgroundColor: '#F5C642',
-                  color: 'black',
                   border: 'none',
                   borderRadius: '4px',
-                  fontWeight: '900',
-                  textTransform: 'uppercase',
-                  letterSpacing: '2px',
-                  cursor: 'pointer',
-                  transition: 'all 0.2s'
+                  letterSpacing: '2px'
                 }}
-                onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#f7d058'}
-                onMouseLeave={(e) => e.currentTarget.style.backgroundColor = '#F5C642'}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.backgroundColor = COLORS.PRIMARY_HOVER;
+                  e.currentTarget.style.boxShadow = SHADOWS.BUTTON_PRIMARY_HOVER;
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.backgroundColor = COLORS.PRIMARY;
+                  e.currentTarget.style.boxShadow = SHADOWS.BUTTON_PRIMARY;
+                }}
               >
                 <CheckCircle />
                 Mission Success

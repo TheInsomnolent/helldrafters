@@ -124,6 +124,26 @@ export function gameReducer(state, action) {
         )
       };
 
+    case types.SET_PLAYER_WARBONDS:
+      return {
+        ...state,
+        players: state.players.map((player, idx) =>
+          idx === action.payload.playerIndex
+            ? { ...player, warbonds: action.payload.warbonds }
+            : player
+        )
+      };
+
+    case types.SET_PLAYER_SUPERSTORE:
+      return {
+        ...state,
+        players: state.players.map((player, idx) =>
+          idx === action.payload.playerIndex
+            ? { ...player, includeSuperstore: action.payload.includeSuperstore }
+            : player
+        )
+      };
+
     // Draft state
     case types.SET_DRAFT_STATE:
       return { ...state, draftState: action.payload };

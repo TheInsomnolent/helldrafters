@@ -78,7 +78,17 @@ export const addItemToPlayer = (playerIndex, itemId) => ({
   payload: { playerIndex, itemId }
 });
 
-// Draft state
+export const setPlayerWarbonds = (playerIndex, warbonds) => ({
+  type: types.SET_PLAYER_WARBONDS,
+  payload: { playerIndex, warbonds }
+});
+
+export const setPlayerSuperstore = (playerIndex, includeSuperstore) => ({
+  type: types.SET_PLAYER_SUPERSTORE,
+  payload: { playerIndex, includeSuperstore }
+});
+
+// Draft state// Draft state
 export const setDraftState = (draftState) => ({
   type: types.SET_DRAFT_STATE,
   payload: draftState

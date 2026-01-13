@@ -1,6 +1,6 @@
 import { getItemById, anyItemHasTag } from './itemHelpers';
 import { RARITY, TAGS, TYPE, FACTION } from '../constants/types';
-import { MASTER_DB } from '../data/items';
+import { MASTER_DB } from '../data/itemsByWarbond';
 
 /**
  * Calculate draft hand size based on mission star rating
@@ -15,7 +15,7 @@ export const getDraftHandSize = (starRating) => {
 
 /**
  * Get weighted pool of available items for a player
- * @param {Object} player - Player object with inventory and loadout
+ * @param {Object} player - Player object with inventory, loadout, warbonds, and includeSuperstore
  * @param {number} difficulty - Current difficulty level
  * @param {Object} gameConfig - Game configuration
  * @param {string[]} burnedCards - Array of burned card IDs
@@ -28,18 +28,34 @@ export const getWeightedPool = (player, difficulty, gameConfig, burnedCards = []
     !player.inventory.includes(item.id) && item.type !== TYPE.BOOSTER
   );
 
-  // 2. Filter out burned cards (if burn mode enabled)
+  // 2. Filter by player's enabled warbonds and superstore access
+  if (player.warbonds && player.warbonds.length > 0) {
+    candidates = candidates.filter(item => {
+      // Include items from enabled warbonds
+      if (item.warbond && player.warbonds.includes(item.warbond)) {
+        return true;
+      }
+      // Include superstore items if player has access
+      if (item.superstore && player.includeSuperstore) {
+        return true;
+      }
+      // Exclude items with warbond/superstore tags that aren't accessible
+      return !item.warbond && !item.superstore;
+    });
+  }
+
+  // 3. Filter out burned cards (if burn mode enabled)
   if (gameConfig.burnCards) {
     candidates = candidates.filter(item => !burnedCards.includes(item.id));
   }
 
-  // 3. Filter by global uniqueness (if enabled)
+  // 4. Filter by global uniqueness (if enabled)
   if (gameConfig.globalUniqueness) {
     const allPlayerInventories = allPlayers.flatMap(p => p.inventory);
     candidates = candidates.filter(item => !allPlayerInventories.includes(item.id));
   }
 
-  // 4. Faction Weighting
+  // 5. Faction Weighting
   const weightedCandidates = candidates.map(item => {
     let weight = 10; // Base weight
 

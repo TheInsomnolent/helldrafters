@@ -1,4 +1,4 @@
-import { MASTER_DB } from './items';
+import { MASTER_DB } from './itemsByWarbond';
 import { RARITY, TYPE, TAGS } from '../constants/types';
 
 describe('Data - Items Database', () => {
