@@ -124,6 +124,22 @@ export function gameReducer(state, action) {
         )
       };
 
+    case types.ADD_ARMOR_COMBO_TO_PLAYER:
+      return {
+        ...state,
+        players: state.players.map((player, idx) =>
+          idx === action.payload.playerIndex
+            ? {
+                ...player,
+                inventory: [
+                  ...player.inventory,
+                  ...action.payload.armorCombo.items.map(armor => armor.id)
+                ]
+              }
+            : player
+        )
+      };
+
     case types.SET_PLAYER_WARBONDS:
       return {
         ...state,

@@ -41,6 +41,7 @@ export const HELLDIVERS_MOBILIZE_ITEMS = [
   { id: 'a_cm14', name: 'CM-14 Physician', type: TYPE.ARMOR, rarity: RARITY.UNCOMMON, tags: [], warbond: 'helldivers_mobilize', passive: ARMOR_PASSIVE.MED_KIT, armorClass: ARMOR_CLASS.MEDIUM },
   { id: 'a_dp11', name: 'DP-11 Champion of the People', type: TYPE.ARMOR, rarity: RARITY.UNCOMMON, tags: [], warbond: 'helldivers_mobilize', passive: ARMOR_PASSIVE.DEMOCRACY_PROTECTS, armorClass: ARMOR_CLASS.MEDIUM },
   { id: 'a_b01', name: 'B-01 Tactical', type: TYPE.ARMOR, rarity: RARITY.COMMON, tags: [], warbond: 'helldivers_mobilize', passive: ARMOR_PASSIVE.EXTRA_PADDING, armorClass: ARMOR_CLASS.MEDIUM },
+  { id: 'a_tr40', name: 'TR-40 Gold Eagle', type: TYPE.ARMOR, rarity: RARITY.COMMON, tags: [], warbond: 'helldivers_mobilize', passive: ARMOR_PASSIVE.EXTRA_PADDING, armorClass: ARMOR_CLASS.MEDIUM },
 
   // BOOSTERS
   { id: 'b_space', name: 'Hellpod Space Optimization', type: TYPE.BOOSTER, rarity: RARITY.RARE, tags: [], warbond: 'helldivers_mobilize' },

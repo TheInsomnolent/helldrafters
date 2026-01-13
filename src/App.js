@@ -7,6 +7,7 @@ import { STARTING_LOADOUT, DIFFICULTY_CONFIG } from './constants/gameConfig';
 import { getItemById } from './utils/itemHelpers';
 import { getDraftHandSize, getWeightedPool, generateDraftHand } from './utils/draftHelpers';
 import { areStratagemSlotsFull, getFirstEmptyStratagemSlot } from './utils/loadoutHelpers';
+import { getArmorComboDisplayName } from './utils/itemHelpers';
 import { processAllOutcomes, canAffordChoice, formatOutcome, formatOutcomes, needsPlayerChoice } from './systems/events/eventProcessor';
 import { exportGameStateToFile, parseSaveFile, normalizeLoadedState } from './systems/persistence/saveManager';
 import GameHeader from './components/GameHeader';
@@ -225,30 +226,43 @@ export default function HelldiversRoguelite() {
     const updatedPlayers = [...players];
     const player = updatedPlayers[currentPlayerIdx];
 
-    // Special handling for stratagems when slots are full
-    if (item.type === TYPE.STRATAGEM) {
-      if (areStratagemSlotsFull(player.loadout)) {
-        // All slots full - show replacement UI
-        dispatch(actions.updateDraftState({
-          pendingStratagem: item
-        }));
-        return; // Don't proceed with pick yet
+    // Check if this is an armor combo
+    const isArmorCombo = item && item.items && item.passive && item.armorClass;
+
+    if (isArmorCombo) {
+      // Add all armor variants to inventory
+      item.items.forEach(armor => {
+        player.inventory.push(armor.id);
+      });
+      
+      // Auto-equip the first armor in the combo
+      player.loadout.armor = item.items[0].id;
+    } else {
+      // Special handling for stratagems when slots are full
+      if (item.type === TYPE.STRATAGEM) {
+        if (areStratagemSlotsFull(player.loadout)) {
+          // All slots full - show replacement UI
+          dispatch(actions.updateDraftState({
+            pendingStratagem: item
+          }));
+          return; // Don't proceed with pick yet
+        }
       }
-    }
 
-    // Add to inventory
-    player.inventory.push(item.id);
+      // Add to inventory
+      player.inventory.push(item.id);
 
-    // Auto-Equip Logic
-    if (item.type === TYPE.PRIMARY) player.loadout.primary = item.id;
-    if (item.type === TYPE.SECONDARY) player.loadout.secondary = item.id;
-    if (item.type === TYPE.GRENADE) player.loadout.grenade = item.id;
-    if (item.type === TYPE.ARMOR) player.loadout.armor = item.id;
-    if (item.type === TYPE.BOOSTER) player.loadout.booster = item.id;
-    if (item.type === TYPE.STRATAGEM) {
-      // Find empty slot (we know it exists because we checked above)
-      const emptySlot = getFirstEmptyStratagemSlot(player.loadout);
-      player.loadout.stratagems[emptySlot] = item.id;
+      // Auto-Equip Logic
+      if (item.type === TYPE.PRIMARY) player.loadout.primary = item.id;
+      if (item.type === TYPE.SECONDARY) player.loadout.secondary = item.id;
+      if (item.type === TYPE.GRENADE) player.loadout.grenade = item.id;
+      if (item.type === TYPE.ARMOR) player.loadout.armor = item.id;
+      if (item.type === TYPE.BOOSTER) player.loadout.booster = item.id;
+      if (item.type === TYPE.STRATAGEM) {
+        // Find empty slot (we know it exists because we checked above)
+        const emptySlot = getFirstEmptyStratagemSlot(player.loadout);
+        player.loadout.stratagems[emptySlot] = item.id;
+      }
     }
 
     dispatch(actions.setPlayers(updatedPlayers));
@@ -326,10 +340,28 @@ export default function HelldiversRoguelite() {
   const removeCardFromDraft = (cardToRemove) => {
     // Remove single card and replace it with a new one
     const player = players[draftState.activePlayerIndex];
-    const pool = getWeightedPool(player, currentDiff);
+    const pool = getWeightedPool(player, currentDiff, gameConfig, burnedCards, players);
+    
+    // Check if the card to remove is an armor combo
+    const isRemovingArmorCombo = cardToRemove && cardToRemove.items && cardToRemove.passive;
     
     // Filter out cards already in the current hand
-    const availablePool = pool.filter(c => !draftState.roundCards.some(card => card.id === c.item.id));
+    const availablePool = pool.filter(poolEntry => {
+      // Check if this pool entry matches any card in hand
+      if (poolEntry.isArmorCombo) {
+        // For armor combos, compare passive and armorClass
+        return !draftState.roundCards.some(card => 
+          card.passive === poolEntry.armorCombo.passive && 
+          card.armorClass === poolEntry.armorCombo.armorClass
+        );
+      } else {
+        // For regular items, compare ID
+        return !draftState.roundCards.some(card => 
+          card.id === poolEntry.item?.id || 
+          (card.items && card.items.some(armor => armor.id === poolEntry.item?.id))
+        );
+      }
+    });
     
     if (availablePool.length === 0) {
       alert('No more unique cards available!');
@@ -343,11 +375,11 @@ export default function HelldiversRoguelite() {
     
     for (let j = 0; j < availablePool.length; j++) {
       const poolItem = availablePool[j];
-      if (!poolItem || !poolItem.item) continue;
+      if (!poolItem) continue;
       
       randomNum -= poolItem.weight;
       if (randomNum <= 0) {
-        newCard = poolItem.item;
+        newCard = poolItem.isArmorCombo ? poolItem.armorCombo : poolItem.item;
         break;
       }
     }
@@ -355,12 +387,32 @@ export default function HelldiversRoguelite() {
     if (newCard) {
       // Add to burned cards if burn mode enabled
       if (gameConfig.burnCards) {
-        dispatch(actions.addBurnedCard(newCard.id));
+        if (newCard.items && newCard.passive) {
+          // Armor combo - burn all variants
+          newCard.items.forEach(armor => dispatch(actions.addBurnedCard(armor.id)));
+        } else {
+          // Regular item
+          dispatch(actions.addBurnedCard(newCard.id));
+        }
       }
       
-      // Replace the card
+      // Replace the card (compare properly for both armor combos and regular items)
       dispatch(actions.updateDraftState({
-        roundCards: draftState.roundCards.map(card => card.id === cardToRemove.id ? newCard : card)
+        roundCards: draftState.roundCards.map(card => {
+          // Check if this is the card to remove
+          if (isRemovingArmorCombo) {
+            // Compare armor combos by passive and armorClass
+            if (card.passive === cardToRemove.passive && card.armorClass === cardToRemove.armorClass) {
+              return newCard;
+            }
+          } else {
+            // Compare regular items by ID
+            if (card.id === cardToRemove.id) {
+              return newCard;
+            }
+          }
+          return card;
+        })
       }));
     }
   };
@@ -386,95 +438,118 @@ export default function HelldiversRoguelite() {
     }}>{rarity}</span>;
   };
 
-  const ItemCard = ({ item, onSelect, onRemove }) => (
-    <div 
-      style={{
-        position: 'relative',
-        backgroundColor: '#283548',
-        border: '2px solid rgba(100, 116, 139, 0.5)',
-        padding: '16px',
-        borderRadius: '8px',
-        transition: 'all 0.2s',
-        display: 'flex',
-        flexDirection: 'column',
-        height: '256px'
-      }}
-    >
-      {onRemove && (
-        <button
-          onClick={(e) => {
-            e.stopPropagation();
-            onRemove(item);
-          }}
-          style={{
-            position: 'absolute',
-            top: '8px',
-            right: '8px',
-            width: '28px',
-            height: '28px',
-            borderRadius: '4px',
-            backgroundColor: 'rgba(239, 68, 68, 0.8)',
-            color: 'white',
-            border: 'none',
-            cursor: 'pointer',
-            fontSize: '18px',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            padding: 0,
-            zIndex: 10
-          }}
-          onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'rgba(239, 68, 68, 1)'}
-          onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'rgba(239, 68, 68, 0.8)'}
-          title="Remove this card"
-        >
-          ×
-        </button>
-      )}
+  const ItemCard = ({ item, onSelect, onRemove }) => {
+    // Check if this is an armor combo (has 'items' array and 'passive' property)
+    const isArmorCombo = item && item.items && item.passive && item.armorClass;
+    
+    // For armor combos, use the first item as representative for display
+    const displayItem = isArmorCombo ? item.items[0] : item;
+    
+    // For armor combos, create a slash-delimited name
+    const displayName = isArmorCombo 
+      ? item.items.map(armor => armor.name).join(' / ')
+      : item.name;
+    
+    return (
       <div 
-        onClick={() => onSelect && onSelect(item)}
         style={{
-          cursor: onSelect ? 'pointer' : 'default',
-          flexGrow: 1,
+          position: 'relative',
+          backgroundColor: '#283548',
+          border: '2px solid rgba(100, 116, 139, 0.5)',
+          padding: '16px',
+          borderRadius: '8px',
+          transition: 'all 0.2s',
           display: 'flex',
           flexDirection: 'column',
-          paddingTop: onRemove ? '32px' : '0'
+          height: '256px'
         }}
-        onMouseEnter={(e) => onSelect && (e.currentTarget.parentElement.style.borderColor = '#F5C642')}
-        onMouseLeave={(e) => onSelect && (e.currentTarget.parentElement.style.borderColor = 'rgba(100, 116, 139, 0.5)')}
       >
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '8px' }}>
-          <RarityBadge rarity={item.rarity} />
-          <div style={{ color: '#F5C642', fontSize: '12px', fontFamily: 'monospace', marginRight: onRemove ? '8px' : '0' }}>{item.type}</div>
-        </div>
-        
-        <h3 style={{ color: '#F5C642', fontWeight: 'bold', fontSize: '18px', lineHeight: '1.2', marginBottom: '8px' }}>{item.name}</h3>
-        
-        <div style={{ flexGrow: 1 }}>
-          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px', marginTop: '8px' }}>
-            {item.tags.map(tag => (
-              <span key={tag} style={{
-                fontSize: '10px',
-                backgroundColor: 'rgba(51, 65, 85, 0.5)',
-                color: '#cbd5e1',
-                padding: '2px 4px',
-                borderRadius: '2px',
-                border: '1px solid rgba(71, 85, 105, 0.5)'
-              }}>
-                {tag}
-              </span>
-            ))}
+        {onRemove && (
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              onRemove(item);
+            }}
+            style={{
+              position: 'absolute',
+              top: '8px',
+              right: '8px',
+              width: '28px',
+              height: '28px',
+              borderRadius: '4px',
+              backgroundColor: 'rgba(239, 68, 68, 0.8)',
+              color: 'white',
+              border: 'none',
+              cursor: 'pointer',
+              fontSize: '18px',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              padding: 0,
+              zIndex: 10
+            }}
+            onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'rgba(239, 68, 68, 1)'}
+            onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'rgba(239, 68, 68, 0.8)'}
+            title="Remove this card"
+          >
+            ×
+          </button>
+        )}
+        <div 
+          onClick={() => onSelect && onSelect(item)}
+          style={{
+            cursor: onSelect ? 'pointer' : 'default',
+            flexGrow: 1,
+            display: 'flex',
+            flexDirection: 'column',
+            paddingTop: onRemove ? '32px' : '0'
+          }}
+          onMouseEnter={(e) => onSelect && (e.currentTarget.parentElement.style.borderColor = '#F5C642')}
+          onMouseLeave={(e) => onSelect && (e.currentTarget.parentElement.style.borderColor = 'rgba(100, 116, 139, 0.5)')}
+        >
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '8px' }}>
+            <RarityBadge rarity={displayItem.rarity} />
+            <div style={{ color: '#F5C642', fontSize: '12px', fontFamily: 'monospace', marginRight: onRemove ? '8px' : '0' }}>
+              {displayItem.type}{isArmorCombo ? ` (×${item.items.length})` : ''}
+            </div>
+          </div>
+          
+          <h3 style={{ 
+            color: '#F5C642', 
+            fontWeight: 'bold', 
+            fontSize: isArmorCombo ? '14px' : '18px', 
+            lineHeight: '1.2', 
+            marginBottom: '8px' 
+          }}>
+            {displayName}
+          </h3>
+          
+          <div style={{ flexGrow: 1 }}>
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px', marginTop: '8px' }}>
+              {displayItem.tags.map(tag => (
+                <span key={tag} style={{
+                  fontSize: '10px',
+                  backgroundColor: 'rgba(51, 65, 85, 0.5)',
+                  color: '#cbd5e1',
+                  padding: '2px 4px',
+                  borderRadius: '2px',
+                  border: '1px solid rgba(71, 85, 105, 0.5)'
+                }}>
+                  {tag}
+                </span>
+              ))}
+            </div>
+          </div>
+          
+          <div style={{ marginTop: '16px', paddingTop: '16px', borderTop: '1px solid rgba(71, 85, 105, 0.5)', textAlign: 'center' }}>
+            <span style={{ color: '#F5C642', fontWeight: 'bold', textTransform: 'uppercase', letterSpacing: '2px', fontSize: '14px' }}>
+              REQUISITION
+            </span>
           </div>
         </div>
-        
-        <div style={{ marginTop: '16px', paddingTop: '16px', borderTop: '1px solid rgba(71, 85, 105, 0.5)', textAlign: 'center' }}>
-          <span style={{ color: '#F5C642', fontWeight: 'bold', textTransform: 'uppercase', letterSpacing: '2px', fontSize: '14px' }}>
-            REQUISITION
-          </span>
-        </div>
       </div>
-    </div>
-  );
+    );
+  };
 
   // --- RENDER PHASES ---
 
@@ -1427,7 +1502,7 @@ export default function HelldiversRoguelite() {
         {/* PLAYER ROSTER */}
         <div style={{ display: 'grid', gridTemplateColumns: gameConfig.playerCount > 1 ? 'repeat(auto-fit, minmax(400px, 1fr))' : '1fr', gap: '32px', marginBottom: '48px' }}>
           {players.map(player => (
-            <LoadoutDisplay key={player.id} player={player} getItemById={getItemById} />
+            <LoadoutDisplay key={player.id} player={player} getItemById={getItemById} getArmorComboDisplayName={getArmorComboDisplayName} />
           ))}
         </div>
 

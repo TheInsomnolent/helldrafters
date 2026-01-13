@@ -438,29 +438,62 @@ function WarbondCard({ warbond, selected, onToggle, disabled = false }) {
         }
       }}
     >
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '12px' }}>
-        <div style={{ flex: 1, minWidth: 0 }}>
-          <div style={{
-            fontWeight: 'bold',
-            fontSize: '14px',
-            color: selected ? getTextColor() : COLORS.TEXT_SECONDARY,
-            textTransform: 'uppercase',
-            letterSpacing: '0.05em',
-            marginBottom: '4px',
-            whiteSpace: 'nowrap',
-            overflow: 'hidden',
-            textOverflow: 'ellipsis'
-          }}>
-            {warbond.name}
+      <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+        {/* Warbond Info */}
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '12px' }}>
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <div style={{
+              fontWeight: 'bold',
+              fontSize: '14px',
+              color: selected ? getTextColor() : COLORS.TEXT_SECONDARY,
+              textTransform: 'uppercase',
+              letterSpacing: '0.05em',
+              marginBottom: '4px',
+              whiteSpace: 'nowrap',
+              overflow: 'hidden',
+              textOverflow: 'ellipsis'
+            }}>
+              {warbond.name}
+            </div>
+            <div style={{ fontSize: '10px', color: COLORS.TEXT_DISABLED, fontWeight: 'bold', textTransform: 'uppercase', letterSpacing: '0.1em' }}>
+              {warbond.type === WARBOND_TYPE.STANDARD && '● FREE'}
+              {warbond.type === WARBOND_TYPE.PREMIUM && '● PREMIUM'}
+              {warbond.type === WARBOND_TYPE.LEGENDARY && '● LEGENDARY'}
+            </div>
           </div>
-          <div style={{ fontSize: '10px', color: COLORS.TEXT_DISABLED, fontWeight: 'bold', textTransform: 'uppercase', letterSpacing: '0.1em' }}>
-            {warbond.type === WARBOND_TYPE.STANDARD && '● FREE'}
-            {warbond.type === WARBOND_TYPE.PREMIUM && '● PREMIUM'}
-            {warbond.type === WARBOND_TYPE.LEGENDARY && '● LEGENDARY'}
-          </div>
+          
+          {/* Checkmark */}
+          {selected && (
+            <CheckCircle style={{ color: getTextColor(), flexShrink: 0 }} size={20} />
+          )}
         </div>
-        {selected && (
-          <CheckCircle style={{ color: getTextColor(), flexShrink: 0 }} size={20} />
+        
+        {/* Warbond Image - 16:9 aspect ratio */}
+        {warbond.image && (
+          <div style={{
+            width: '100%',
+            aspectRatio: '16 / 9',
+            borderRadius: '4px',
+            overflow: 'hidden',
+            border: `1px solid ${selected ? getBorderColor() : 'rgba(100, 116, 139, 0.3)'}`,
+            backgroundColor: 'rgba(0, 0, 0, 0.3)'
+          }}>
+            <img
+              src={warbond.image}
+              alt={warbond.name}
+              style={{
+                width: '100%',
+                height: '100%',
+                objectFit: 'contain',
+                backgroundColor: '#000'
+              }}
+              onError={(e) => {
+                // Fallback if image fails to load
+                e.target.style.display = 'none';
+                e.target.parentElement.innerHTML = '<div style="width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; color: #64748b; font-size: 12px; font-weight: bold;">IMAGE UNAVAILABLE</div>';
+              }}
+            />
+          </div>
         )}
       </div>
       {disabled && (

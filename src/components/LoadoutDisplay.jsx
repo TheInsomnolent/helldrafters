@@ -3,7 +3,15 @@ import React from 'react';
 /**
  * Player loadout display component
  */
-export default function LoadoutDisplay({ player, getItemById }) {
+export default function LoadoutDisplay({ player, getItemById, getArmorComboDisplayName }) {
+  // Get the equipped armor
+  const equippedArmor = getItemById(player.loadout.armor);
+  
+  // Display armor combo if we have a helper function and armor is equipped
+  const armorDisplayName = equippedArmor && getArmorComboDisplayName
+    ? getArmorComboDisplayName(equippedArmor.passive, equippedArmor.armorClass, player.inventory)
+    : equippedArmor?.name || 'None';
+  
   return (
     <div style={{ backgroundColor: '#283548', borderRadius: '8px', border: '1px solid rgba(100, 116, 139, 0.5)', overflow: 'hidden' }}>
       <div style={{ backgroundColor: '#1f2937', padding: '12px', borderBottom: '1px solid rgba(100, 116, 139, 0.5)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
@@ -35,7 +43,9 @@ export default function LoadoutDisplay({ player, getItemById }) {
          {/* Armor */}
          <div style={{ gridColumn: 'span 2' }}>
            <div style={{ fontSize: '10px', color: '#64748b', textTransform: 'uppercase', marginBottom: '4px' }}>Armor</div>
-           <div style={{ fontSize: '12px', color: '#cbd5e1', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{getItemById(player.loadout.armor)?.name}</div>
+           <div style={{ fontSize: '12px', color: '#cbd5e1', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={armorDisplayName}>
+             {armorDisplayName}
+           </div>
         </div>
 
          {/* Booster */}

@@ -1,4 +1,4 @@
-import { getItemById, anyItemHasTag } from './itemHelpers';
+import { getItemById, anyItemHasTag, getUniqueArmorCombos, getArmorsByCombo, playerHasAccessToArmorCombo, hasArmorCombo } from './itemHelpers';
 import { RARITY, TAGS, TYPE, FACTION } from '../constants/types';
 import { MASTER_DB } from '../data/itemsByWarbond';
 
@@ -20,7 +20,7 @@ export const getDraftHandSize = (starRating) => {
  * @param {Object} gameConfig - Game configuration
  * @param {string[]} burnedCards - Array of burned card IDs
  * @param {Object[]} allPlayers - All players (for global uniqueness)
- * @returns {Object[]} Array of {item, weight} objects
+ * @returns {Object[]} Array of {item, weight} objects (or {armorCombo, weight} for armor)
  */
 export const getWeightedPool = (player, difficulty, gameConfig, burnedCards = [], allPlayers = []) => {
   // 1. Filter out already owned items and boosters (boosters only come from events)
@@ -55,8 +55,25 @@ export const getWeightedPool = (player, difficulty, gameConfig, burnedCards = []
     candidates = candidates.filter(item => !allPlayerInventories.includes(item.id));
   }
 
-  // 5. Faction Weighting
-  const weightedCandidates = candidates.map(item => {
+  // 5. SPECIAL HANDLING FOR ARMOR: Group by passive/armorClass combos
+  const armorCandidates = candidates.filter(item => item.type === TYPE.ARMOR);
+  const nonArmorCandidates = candidates.filter(item => item.type !== TYPE.ARMOR);
+  
+  // Get unique armor combos
+  const armorCombos = getUniqueArmorCombos(armorCandidates);
+  
+  // Filter out armor combos already owned or not accessible
+  const availableArmorCombos = armorCombos.filter(combo => {
+    // Check if player already has this combo
+    const alreadyOwned = hasArmorCombo(player.inventory, combo.passive, combo.armorClass);
+    if (alreadyOwned) return false;
+    
+    // Check if player has access to at least one armor in this combo
+    return playerHasAccessToArmorCombo(combo, player.warbonds, player.includeSuperstore);
+  });
+
+  // 6. Apply weights to non-armor items
+  const weightedNonArmor = nonArmorCandidates.map(item => {
     let weight = 10; // Base weight
 
     // Rarity Weights
@@ -93,10 +110,31 @@ export const getWeightedPool = (player, difficulty, gameConfig, burnedCards = []
       weight = 0; // Hard lock: Only 1 backpack usually allowed/needed
     }
 
-    return { item, weight };
+    return { item, weight, isArmorCombo: false };
   });
 
-  return weightedCandidates.filter(c => c.weight > 0);
+  // 7. Apply weights to armor combos
+  const weightedArmor = availableArmorCombos.map(combo => {
+    let weight = 10; // Base weight
+    
+    // Use the first item's rarity as representative (all in combo should be similar)
+    const representativeItem = combo.items[0];
+    if (representativeItem.rarity === RARITY.COMMON) weight += 50;
+    if (representativeItem.rarity === RARITY.UNCOMMON) weight += 25;
+    if (representativeItem.rarity === RARITY.RARE) weight += 5;
+    
+    // Apply any armor-specific faction synergy based on tags
+    if (gameConfig.faction === FACTION.BUGS && representativeItem.tags.includes(TAGS.FIRE)) weight += 30;
+    if (gameConfig.faction === FACTION.BOTS && representativeItem.tags.includes(TAGS.PRECISION)) weight += 20;
+    if (gameConfig.faction === FACTION.SQUIDS && representativeItem.tags.includes(TAGS.STUN)) weight += 20;
+    
+    return { armorCombo: combo, weight, isArmorCombo: true };
+  });
+
+  // Combine both pools
+  const combinedPool = [...weightedNonArmor, ...weightedArmor];
+  
+  return combinedPool.filter(c => c.weight > 0);
 };
 
 /**
@@ -107,7 +145,7 @@ export const getWeightedPool = (player, difficulty, gameConfig, burnedCards = []
  * @param {string[]} burnedCards - Array of burned card IDs
  * @param {Object[]} allPlayers - All players
  * @param {Function} onBurnCard - Callback when a card is burned (optional)
- * @returns {Object[]} Array of item objects for the draft hand
+ * @returns {Object[]} Array of item objects or armor combo objects for the draft hand
  */
 export const generateDraftHand = (
   player,
@@ -143,18 +181,27 @@ export const generateDraftHand = (
       const poolItem = pool[j];
       
       // Safety check: ensure pool item exists and has valid structure
-      if (!poolItem || !poolItem.item) {
+      if (!poolItem) {
         console.warn('Invalid pool item at index', j);
         continue;
       }
 
       randomNum -= poolItem.weight;
       if (randomNum <= 0) {
-        hand.push(poolItem.item);
+        // Add either item or armor combo to hand
+        if (poolItem.isArmorCombo) {
+          hand.push(poolItem.armorCombo);
+        } else {
+          hand.push(poolItem.item);
+        }
         
-        // Burn card if enabled
+        // Burn card if enabled (for armor combos, burn the first item as representative)
         if (gameConfig.burnCards && onBurnCard) {
-          onBurnCard(poolItem.item.id);
+          if (poolItem.isArmorCombo) {
+            poolItem.armorCombo.items.forEach(armor => onBurnCard(armor.id));
+          } else {
+            onBurnCard(poolItem.item.id);
+          }
         }
         
         // Remove from pool to avoid duplicates in same hand

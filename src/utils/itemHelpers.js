@@ -77,3 +77,103 @@ export const getItemsWithTag = (tag) => {
 export const countItemsByType = (inventory, type) => {
   return getItemsByIds(inventory).filter(item => item.type === type).length;
 };
+
+/**
+ * Get unique armor combinations (passive + armorClass) from a list of armor items
+ * @param {Object[]} armorItems - Array of armor item objects
+ * @returns {Object[]} Array of unique {passive, armorClass, items: []} objects
+ */
+export const getUniqueArmorCombos = (armorItems) => {
+  const comboMap = new Map();
+  
+  armorItems.forEach(armor => {
+    if (!armor.passive || !armor.armorClass) return;
+    
+    const key = `${armor.passive}|${armor.armorClass}`;
+    
+    if (!comboMap.has(key)) {
+      comboMap.set(key, {
+        passive: armor.passive,
+        armorClass: armor.armorClass,
+        items: []
+      });
+    }
+    
+    comboMap.get(key).items.push(armor);
+  });
+  
+  return Array.from(comboMap.values());
+};
+
+/**
+ * Get all armor items matching a specific passive/armorClass combination
+ * @param {string} passive - The armor passive
+ * @param {string} armorClass - The armor class
+ * @returns {Object[]} Array of matching armor items
+ */
+export const getArmorsByCombo = (passive, armorClass) => {
+  return MASTER_DB.filter(item => 
+    item.type === 'Armor' && 
+    item.passive === passive && 
+    item.armorClass === armorClass
+  );
+};
+
+/**
+ * Check if player has access to any armor in a combo (based on warbonds)
+ * @param {Object} combo - Armor combo object {passive, armorClass, items}
+ * @param {string[]} playerWarbonds - Player's unlocked warbonds
+ * @param {boolean} includeSuperstore - Whether player has superstore access
+ * @returns {boolean} True if player can access at least one armor in this combo
+ */
+export const playerHasAccessToArmorCombo = (combo, playerWarbonds = [], includeSuperstore = false) => {
+  return combo.items.some(armor => {
+    // Check warbond access
+    if (armor.warbond && playerWarbonds.includes(armor.warbond)) {
+      return true;
+    }
+    // Check superstore access
+    if (armor.superstore && includeSuperstore) {
+      return true;
+    }
+    // Items without warbond/superstore are base game (always accessible)
+    return !armor.warbond && !armor.superstore;
+  });
+};
+
+/**
+ * Check if inventory contains any armor from a specific combo
+ * @param {string[]} inventory - Array of item IDs
+ * @param {string} passive - Armor passive
+ * @param {string} armorClass - Armor class
+ * @returns {boolean} True if inventory has at least one armor with this combo
+ */
+export const hasArmorCombo = (inventory, passive, armorClass) => {
+  return inventory.some(itemId => {
+    const item = getItemById(itemId);
+    return item && 
+           item.type === 'Armor' && 
+           item.passive === passive && 
+           item.armorClass === armorClass;
+  });
+};
+
+/**
+ * Get display name for armor combo (slash-delimited list of armor names)
+ * @param {string} passive - Armor passive
+ * @param {string} armorClass - Armor class
+ * @param {string[]} inventory - Player's inventory (to show only owned armors)
+ * @returns {string} Slash-delimited armor names
+ */
+export const getArmorComboDisplayName = (passive, armorClass, inventory = null) => {
+  const armors = getArmorsByCombo(passive, armorClass);
+  
+  // If inventory provided, filter to only owned armors
+  const displayArmors = inventory 
+    ? armors.filter(armor => inventory.includes(armor.id))
+    : armors;
+  
+  if (displayArmors.length === 0) return 'Unknown Armor';
+  
+  return displayArmors.map(armor => armor.name).join(' / ');
+};

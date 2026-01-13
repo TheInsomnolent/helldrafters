@@ -78,6 +78,11 @@ export const addItemToPlayer = (playerIndex, itemId) => ({
   payload: { playerIndex, itemId }
 });
 
+export const addArmorComboToPlayer = (playerIndex, armorCombo) => ({
+  type: types.ADD_ARMOR_COMBO_TO_PLAYER,
+  payload: { playerIndex, armorCombo }
+});
+
 export const setPlayerWarbonds = (playerIndex, warbonds) => ({
   type: types.SET_PLAYER_WARBONDS,
   payload: { playerIndex, warbonds }
