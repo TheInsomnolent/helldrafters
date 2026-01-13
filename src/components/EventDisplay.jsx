@@ -24,9 +24,12 @@ export default function EventDisplay({
   eventStratagemSelection,
   eventTargetPlayerSelection,
   eventTargetStratagemSelection,
+  eventBoosterDraft,
+  eventBoosterSelection,
   onStratagemSelection,
   onTargetPlayerSelection,
   onTargetStratagemSelection,
+  onBoosterSelection,
   onConfirmSelections
 }) {
   // Helper to get item name by ID
@@ -83,6 +86,7 @@ export default function EventDisplay({
     onStratagemSelection(null);
     onTargetPlayerSelection(null);
     onTargetStratagemSelection(null);
+    onBoosterSelection(null);
   };
 
   // Get available stratagems from the active player
@@ -347,8 +351,31 @@ export default function EventDisplay({
 
                 {/* Target Player Selection */}
                 <div style={{ marginBottom: '20px' }}>
-                  <div style={{ fontSize: '14px', marginBottom: '8px', color: '#b0b0b0' }}>
-                    Target Helldiver:
+                  <div style={{ fontSize: '14px', marginBottom: '8px', color: '#b0b0b0', display: 'flex', alignItems: 'center', gap: '12px' }}>
+                    <span>Target Helldiver:</span>
+                    {eventTargetPlayerSelection !== null && (
+                      <button
+                        onClick={() => {
+                          onTargetPlayerSelection(null);
+                          onTargetStratagemSelection(null);
+                        }}
+                        style={{
+                          padding: '4px 12px',
+                          fontSize: '12px',
+                          fontWeight: 'bold',
+                          backgroundColor: '#6b7280',
+                          color: '#fff',
+                          border: 'none',
+                          borderRadius: '4px',
+                          cursor: 'pointer',
+                          transition: 'all 0.2s'
+                        }}
+                        onMouseEnter={(e) => e.target.style.backgroundColor = '#4b5563'}
+                        onMouseLeave={(e) => e.target.style.backgroundColor = '#6b7280'}
+                      >
+                        ← Change Target
+                      </button>
+                    )}
                   </div>
                   <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', justifyContent: 'center' }}>
                     {otherPlayers.map(({ player, idx }) => (
@@ -454,10 +481,137 @@ export default function EventDisplay({
             </div>
           )}
 
+          {/* Booster Selection (when booster draft is available) */}
+          {eventBoosterDraft && eventBoosterDraft.length > 0 && (
+            <div style={{ marginBottom: '24px' }}>
+              <div style={{ 
+                backgroundColor: '#1f2937', 
+                border: '2px solid #F5C642',
+                borderRadius: '8px',
+                padding: '24px',
+                marginBottom: '16px'
+              }}>
+                <div style={{ fontSize: '18px', marginBottom: '16px', color: '#F5C642', textAlign: 'center', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '12px' }}>
+                  <span>Select a Booster:</span>
+                  {needsPlayerChoice(currentEvent) && eventPlayerChoice !== null && (
+                    <button
+                      onClick={() => {
+                        onPlayerChoice(null);
+                        onBoosterSelection(null);
+                      }}
+                      style={{
+                        padding: '6px 14px',
+                        fontSize: '12px',
+                        fontWeight: 'bold',
+                        backgroundColor: '#6b7280',
+                        color: '#fff',
+                        border: 'none',
+                        borderRadius: '4px',
+                        cursor: 'pointer',
+                        transition: 'all 0.2s'
+                      }}
+                      onMouseEnter={(e) => e.target.style.backgroundColor = '#4b5563'}
+                      onMouseLeave={(e) => e.target.style.backgroundColor = '#6b7280'}
+                    >
+                      ← Change Helldiver
+                    </button>
+                  )}
+                </div>
+
+                {/* Booster Selection Grid */}
+                <div style={{ marginBottom: '20px' }}>
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))', gap: '12px' }}>
+                    {eventBoosterDraft.map((boosterId, idx) => {
+                      const boosterName = getItemName(boosterId);
+                      return (
+                        <button
+                          key={idx}
+                          onClick={() => onBoosterSelection(boosterId)}
+                          style={{
+                            padding: '16px',
+                            fontSize: '15px',
+                            backgroundColor: eventBoosterSelection === boosterId ? '#F5C642' : '#283548',
+                            color: eventBoosterSelection === boosterId ? '#0f1419' : '#e0e0e0',
+                            border: '2px solid ' + (eventBoosterSelection === boosterId ? '#F5C642' : '#555'),
+                            borderRadius: '4px',
+                            cursor: 'pointer',
+                            fontWeight: eventBoosterSelection === boosterId ? 'bold' : 'normal',
+                            transition: 'all 0.2s',
+                            textAlign: 'center'
+                          }}
+                          onMouseEnter={(e) => {
+                            if (eventBoosterSelection !== boosterId) {
+                              e.target.style.backgroundColor = '#374151';
+                              e.target.style.borderColor = '#F5C642';
+                            }
+                          }}
+                          onMouseLeave={(e) => {
+                            if (eventBoosterSelection !== boosterId) {
+                              e.target.style.backgroundColor = '#283548';
+                              e.target.style.borderColor = '#555';
+                            }
+                          }}
+                        >
+                          {boosterName}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+
+                {/* Confirm/Cancel Buttons */}
+                <div style={{ display: 'flex', gap: '12px', justifyContent: 'center' }}>
+                  <button
+                    onClick={onAutoContinue}
+                    disabled={!eventBoosterSelection}
+                    style={{
+                      padding: '12px 32px',
+                      fontSize: '16px',
+                      fontWeight: 'bold',
+                      backgroundColor: eventBoosterSelection ? '#4ade80' : '#555',
+                      color: eventBoosterSelection ? '#0f1419' : '#888',
+                      border: 'none',
+                      borderRadius: '4px',
+                      cursor: eventBoosterSelection ? 'pointer' : 'not-allowed',
+                      transition: 'all 0.2s'
+                    }}
+                    onMouseEnter={(e) => eventBoosterSelection && (e.target.style.backgroundColor = '#22c55e')}
+                    onMouseLeave={(e) => eventBoosterSelection && (e.target.style.backgroundColor = '#4ade80')}
+                  >
+                    CONFIRM
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
+
           {/* Choices */}
           {currentEvent.type === EVENT_TYPES.CHOICE && (!needsPlayerChoice(currentEvent) || eventPlayerChoice !== null) && !selectedChoice && (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-              {currentEvent.choices.map((choice, idx) => {
+            <>
+              {needsPlayerChoice(currentEvent) && eventPlayerChoice !== null && (
+                <div style={{ marginBottom: '16px', textAlign: 'center' }}>
+                  <button
+                    onClick={() => onPlayerChoice(null)}
+                    style={{
+                      padding: '8px 16px',
+                      fontSize: '13px',
+                      fontWeight: 'bold',
+                      backgroundColor: '#6b7280',
+                      color: '#fff',
+                      border: 'none',
+                      borderRadius: '4px',
+                      cursor: 'pointer',
+                      transition: 'all 0.2s'
+                    }}
+                    onMouseEnter={(e) => e.target.style.backgroundColor = '#4b5563'}
+                    onMouseLeave={(e) => e.target.style.backgroundColor = '#6b7280'}
+                  >
+                    ← Change Selected Helldiver
+                  </button>
+                </div>
+              )}
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                {currentEvent.choices.map((choice, idx) => {
                 const affordable = canAffordChoice(choice, requisition);
                 const outcomeText = formatOutcomes(choice.outcomes);
                 const reqCost = choice.requiresRequisition;
@@ -508,6 +662,7 @@ export default function EventDisplay({
                 );
               })}
             </div>
+            </>
           )}
 
           {/* Random/Beneficial/Detrimental events auto-proceed */}

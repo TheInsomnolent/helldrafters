@@ -109,12 +109,60 @@ describe('Systems - Event Processor', () => {
       expect(updates.currentDiff).toBe(3);
     });
 
-    it('should grant booster to chosen player', () => {
+    it('should generate booster draft for selection', () => {
       const outcome = { type: OUTCOME_TYPES.GAIN_BOOSTER, targetPlayer: 'choose' };
       const updates = processEventOutcome(outcome, {}, mockState);
       
-      expect(updates.players).toBeDefined();
-      expect(updates.players[0].loadout.booster).toBeTruthy();
+      expect(updates.needsBoosterSelection).toBe(true);
+      expect(updates.boosterDraft).toBeDefined();
+      expect(Array.isArray(updates.boosterDraft)).toBe(true);
+      expect(updates.boosterOutcome).toBeDefined();
+    });
+
+    it('should filter out boosters already owned by players', () => {
+      const stateWithBooster = {
+        ...mockState,
+        players: [
+          { ...mockState.players[0], loadout: { ...mockState.players[0].loadout, booster: 'b_stamina' } },
+          { id: 2, name: 'Helldiver 2', inventory: [], loadout: { primary: null, secondary: null, grenade: null, armor: null, booster: 'b_hellpod', stratagems: [null, null, null, null] } }
+        ]
+      };
+      const outcome = { type: OUTCOME_TYPES.GAIN_BOOSTER, targetPlayer: 'choose' };
+      const updates = processEventOutcome(outcome, {}, stateWithBooster);
+      
+      expect(updates.boosterDraft).toBeDefined();
+      expect(updates.boosterDraft).not.toContain('b_stamina');
+      expect(updates.boosterDraft).not.toContain('b_hellpod');
+    });
+
+    it('should filter out burned boosters when burn mode is enabled', () => {
+      const stateWithBurn = {
+        ...mockState,
+        gameConfig: { ...mockState.gameConfig, burnCards: true },
+        burnedCards: ['b_stamina', 'b_hellpod']
+      };
+      const outcome = { type: OUTCOME_TYPES.GAIN_BOOSTER, targetPlayer: 'choose' };
+      const updates = processEventOutcome(outcome, {}, stateWithBurn);
+      
+      expect(updates.boosterDraft).toBeDefined();
+      expect(updates.boosterDraft).not.toContain('b_stamina');
+      expect(updates.boosterDraft).not.toContain('b_hellpod');
+    });
+
+    it('should not filter burned cards when burn mode is disabled', () => {
+      const stateWithoutBurn = {
+        ...mockState,
+        gameConfig: { ...mockState.gameConfig, burnCards: false },
+        burnedCards: ['b_stamina']
+      };
+      const outcome = { type: OUTCOME_TYPES.GAIN_BOOSTER, targetPlayer: 'choose' };
+      const updates = processEventOutcome(outcome, {}, stateWithoutBurn);
+      
+      // Since burnCards is false, the booster draft should not be affected by burnedCards
+      // We can't guarantee b_stamina will be in the draft (it's random), but we can ensure
+      // the draft generation succeeds and produces results
+      expect(updates.boosterDraft).toBeDefined();
+      expect(Array.isArray(updates.boosterDraft)).toBe(true);
     });
 
     it('should redraft player inventory', () => {

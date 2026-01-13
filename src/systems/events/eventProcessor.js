@@ -13,7 +13,7 @@ import { getFirstEmptyStratagemSlot } from '../../utils/loadoutHelpers';
  * @returns {Object} State updates to apply
  */
 export const processEventOutcome = (outcome, choice, state, selections = {}) => {
-  const { players, eventPlayerChoice, requisition, lives, currentDiff, gameConfig } = state;
+  const { players, eventPlayerChoice, requisition, lives, currentDiff, gameConfig, burnedCards } = state;
   const updates = {};
 
   switch (outcome.type) {
@@ -69,7 +69,10 @@ export const processEventOutcome = (outcome, choice, state, selections = {}) => 
       break;
 
     case OUTCOME_TYPES.GAIN_BOOSTER:
-      updates.players = applyGainBooster(players, outcome, eventPlayerChoice);
+      // Generate booster draft instead of directly applying
+      updates.needsBoosterSelection = true;
+      updates.boosterDraft = generateBoosterDraft(players, gameConfig, state.burnedCards || []);
+      updates.boosterOutcome = outcome;
       break;
 
     case OUTCOME_TYPES.LOSE_ALL_BUT_ONE_LIFE:
@@ -169,7 +172,69 @@ export const processAllOutcomes = (outcomes, choice, state, selections = {}) => 
 };
 
 /**
- * Apply gain booster outcome
+ * Generate a draft of boosters for selection
+ * @param {Array} players - Array of player objects
+ * @param {Object} gameConfig - Game configuration
+ * @param {Array} burnedCards - Array of burned card IDs
+ * @returns {Array} Array of 2 random booster IDs
+ */
+const generateBoosterDraft = (players = [], gameConfig = {}, burnedCards = []) => {
+  let boosters = MASTER_DB.filter(item => item.type === TYPE.BOOSTER);
+  if (boosters.length === 0) return [];
+  
+  // Filter out boosters that any player already has (globally unique)
+  const existingBoosters = new Set();
+  players.forEach(player => {
+    if (player.loadout.booster) {
+      existingBoosters.add(player.loadout.booster);
+    }
+  });
+  boosters = boosters.filter(b => !existingBoosters.has(b.id));
+  
+  // Filter out burned cards if burn mode is enabled
+  if (gameConfig.burnCards && burnedCards.length > 0) {
+    boosters = boosters.filter(b => !burnedCards.includes(b.id));
+  }
+  
+  if (boosters.length === 0) return [];
+  
+  // Shuffle and take 2
+  const shuffled = [...boosters].sort(() => Math.random() - 0.5);
+  return shuffled.slice(0, Math.min(2, shuffled.length)).map(b => b.id);
+};
+
+/**
+ * Apply gain booster outcome with selection
+ * @param {Array} players - Array of player objects
+ * @param {Object} outcome - The outcome object
+ * @param {number} eventPlayerChoice - The player index
+ * @param {string} selectedBoosterId - The selected booster ID
+ */
+export const applyGainBoosterWithSelection = (players, outcome, eventPlayerChoice, selectedBoosterId) => {
+  if (!selectedBoosterId) return players;
+
+  if (outcome.targetPlayer === 'choose' && eventPlayerChoice !== null) {
+    const newPlayers = [...players];
+    newPlayers[eventPlayerChoice].loadout.booster = selectedBoosterId;
+    if (!newPlayers[eventPlayerChoice].inventory.includes(selectedBoosterId)) {
+      newPlayers[eventPlayerChoice].inventory.push(selectedBoosterId);
+    }
+    return newPlayers;
+  } else if (!outcome.targetPlayer || outcome.targetPlayer === 'all') {
+    return players.map(p => ({
+      ...p,
+      loadout: { ...p.loadout, booster: selectedBoosterId },
+      inventory: p.inventory.includes(selectedBoosterId) 
+        ? p.inventory 
+        : [...p.inventory, selectedBoosterId]
+    }));
+  }
+
+  return players;
+};
+
+/**
+ * Apply gain booster outcome (legacy - for random selection fallback)
  */
 const applyGainBooster = (players, outcome, eventPlayerChoice) => {
   const boosters = MASTER_DB.filter(item => item.type === TYPE.BOOSTER);

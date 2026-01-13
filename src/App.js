@@ -8,7 +8,7 @@ import { getItemById } from './utils/itemHelpers';
 import { getDraftHandSize, getWeightedPool, generateDraftHand } from './utils/draftHelpers';
 import { areStratagemSlotsFull, getFirstEmptyStratagemSlot } from './utils/loadoutHelpers';
 import { getArmorComboDisplayName } from './utils/itemHelpers';
-import { processAllOutcomes, canAffordChoice, formatOutcome, formatOutcomes, needsPlayerChoice } from './systems/events/eventProcessor';
+import { processAllOutcomes, canAffordChoice, formatOutcome, formatOutcomes, needsPlayerChoice, applyGainBoosterWithSelection } from './systems/events/eventProcessor';
 import { exportGameStateToFile, parseSaveFile, normalizeLoadedState } from './systems/persistence/saveManager';
 import GameHeader from './components/GameHeader';
 import EventDisplay from './components/EventDisplay';
@@ -53,6 +53,8 @@ export default function HelldiversRoguelite() {
     eventStratagemSelection,
     eventTargetPlayerSelection,
     eventTargetStratagemSelection,
+    eventBoosterDraft,
+    eventBoosterSelection,
     seenEvents
   } = state;
   
@@ -1351,8 +1353,17 @@ export default function HelldiversRoguelite() {
         requisition,
         lives,
         currentDiff,
-        gameConfig
+        gameConfig,
+        burnedCards
       }, selections);
+
+      // Check if we need booster selection
+      if (updates.needsBoosterSelection && updates.boosterDraft) {
+        dispatch(actions.setEventBoosterDraft(updates.boosterDraft));
+        // Store the outcome for later application
+        window.__boosterOutcome = updates.boosterOutcome;
+        return; // Don't close event yet, wait for booster selection
+      }
 
       // Apply state updates
       if (updates.requisition !== undefined) dispatch(actions.setRequisition(updates.requisition));
@@ -1376,6 +1387,20 @@ export default function HelldiversRoguelite() {
     };
 
     const handleAutoContinue = () => {
+      // Handle booster selection confirmation
+      if (eventBoosterDraft && eventBoosterSelection) {
+        const outcome = window.__boosterOutcome;
+        const newPlayers = applyGainBoosterWithSelection(players, outcome, eventPlayerChoice, eventBoosterSelection);
+        dispatch(actions.setPlayers(newPlayers));
+        
+        // Clean up and close event
+        window.__boosterOutcome = null;
+        dispatch(actions.setCurrentEvent(null));
+        dispatch(actions.setEventPlayerChoice(null));
+        dispatch(actions.resetEventSelections());
+        dispatch(actions.setPhase('DASHBOARD'));
+        return;
+      }
       if (currentEvent.outcomes) {
         let outcomesToProcess = [];
         
@@ -1402,7 +1427,8 @@ export default function HelldiversRoguelite() {
           requisition,
           lives,
           currentDiff,
-          gameConfig
+          gameConfig,
+          burnedCards
         });
 
         // Apply state updates
@@ -1433,6 +1459,8 @@ export default function HelldiversRoguelite() {
         eventStratagemSelection={eventStratagemSelection}
         eventTargetPlayerSelection={eventTargetPlayerSelection}
         eventTargetStratagemSelection={eventTargetStratagemSelection}
+        eventBoosterDraft={eventBoosterDraft}
+        eventBoosterSelection={eventBoosterSelection}
         players={players}
         currentDiff={currentDiff}
         requisition={requisition}
@@ -1447,6 +1475,7 @@ export default function HelldiversRoguelite() {
         onStratagemSelection={(selection) => dispatch(actions.setEventStratagemSelection(selection))}
         onTargetPlayerSelection={(playerIndex) => dispatch(actions.setEventTargetPlayerSelection(playerIndex))}
         onTargetStratagemSelection={(selection) => dispatch(actions.setEventTargetStratagemSelection(selection))}
+        onBoosterSelection={(boosterId) => dispatch(actions.setEventBoosterSelection(boosterId))}
         onConfirmSelections={handleEventChoice}
       />
     );

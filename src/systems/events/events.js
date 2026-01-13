@@ -137,12 +137,12 @@ export const EVENTS = [
     minDifficulty: 4,
     maxDifficulty: 6,
     weight: 50,
-    targetPlayer: 'all',
+    targetPlayer: 'single',
     choices: [
       {
         text: 'Request Tactical Booster',
         outcomes: [
-          { type: OUTCOME_TYPES.GAIN_BOOSTER, targetPlayer: 'all' }
+          { type: OUTCOME_TYPES.GAIN_BOOSTER, targetPlayer: 'choose' }
         ]
       },
       {

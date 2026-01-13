@@ -88,6 +88,16 @@ export const setEventTargetStratagemSelection = (selection) => ({
   payload: selection
 });
 
+export const setEventBoosterDraft = (boosters) => ({
+  type: types.SET_EVENT_BOOSTER_DRAFT,
+  payload: boosters
+});
+
+export const setEventBoosterSelection = (boosterId) => ({
+  type: types.SET_EVENT_BOOSTER_SELECTION,
+  payload: boosterId
+});
+
 export const resetEventSelections = () => ({
   type: types.RESET_EVENT_SELECTIONS
 });
