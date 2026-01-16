@@ -55,6 +55,8 @@ export default function HelldiversRoguelite() {
     eventTargetStratagemSelection,
     eventBoosterDraft,
     eventBoosterSelection,
+    eventSpecialDraft,
+    eventSpecialDraftType,
     seenEvents
   } = state;
   
@@ -1441,6 +1443,38 @@ export default function HelldiversRoguelite() {
         return; // Don't close event yet, wait for booster selection
       }
 
+      // Check if we need special draft (throwable or secondary for all players)
+      if (updates.needsSpecialDraft && updates.specialDraftType) {
+        // Generate draft pool based on type
+        const itemType = updates.specialDraftType === 'throwable' ? TYPE.GRENADE : TYPE.SECONDARY;
+        let availableItems = MASTER_DB.filter(item => item.type === itemType);
+        
+        // Filter out burned cards if burn mode is enabled
+        if (gameConfig.burnCards && burnedCards.length > 0) {
+          availableItems = availableItems.filter(item => !burnedCards.includes(item.id));
+        }
+        
+        // For throwables, enforce global uniqueness (each must be different across all players)
+        if (updates.specialDraftType === 'throwable' && gameConfig.globalUniqueness) {
+          const existingThrowables = new Set();
+          players.forEach(player => {
+            if (player.loadout.grenade) {
+              existingThrowables.add(player.loadout.grenade);
+            }
+          });
+          availableItems = availableItems.filter(item => !existingThrowables.has(item.id));
+        }
+        
+        // Set up special draft state
+        dispatch(actions.setEventSpecialDraft(availableItems));
+        dispatch(actions.setEventSpecialDraftType(updates.specialDraftType));
+        
+        // Apply player updates (armor changes)
+        if (updates.players !== undefined) dispatch(actions.setPlayers(updates.players));
+        
+        return; // Don't close event yet, wait for all players to select
+      }
+
       // Apply state updates
       if (updates.requisition !== undefined) dispatch(actions.setRequisition(updates.requisition));
       if (updates.lives !== undefined) dispatch(actions.setLives(updates.lives));
@@ -1513,6 +1547,23 @@ export default function HelldiversRoguelite() {
         }, 100);
       }
       
+      // Display gained item notification (single player)
+      if (updates.gainedItemName) {
+        setTimeout(() => {
+          alert(`Equipment Acquired: ${updates.gainedItemName} has been added to your loadout!`);
+        }, 100);
+      }
+      
+      // Display gained items notification (multiple players)
+      if (updates.gainedItems && updates.gainedItems.length > 0) {
+        setTimeout(() => {
+          const itemList = updates.gainedItems
+            .map(item => `${state.players[item.playerIndex].name}: ${item.itemName}`)
+            .join('\n');
+          alert(`Equipment Acquired:\n${itemList}`);
+        }, 100);
+      }
+      
       // Handle game over
       if (updates.triggerGameOver) {
         setTimeout(() => dispatch(actions.setPhase('GAMEOVER')), 100);
@@ -1541,6 +1592,43 @@ export default function HelldiversRoguelite() {
         dispatch(actions.setPhase('DASHBOARD'));
         return;
       }
+      
+      // Handle special draft completion (all players have selected)
+      if (eventSpecialDraft && eventSpecialDraftType) {
+        // Check if all players have their selections stored
+        const allPlayersSelected = window.__specialDraftSelections && 
+                                   window.__specialDraftSelections.length === players.length;
+        
+        if (allPlayersSelected) {
+          const newPlayers = [...players];
+          const selections = window.__specialDraftSelections;
+          
+          // Apply selections and burn cards
+          selections.forEach((itemId, playerIndex) => {
+            if (eventSpecialDraftType === 'throwable') {
+              newPlayers[playerIndex].loadout.grenade = itemId;
+            } else if (eventSpecialDraftType === 'secondary') {
+              newPlayers[playerIndex].loadout.secondary = itemId;
+            }
+            
+            // Burn the selected card if burn mode is enabled
+            if (gameConfig.burnCards) {
+              dispatch(actions.addBurnedCard(itemId));
+            }
+          });
+          
+          dispatch(actions.setPlayers(newPlayers));
+          
+          // Clean up
+          window.__specialDraftSelections = null;
+          dispatch(actions.setCurrentEvent(null));
+          dispatch(actions.setEventPlayerChoice(null));
+          dispatch(actions.resetEventSelections());
+          dispatch(actions.setPhase('DASHBOARD'));
+          return;
+        }
+      }
+      
       if (currentEvent.outcomes) {
         let outcomesToProcess = [];
         
@@ -1601,6 +1689,8 @@ export default function HelldiversRoguelite() {
         eventTargetStratagemSelection={eventTargetStratagemSelection}
         eventBoosterDraft={eventBoosterDraft}
         eventBoosterSelection={eventBoosterSelection}
+        eventSpecialDraft={eventSpecialDraft}
+        eventSpecialDraftType={eventSpecialDraftType}
         players={players}
         currentDiff={currentDiff}
         requisition={requisition}
@@ -1616,6 +1706,13 @@ export default function HelldiversRoguelite() {
         onTargetPlayerSelection={(playerIndex) => dispatch(actions.setEventTargetPlayerSelection(playerIndex))}
         onTargetStratagemSelection={(selection) => dispatch(actions.setEventTargetStratagemSelection(selection))}
         onBoosterSelection={(boosterId) => dispatch(actions.setEventBoosterSelection(boosterId))}
+        onSpecialDraftSelection={(playerIndex, itemId) => {
+          // Store selection for this player
+          if (!window.__specialDraftSelections) {
+            window.__specialDraftSelections = new Array(players.length).fill(null);
+          }
+          window.__specialDraftSelections[playerIndex] = itemId;
+        }}
         onConfirmSelections={handleEventChoice}
       />
     );

@@ -2,7 +2,6 @@ import React, { useState } from 'react';
 import { AlertTriangle } from 'lucide-react';
 import { EVENT_TYPES, OUTCOME_TYPES } from '../systems/events/events';
 import { MASTER_DB } from '../data/itemsByWarbond';
-import { TYPE } from '../constants/types';
 
 /**
  * EventDisplay component for showing and handling event interactions
@@ -26,10 +25,13 @@ export default function EventDisplay({
   eventTargetStratagemSelection,
   eventBoosterDraft,
   eventBoosterSelection,
+  eventSpecialDraft,
+  eventSpecialDraftType,
   onStratagemSelection,
   onTargetPlayerSelection,
   onTargetStratagemSelection,
   onBoosterSelection,
+  onSpecialDraftSelection,
   onConfirmSelections
 }) {
   // Helper to get item name by ID
@@ -65,6 +67,9 @@ export default function EventDisplay({
 
   // Track which choice was selected and needs selections
   const [selectedChoice, setSelectedChoice] = useState(null);
+  
+  // Track player selections for special draft
+  const [playerSelections, setPlayerSelections] = useState({});
 
   const handleChoiceClick = (choice) => {
     if (needsSelectionDialogue(choice)) {
@@ -601,6 +606,104 @@ export default function EventDisplay({
                 </div>
               </div>
             </div>
+          )}
+
+          {/* Special Draft Selection (throwable or secondary for all players) */}
+          {eventSpecialDraft && eventSpecialDraft.length > 0 && eventSpecialDraftType && (
+            <div style={{ marginBottom: '24px' }}>
+                <div style={{ 
+                  backgroundColor: '#1f2937', 
+                  border: '2px solid #F5C642',
+                  borderRadius: '8px',
+                  padding: '24px',
+                  marginBottom: '16px'
+                }}>
+                  <div style={{ fontSize: '18px', marginBottom: '24px', color: '#F5C642', textAlign: 'center' }}>
+                    All Helldivers Select: {eventSpecialDraftType === 'throwable' ? 'Throwable' : 'Secondary Weapon'}
+                  </div>
+
+                  {/* Selection for each player */}
+                  {players.map((player, playerIndex) => (
+                    <div key={playerIndex} style={{ marginBottom: '24px', padding: '16px', backgroundColor: '#283548', borderRadius: '8px' }}>
+                      <div style={{ fontSize: '16px', marginBottom: '12px', color: '#F5C642', fontWeight: 'bold' }}>
+                        Helldiver {playerIndex + 1}
+                      </div>
+                      
+                      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '8px' }}>
+                        {eventSpecialDraft.map((item) => {
+                          const isSelected = playerSelections[playerIndex] === item.id;
+                          return (
+                            <button
+                              key={item.id}
+                              onClick={() => {
+                                setPlayerSelections(prev => ({ ...prev, [playerIndex]: item.id }));
+                                onSpecialDraftSelection(playerIndex, item.id);
+                              }}
+                              style={{
+                                padding: '12px',
+                                fontSize: '14px',
+                                backgroundColor: isSelected ? '#F5C642' : '#1f2937',
+                                color: isSelected ? '#0f1419' : '#e0e0e0',
+                                border: '2px solid ' + (isSelected ? '#F5C642' : '#555'),
+                                borderRadius: '4px',
+                                cursor: 'pointer',
+                                fontWeight: isSelected ? 'bold' : 'normal',
+                                transition: 'all 0.2s',
+                                textAlign: 'center'
+                              }}
+                              onMouseEnter={(e) => {
+                                if (!isSelected) {
+                                  e.target.style.backgroundColor = '#374151';
+                                  e.target.style.borderColor = '#F5C642';
+                                }
+                              }}
+                              onMouseLeave={(e) => {
+                                if (!isSelected) {
+                                  e.target.style.backgroundColor = '#1f2937';
+                                  e.target.style.borderColor = '#555';
+                                }
+                              }}
+                            >
+                              {item.name}
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  ))}
+
+                  {/* Confirm Button */}
+                  <div style={{ display: 'flex', gap: '12px', justifyContent: 'center', marginTop: '24px' }}>
+                    <button
+                      onClick={onAutoContinue}
+                      disabled={Object.keys(playerSelections).length < players.length}
+                      style={{
+                        padding: '12px 32px',
+                        fontSize: '16px',
+                        fontWeight: 'bold',
+                        backgroundColor: Object.keys(playerSelections).length < players.length ? '#555' : '#4ade80',
+                        color: Object.keys(playerSelections).length < players.length ? '#888' : '#0f1419',
+                        border: 'none',
+                        borderRadius: '4px',
+                        cursor: Object.keys(playerSelections).length < players.length ? 'not-allowed' : 'pointer',
+                        transition: 'all 0.2s'
+                      }}
+                      onMouseEnter={(e) => {
+                        if (Object.keys(playerSelections).length >= players.length) {
+                          e.target.style.backgroundColor = '#22c55e';
+                        }
+                      }}
+                      onMouseLeave={(e) => {
+                        if (Object.keys(playerSelections).length >= players.length) {
+                          e.target.style.backgroundColor = '#4ade80';
+                        }
+                      }}
+                    >
+                      CONFIRM ALL SELECTIONS
+                    </button>
+                  </div>
+                </div>
+              </div>
           )}
 
           {/* Choices */}

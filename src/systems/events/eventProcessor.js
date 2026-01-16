@@ -1,6 +1,7 @@
 import { OUTCOME_TYPES } from './events';
 import { MASTER_DB } from '../../data/itemsByWarbond';
 import { TYPE, FACTION } from '../../constants/types';
+import { ARMOR_CLASS } from '../../constants/armorPassives';
 import { STARTING_LOADOUT } from '../../constants/gameConfig';
 import { getFirstEmptyStratagemSlot } from '../../utils/loadoutHelpers';
 
@@ -82,6 +83,108 @@ export const processEventOutcome = (outcome, choice, state, selections = {}) => 
       // If burn mode is enabled, mark these boosters to be burned when shown
       if (gameConfig.burnCards && boosterDraft.length > 0) {
         updates.burnBoosterDraft = boosterDraft;
+      }
+      break;
+
+    case OUTCOME_TYPES.GAIN_SECONDARY:
+      if (eventPlayerChoice !== null) {
+        const newPlayers = [...players];
+        const player = newPlayers[eventPlayerChoice];
+        
+        // Get available secondaries (not burned, not starting item)
+        const availableSecondaries = MASTER_DB.filter(item => 
+          item.type === TYPE.SECONDARY && 
+          !burnedCards.includes(item.id) &&
+          item.id !== 's_peacemaker'
+        );
+        
+        if (availableSecondaries.length > 0) {
+          const randomSecondary = availableSecondaries[Math.floor(Math.random() * availableSecondaries.length)];
+          player.loadout.secondary = randomSecondary.id;
+          updates.players = newPlayers;
+          updates.gainedItemName = randomSecondary.name;
+          
+          // Burn the card if burn mode is enabled
+          if (gameConfig.burnCards) {
+            updates.newBurnedCards = [randomSecondary.id];
+          }
+        }
+      }
+      break;
+
+    case OUTCOME_TYPES.GAIN_THROWABLE:
+      if (eventPlayerChoice !== null) {
+        const newPlayers = [...players];
+        const player = newPlayers[eventPlayerChoice];
+        
+        // Get available throwables (not burned, not starting item)
+        const availableThrowables = MASTER_DB.filter(item => 
+          item.type === TYPE.THROWABLE && 
+          !burnedCards.includes(item.id) &&
+          item.id !== 'g_he'
+        );
+        
+        if (availableThrowables.length > 0) {
+          const randomThrowable = availableThrowables[Math.floor(Math.random() * availableThrowables.length)];
+          player.loadout.grenade = randomThrowable.id;
+          updates.players = newPlayers;
+          updates.gainedItemName = randomThrowable.name;
+          
+          // Burn the card if burn mode is enabled
+          if (gameConfig.burnCards) {
+            updates.newBurnedCards = [randomThrowable.id];
+          }
+        }
+      }
+      break;
+
+    case OUTCOME_TYPES.RANDOM_OUTCOME:
+      // Choose a random outcome from possibleOutcomes array
+      if (outcome.possibleOutcomes && outcome.possibleOutcomes.length > 0) {
+        // Check if this applies to all players (based on the current event context)
+        // If eventPlayerChoice is null but we have players, apply to all
+        if (eventPlayerChoice === null && players && players.length > 0) {
+          // Apply to each player individually
+          const newPlayers = [...players];
+          const gainedItems = [];
+          
+          players.forEach((player, index) => {
+            const randomOutcome = outcome.possibleOutcomes[Math.floor(Math.random() * outcome.possibleOutcomes.length)];
+            // Process for this specific player
+            const playerState = {
+              ...state,
+              eventPlayerChoice: index,
+              players: newPlayers
+            };
+            const randomUpdates = processEventOutcome(randomOutcome, choice, playerState, selections);
+            
+            // Merge player updates
+            if (randomUpdates.players) {
+              newPlayers[index] = randomUpdates.players[index];
+            }
+            
+            // Track gained items for display
+            if (randomUpdates.gainedItemName) {
+              gainedItems.push({ playerIndex: index, itemName: randomUpdates.gainedItemName });
+            }
+            
+            // Accumulate burned cards
+            if (randomUpdates.newBurnedCards) {
+              if (!updates.newBurnedCards) updates.newBurnedCards = [];
+              updates.newBurnedCards.push(...randomUpdates.newBurnedCards);
+            }
+          });
+          
+          updates.players = newPlayers;
+          if (gainedItems.length > 0) {
+            updates.gainedItems = gainedItems;
+          }
+        } else {
+          // Single player application
+          const randomOutcome = outcome.possibleOutcomes[Math.floor(Math.random() * outcome.possibleOutcomes.length)];
+          const randomUpdates = processEventOutcome(randomOutcome, choice, state, selections);
+          Object.assign(updates, randomUpdates);
+        }
       }
       break;
 
@@ -214,6 +317,81 @@ export const processEventOutcome = (outcome, choice, state, selections = {}) => 
       }
       break;
 
+    case OUTCOME_TYPES.GAIN_RANDOM_LIGHT_ARMOR_AND_DRAFT_THROWABLE:
+      // Give all players random light armor and trigger throwable draft
+      if (players && players.length > 0) {
+        const newPlayers = [...players];
+        const lightArmors = MASTER_DB.filter(item => 
+          item.type === TYPE.ARMOR && 
+          item.armorClass === ARMOR_CLASS.LIGHT &&
+          !burnedCards.includes(item.id)
+        );
+        
+        if (lightArmors.length > 0) {
+          // Give each player random light armor
+          newPlayers.forEach(player => {
+            const randomArmor = lightArmors[Math.floor(Math.random() * lightArmors.length)];
+            player.loadout.armor = randomArmor.id;
+          });
+          
+          updates.players = newPlayers;
+          
+          // Trigger throwable draft for all players
+          updates.needsSpecialDraft = true;
+          updates.specialDraftType = 'throwable';
+        }
+      }
+      break;
+
+    case OUTCOME_TYPES.GAIN_RANDOM_HEAVY_ARMOR_AND_DRAFT_SECONDARY:
+      // Give all players random heavy armor and trigger secondary draft
+      if (players && players.length > 0) {
+        const newPlayers = [...players];
+        const heavyArmors = MASTER_DB.filter(item => 
+          item.type === TYPE.ARMOR && 
+          item.armorClass === ARMOR_CLASS.HEAVY &&
+          !burnedCards.includes(item.id)
+        );
+        
+        if (heavyArmors.length > 0) {
+          // Give each player random heavy armor
+          newPlayers.forEach(player => {
+            const randomArmor = heavyArmors[Math.floor(Math.random() * heavyArmors.length)];
+            player.loadout.armor = randomArmor.id;
+          });
+          
+          updates.players = newPlayers;
+          
+          // Trigger secondary draft for all players
+          updates.needsSpecialDraft = true;
+          updates.specialDraftType = 'secondary';
+        }
+      }
+      break;
+
+    case OUTCOME_TYPES.DUPLICATE_LOADOUT_TO_ALL:
+      // Duplicate one player's loadout to all players (except boosters)
+      if (eventPlayerChoice !== null && players && players.length > 0) {
+        const sourcePlayer = players[eventPlayerChoice];
+        const newPlayers = [...players];
+        
+        // Copy loadout (excluding booster) to all players
+        newPlayers.forEach((player, index) => {
+          if (index !== eventPlayerChoice) {
+            player.loadout.primary = sourcePlayer.loadout.primary;
+            player.loadout.secondary = sourcePlayer.loadout.secondary;
+            player.loadout.grenade = sourcePlayer.loadout.grenade;
+            player.loadout.armor = sourcePlayer.loadout.armor;
+            player.loadout.stratagems = [...sourcePlayer.loadout.stratagems];
+            // Note: booster is deliberately NOT copied
+          }
+        });
+        
+        updates.players = newPlayers;
+        updates.synchronizedLoadout = true;
+      }
+      break;
+
     default:
       break;
   }
@@ -311,30 +489,6 @@ export const applyGainBoosterWithSelection = (players, outcome, eventPlayerChoic
 };
 
 /**
- * Apply gain booster outcome (legacy - for random selection fallback)
- */
-const applyGainBooster = (players, outcome, eventPlayerChoice) => {
-  const boosters = MASTER_DB.filter(item => item.type === TYPE.BOOSTER);
-  if (boosters.length === 0) return players;
-
-  const randomBooster = boosters[Math.floor(Math.random() * boosters.length)];
-
-  if (outcome.targetPlayer === 'choose' && eventPlayerChoice !== null) {
-    const newPlayers = [...players];
-    newPlayers[eventPlayerChoice].loadout.booster = randomBooster.id;
-    newPlayers[eventPlayerChoice].inventory.push(randomBooster.id);
-    return newPlayers;
-  } else if (!outcome.targetPlayer || outcome.targetPlayer === 'all') {
-    return players.map(p => ({
-      ...p,
-      loadout: { ...p.loadout, booster: randomBooster.id },
-      inventory: [...p.inventory, randomBooster.id]
-    }));
-  }
-
-  return players;
-};
-
 /**
  * Apply duplicate stratagem outcome
  * @param {Array} players - Array of player objects
@@ -673,7 +827,7 @@ const applySwapStratagem = (players, eventPlayerChoice, selections = {}) => {
   // If we have partial selections (old behavior for duplicate), use them
   if (stratagemSelection && targetPlayerSelection !== null && targetPlayerSelection !== undefined) {
     const newPlayers = [...players];
-    const { stratagemSlotIndex, stratagemId } = stratagemSelection;
+    const { stratagemSlotIndex } = stratagemSelection;
     
     // Find target player's stratagem to swap (first non-null stratagem)
     const targetStratagems = newPlayers[targetPlayerSelection].loadout.stratagems
@@ -781,6 +935,16 @@ export const formatOutcome = (outcome) => {
     case OUTCOME_TYPES.GAIN_BOOSTER:
       const target = outcome.targetPlayer === 'all' ? '(All Helldivers)' : '';
       return `Gain random Booster ${target}`;
+    case OUTCOME_TYPES.GAIN_SECONDARY:
+      return `Gain random Secondary`;
+    case OUTCOME_TYPES.GAIN_THROWABLE:
+      return `Gain random Throwable`;
+    case OUTCOME_TYPES.RANDOM_OUTCOME:
+      if (outcome.possibleOutcomes && outcome.possibleOutcomes.length > 0) {
+        const outcomeTexts = outcome.possibleOutcomes.map(o => formatOutcome(o));
+        return outcomeTexts.join(' OR ');
+      }
+      return `Random outcome`;
     case OUTCOME_TYPES.REMOVE_ITEM:
       return `Remove an item`;
     case OUTCOME_TYPES.GAIN_SPECIFIC_ITEM:
@@ -798,6 +962,12 @@ export const formatOutcome = (outcome) => {
         return `Transform entire loadout randomly`;
       }
       return `Transform ${outcome.value} random item${outcome.value > 1 ? 's' : ''}`;
+    case OUTCOME_TYPES.GAIN_RANDOM_LIGHT_ARMOR_AND_DRAFT_THROWABLE:
+      return `All Helldivers: Random Light Armor + Choose Throwable`;
+    case OUTCOME_TYPES.GAIN_RANDOM_HEAVY_ARMOR_AND_DRAFT_SECONDARY:
+      return `All Helldivers: Random Heavy Armor + Choose Secondary`;
+    case OUTCOME_TYPES.DUPLICATE_LOADOUT_TO_ALL:
+      return `Duplicate chosen Helldiver's loadout to all`;
     default:
       return '';
   }

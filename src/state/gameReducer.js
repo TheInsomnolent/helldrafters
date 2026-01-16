@@ -46,6 +46,8 @@ export const initialState = {
   eventTargetStratagemSelection: null, // { stratagemSlotIndex, stratagemId }
   eventBoosterDraft: null, // Array of booster IDs to choose from
   eventBoosterSelection: null, // Selected booster ID
+  eventSpecialDraft: null, // Array of item objects for special draft selection
+  eventSpecialDraftType: null, // 'throwable' or 'secondary'
   seenEvents: [],
   settingsOpen: false,
   disabledWarbonds: []
@@ -271,6 +273,12 @@ export function gameReducer(state, action) {
     case types.SET_EVENT_BOOSTER_SELECTION:
       return { ...state, eventBoosterSelection: action.payload };
 
+    case types.SET_EVENT_SPECIAL_DRAFT:
+      return { ...state, eventSpecialDraft: action.payload };
+
+    case types.SET_EVENT_SPECIAL_DRAFT_TYPE:
+      return { ...state, eventSpecialDraftType: action.payload };
+
     case types.RESET_EVENT_SELECTIONS:
       return { 
         ...state, 
@@ -278,7 +286,9 @@ export function gameReducer(state, action) {
         eventTargetPlayerSelection: null,
         eventTargetStratagemSelection: null,
         eventBoosterDraft: null,
-        eventBoosterSelection: null
+        eventBoosterSelection: null,
+        eventSpecialDraft: null,
+        eventSpecialDraftType: null
       };
 
     // Custom setup

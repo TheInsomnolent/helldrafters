@@ -240,7 +240,7 @@ export const SERVANTS_OF_FREEDOM_ITEMS = [
 // BORDERLINE JUSTICE (Premium Warbond)
 // =============================================================================
 export const BORDERLINE_JUSTICE_ITEMS = [
-  { id: 'p_deadeye', name: 'R-6 Deadeye', type: TYPE.SECONDARY, rarity: RARITY.UNCOMMON, tags: [TAGS.PRECISION], warbond: 'borderline_justice' },
+  { id: 'p_deadeye', name: 'R-6 Deadeye', type: TYPE.PRIMARY, rarity: RARITY.UNCOMMON, tags: [TAGS.PRECISION], warbond: 'borderline_justice' },
   { id: 's_talon', name: 'LAS-58 Talon', type: TYPE.SECONDARY, rarity: RARITY.UNCOMMON, tags: [TAGS.PRECISION], warbond: 'borderline_justice' },
   { id: 'g_dynamite', name: 'TED-63 Dynamite', type: TYPE.GRENADE, rarity: RARITY.RARE, tags: [TAGS.EXPLOSIVE], warbond: 'borderline_justice' },
   { id: 'st_bp_hover', name: 'LIFT-860 Hover Pack', type: TYPE.STRATAGEM, rarity: RARITY.RARE, tags: [TAGS.BACKPACK], warbond: 'borderline_justice' },

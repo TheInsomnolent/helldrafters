@@ -98,6 +98,16 @@ export const setEventBoosterSelection = (boosterId) => ({
   payload: boosterId
 });
 
+export const setEventSpecialDraft = (items) => ({
+  type: types.SET_EVENT_SPECIAL_DRAFT,
+  payload: items
+});
+
+export const setEventSpecialDraftType = (draftType) => ({
+  type: types.SET_EVENT_SPECIAL_DRAFT_TYPE,
+  payload: draftType
+});
+
 export const resetEventSelections = () => ({
   type: types.RESET_EVENT_SELECTIONS
 });
