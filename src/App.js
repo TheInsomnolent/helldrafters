@@ -891,6 +891,13 @@ export default function HelldiversRoguelite() {
           <h1 style={{ fontSize: '72px', fontWeight: '900', color: factionColors.PRIMARY, margin: '0 0 0 0', letterSpacing: '0.02em', textTransform: 'uppercase' }}>
             HELLDRAFTERS
           </h1>
+          <div style={{ margin: '20px auto' }}>
+            <img 
+              src={`${process.env.PUBLIC_URL}/logo.png`}
+              alt="Helldrafters Logo" 
+              style={{ width: '200px', height: 'auto', display: 'block', margin: '0 auto' }}
+            />
+          </div>
           <div style={{ background: 'linear-gradient(to right, #5a5142, #6b6052)', padding: '12px', marginBottom: '60px', maxWidth: '620px', margin: '0 auto 60px auto' }}>
             <h2 style={{ fontSize: '20px', fontWeight: 'bold', color: 'white', textTransform: 'uppercase', letterSpacing: '0.3em', margin: 0 }}>
               Roguelite Director
