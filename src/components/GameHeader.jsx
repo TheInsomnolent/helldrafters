@@ -1,5 +1,5 @@
 import React from 'react';
-import { XCircle } from 'lucide-react';
+import { XCircle, Coffee } from 'lucide-react';
 import { DIFFICULTY_CONFIG } from '../constants/gameConfig';
 import { getFactionColors } from '../constants/theme';
 import { SUBFACTION_CONFIG } from '../constants/balancingConfig';
@@ -64,6 +64,40 @@ export default function GameHeader({
               Theater: {faction} - {subfactionName}
             </div>
           </div>
+          
+          {/* Ko-fi Link */}
+          <a
+            href="https://ko-fi.com/theinsomnolent"
+            target="_blank"
+            rel="noopener noreferrer"
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: '6px',
+              padding: '6px 12px',
+              backgroundColor: 'rgba(255, 94, 77, 0.1)',
+              color: '#ff5e4d',
+              border: '1px solid rgba(255, 94, 77, 0.3)',
+              borderRadius: '4px',
+              fontSize: '11px',
+              fontWeight: 'bold',
+              textDecoration: 'none',
+              textTransform: 'uppercase',
+              transition: 'all 0.2s',
+              letterSpacing: '0.5px'
+            }}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.backgroundColor = 'rgba(255, 94, 77, 0.2)';
+              e.currentTarget.style.borderColor = '#ff5e4d';
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.backgroundColor = 'rgba(255, 94, 77, 0.1)';
+              e.currentTarget.style.borderColor = 'rgba(255, 94, 77, 0.3)';
+            }}
+          >
+            <Coffee size={14} />
+            Support Our Costs
+          </a>
         </div>
         
         <div style={{ display: 'flex', alignItems: 'center', gap: '24px' }}>
