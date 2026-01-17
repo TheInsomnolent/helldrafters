@@ -38,33 +38,33 @@ export const COLORS = {
   VERYRARE: '#F5C642',
   
   // Faction colors
-  TERMINIDS: '#e67e22',
-  AUTOMATONS: '#c0392b',
-  ILLUMINATE: '#9b59b6'
+  TERMINIDS: '#e59f61',
+  AUTOMATONS: '#cf6559',
+  ILLUMINATE: '#b28ac1'
 };
 
 // Faction color mapping (maps faction names to their theme colors)
 export const FACTION_COLORS = {
   'Terminids': {
-    PRIMARY: '#e67e22',
-    PRIMARY_HOVER: '#d87519',
-    SHADOW: '0 4px 16px rgba(230, 126, 34, 0.4)',
-    SHADOW_HOVER: '0 6px 20px rgba(230, 126, 34, 0.5)',
-    GLOW: '0 4px 20px rgba(230, 126, 34, 0.3)'
+    PRIMARY: '#e59f61',
+    PRIMARY_HOVER: '#e2914b',
+    SHADOW: '0 4px 16px rgba(229, 159, 97, 0.4)',
+    SHADOW_HOVER: '0 6px 20px rgba(229, 159, 97, 0.5)',
+    GLOW: '0 4px 20px rgba(229, 159, 97, 0.3)'
   },
   'Automatons': {
-    PRIMARY: '#c0392b',
-    PRIMARY_HOVER: '#a93226',
-    SHADOW: '0 4px 16px rgba(192, 57, 43, 0.4)',
-    SHADOW_HOVER: '0 6px 20px rgba(192, 57, 43, 0.5)',
-    GLOW: '0 4px 20px rgba(192, 57, 43, 0.3)'
+    PRIMARY: '#cf6559',
+    PRIMARY_HOVER: '#c95245',
+    SHADOW: '0 4px 16px rgba(207, 101, 89, 0.4)',
+    SHADOW_HOVER: '0 6px 20px rgba(207, 101, 89, 0.5)',
+    GLOW: '0 4px 20px rgba(207, 101, 89, 0.3)'
   },
   'Illuminate': {
-    PRIMARY: '#9b59b6',
-    PRIMARY_HOVER: '#8e44ad',
-    SHADOW: '0 4px 16px rgba(155, 89, 182, 0.4)',
-    SHADOW_HOVER: '0 6px 20px rgba(155, 89, 182, 0.5)',
-    GLOW: '0 4px 20px rgba(155, 89, 182, 0.3)'
+    PRIMARY: '#b28ac1',
+    PRIMARY_HOVER: '#a779b9',
+    SHADOW: '0 4px 16px rgba(178, 138, 193, 0.4)',
+    SHADOW_HOVER: '0 6px 20px rgba(178, 138, 193, 0.5)',
+    GLOW: '0 4px 20px rgba(178, 138, 193, 0.3)'
   }
 };
 
