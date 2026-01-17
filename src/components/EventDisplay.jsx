@@ -14,7 +14,6 @@ export default function EventDisplay({
   players,
   currentDiff,
   requisition,
-  lives,
   needsPlayerChoice,
   canAffordChoice,
   formatOutcome,
@@ -234,10 +233,6 @@ export default function EventDisplay({
               style={{ width: '20px', height: '20px' }}
             />
             <span style={{ fontWeight: 'bold' }}>{Math.floor(requisition)}</span>
-          </div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-            <AlertTriangle size={20} color="#ff4444" />
-            <span style={{ fontWeight: 'bold' }}>{lives} Lives</span>
           </div>
         </div>
       </div>

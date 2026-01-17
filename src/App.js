@@ -44,7 +44,6 @@ export default function HelldiversRoguelite() {
     gameConfig,
     currentDiff,
     requisition,
-    lives,
     burnedCards,
     customSetup,
     players,
@@ -182,7 +181,6 @@ export default function HelldiversRoguelite() {
       dispatch(actions.setPlayers(newPlayers));
       dispatch(actions.setDifficulty(1));
       dispatch(actions.setRequisition(0)); // Start with 0, earn 1 per mission
-      dispatch(actions.setLives(3));
       dispatch(actions.setBurnedCards([]));
       dispatch(actions.setPhase('DASHBOARD'));
     }
@@ -200,7 +198,6 @@ export default function HelldiversRoguelite() {
     dispatch(actions.setPlayers(newPlayers));
     dispatch(actions.setDifficulty(customSetup.difficulty));
     dispatch(actions.setRequisition(0));
-    dispatch(actions.setLives(3));
     dispatch(actions.setBurnedCards([]));
     dispatch(actions.setPhase('DASHBOARD'));
   };
@@ -722,7 +719,7 @@ export default function HelldiversRoguelite() {
             <div style={{ fontSize: '14px', color: factionColors.PRIMARY, marginBottom: '16px', textTransform: 'uppercase', fontWeight: 'bold', letterSpacing: '0.1em' }}>
               Mission Statistics
             </div>
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '16px', textAlign: 'center' }}>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '16px', textAlign: 'center' }}>
               <div>
                 <div style={{ fontSize: '12px', color: '#64748b', marginBottom: '4px' }}>Difficulty Cleared</div>
                 <div style={{ fontSize: '32px', fontWeight: 'bold', color: factionColors.PRIMARY }}>D10</div>
@@ -731,10 +728,6 @@ export default function HelldiversRoguelite() {
               <div>
                 <div style={{ fontSize: '12px', color: '#64748b', marginBottom: '4px' }}>Requisition</div>
                 <div style={{ fontSize: '32px', fontWeight: 'bold', color: '#22c55e' }}>{requisition}</div>
-              </div>
-              <div>
-                <div style={{ fontSize: '12px', color: '#64748b', marginBottom: '4px' }}>Lives Remaining</div>
-                <div style={{ fontSize: '32px', fontWeight: 'bold', color: '#ef4444' }}>{lives}</div>
               </div>
               <div>
                 <div style={{ fontSize: '12px', color: '#64748b', marginBottom: '4px' }}>Theater</div>
@@ -1552,7 +1545,6 @@ export default function HelldiversRoguelite() {
         players,
         eventPlayerChoice,
         requisition,
-        lives,
         currentDiff,
         gameConfig,
         burnedCards
@@ -1614,7 +1606,6 @@ export default function HelldiversRoguelite() {
 
       // Apply state updates
       if (updates.requisition !== undefined) dispatch(actions.setRequisition(updates.requisition));
-      if (updates.lives !== undefined) dispatch(actions.setLives(updates.lives));
       if (updates.players !== undefined) dispatch(actions.setPlayers(updates.players));
       if (updates.currentDiff !== undefined) dispatch(actions.setDifficulty(updates.currentDiff));
       if (updates.faction !== undefined || updates.subfaction !== undefined) {
@@ -1798,7 +1789,6 @@ export default function HelldiversRoguelite() {
           players,
           eventPlayerChoice,
           requisition,
-          lives,
           currentDiff,
           gameConfig,
           burnedCards
@@ -1806,7 +1796,6 @@ export default function HelldiversRoguelite() {
 
         // Apply state updates
         if (updates.requisition !== undefined) dispatch(actions.setRequisition(updates.requisition));
-        if (updates.lives !== undefined) dispatch(actions.setLives(updates.lives));
         if (updates.players !== undefined) dispatch(actions.setPlayers(updates.players));
         if (updates.currentDiff !== undefined) dispatch(actions.setDifficulty(updates.currentDiff));
       if (updates.faction !== undefined || updates.subfaction !== undefined) {
@@ -1845,7 +1834,6 @@ export default function HelldiversRoguelite() {
         players={players}
         currentDiff={currentDiff}
         requisition={requisition}
-        lives={lives}
         needsPlayerChoice={needsPlayerChoice}
         canAffordChoice={canAffordChoice}
         formatOutcome={formatOutcome}
@@ -2180,7 +2168,6 @@ export default function HelldiversRoguelite() {
       <GameHeader 
         currentDiff={currentDiff}
         requisition={requisition}
-        lives={lives}
         faction={gameConfig.faction}
         subfaction={gameConfig.subfaction}
         samples={state.samples}
@@ -2385,10 +2372,8 @@ export default function HelldiversRoguelite() {
             <div style={{ display: 'flex', gap: '16px', justifyContent: 'center' }}>
               <button 
                 onClick={() => {
-                   const newLives = lives - 1;
-                   dispatch(actions.setLives(newLives));
-                   if (newLives === 0) {
-                     setTimeout(() => dispatch(actions.setPhase('GAMEOVER')), 100);
+                   if (window.confirm('Mission Failed? This will end your run permanently. Are you sure?')) {
+                     dispatch(actions.setPhase('GAMEOVER'));
                    }
                 }}
                 style={{

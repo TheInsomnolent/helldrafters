@@ -14,9 +14,6 @@ export const SET_DIFFICULTY = 'SET_DIFFICULTY';
 export const SET_REQUISITION = 'SET_REQUISITION';
 export const ADD_REQUISITION = 'ADD_REQUISITION';
 export const SPEND_REQUISITION = 'SPEND_REQUISITION';
-export const SET_LIVES = 'SET_LIVES';
-export const ADD_LIVES = 'ADD_LIVES';
-export const LOSE_LIVES = 'LOSE_LIVES';
 
 // Faction and subfaction
 export const SET_SUBFACTION = 'SET_SUBFACTION';

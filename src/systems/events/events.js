@@ -12,9 +12,7 @@ export const EVENT_TYPES = {
 export const OUTCOME_TYPES = {
   ADD_REQUISITION: 'add_requisition',
   SPEND_REQUISITION: 'spend_requisition',
-  GAIN_LIFE: 'gain_life',
-  LOSE_LIFE: 'lose_life',
-  LOSE_ALL_BUT_ONE_LIFE: 'lose_all_but_one_life',
+  LOSE_REQUISITION: 'lose_requisition',
   CHANGE_FACTION: 'change_faction',
   EXTRA_DRAFT: 'extra_draft',
   SKIP_DIFFICULTY: 'skip_difficulty',
@@ -95,7 +93,7 @@ export const EVENTS = [
       {
         text: 'Hold the Line',
         outcomes: [
-          { type: OUTCOME_TYPES.LOSE_ALL_BUT_ONE_LIFE }
+          { type: OUTCOME_TYPES.LOSE_REQUISITION, value: 2 }
         ]
       },
       {
@@ -155,7 +153,7 @@ export const EVENTS = [
       {
         text: 'Request Medical Reinforcement',
         outcomes: [
-          { type: OUTCOME_TYPES.GAIN_LIFE, value: 1 }
+          { type: OUTCOME_TYPES.ADD_REQUISITION, value: 2 }
         ]
       }
     ]
@@ -251,7 +249,7 @@ export const EVENTS = [
       {
         text: 'Recruit New Squad Member',
         outcomes: [
-          { type: OUTCOME_TYPES.GAIN_LIFE, value: 1 }
+          { type: OUTCOME_TYPES.ADD_REQUISITION, value: 2 }
         ]
       },
       {
@@ -433,14 +431,14 @@ export const EVENTS = [
       {
         text: 'Carry the Standard',
         outcomes: [
-          { type: OUTCOME_TYPES.LOSE_LIFE, value: 2 },
+          { type: OUTCOME_TYPES.LOSE_REQUISITION, value: 2 },
           { type: OUTCOME_TYPES.EXTRA_DRAFT, value: 2, targetPlayer: 'choose' }
         ]
       },
       {
         text: 'March in the Parade',
         outcomes: [
-          { type: OUTCOME_TYPES.LOSE_LIFE, value: 1 },
+          { type: OUTCOME_TYPES.LOSE_REQUISITION, value: 1 },
           { type: OUTCOME_TYPES.EXTRA_DRAFT, value: 1, targetPlayer: 'choose' }
         ]
       },
@@ -498,7 +496,7 @@ export const EVENTS = [
       {
         text: 'Tough It Out',
         outcomes: [
-          { type: OUTCOME_TYPES.LOSE_LIFE, value: 1 }
+          { type: OUTCOME_TYPES.LOSE_REQUISITION, value: 1 }
         ]
       }
     ]

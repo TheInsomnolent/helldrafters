@@ -15,7 +15,7 @@ import { getRequisitionMultiplier } from '../../constants/balancingConfig';
  * @returns {Object} State updates to apply
  */
 export const processEventOutcome = (outcome, choice, state, selections = {}) => {
-  const { players, eventPlayerChoice, requisition, lives, currentDiff, gameConfig, burnedCards } = state;
+  const { players, eventPlayerChoice, requisition, currentDiff, gameConfig, burnedCards } = state;
   const updates = {};
 
   switch (outcome.type) {
@@ -31,17 +31,6 @@ export const processEventOutcome = (outcome, choice, state, selections = {}) => 
 
     case OUTCOME_TYPES.SPEND_REQUISITION:
       updates.requisition = Math.max(0, requisition - outcome.value);
-      break;
-
-    case OUTCOME_TYPES.GAIN_LIFE:
-      updates.lives = lives + outcome.value;
-      break;
-
-    case OUTCOME_TYPES.LOSE_LIFE:
-      updates.lives = Math.max(0, lives - outcome.value);
-      if (updates.lives === 0) {
-        updates.triggerGameOver = true;
-      }
       break;
 
     case OUTCOME_TYPES.CHANGE_FACTION:
@@ -196,10 +185,6 @@ export const processEventOutcome = (outcome, choice, state, selections = {}) => 
           Object.assign(updates, randomUpdates);
         }
       }
-      break;
-
-    case OUTCOME_TYPES.LOSE_ALL_BUT_ONE_LIFE:
-      updates.lives = 1;
       break;
 
     case OUTCOME_TYPES.DUPLICATE_STRATAGEM_TO_ANOTHER_HELLDIVER:
@@ -926,12 +911,8 @@ export const formatOutcome = (outcome) => {
       return `+${outcome.value} Requisition`;
     case OUTCOME_TYPES.SPEND_REQUISITION:
       return `-${outcome.value} Requisition`;
-    case OUTCOME_TYPES.GAIN_LIFE:
-      return `+${outcome.value} Life`;
-    case OUTCOME_TYPES.LOSE_LIFE:
-      return `-${outcome.value} Life`;
-    case OUTCOME_TYPES.LOSE_ALL_BUT_ONE_LIFE:
-      return `Lives reduced to 1`;
+    case OUTCOME_TYPES.LOSE_REQUISITION:
+      return `-${outcome.value} Requisition`;
     case OUTCOME_TYPES.CHANGE_FACTION:
       return `Switch to different theater`;
     case OUTCOME_TYPES.EXTRA_DRAFT:

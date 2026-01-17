@@ -28,7 +28,6 @@ describe('Systems - Event Processor', () => {
     ],
     eventPlayerChoice: 0,
     requisition: 50,
-    lives: 3,
     currentDiff: 4,
     gameConfig: { faction: FACTION.BUGS }
   };
@@ -46,35 +45,6 @@ describe('Systems - Event Processor', () => {
       const updates = processEventOutcome(outcome, {}, mockState);
       
       expect(updates.requisition).toBe(0);
-    });
-
-    it('should gain life', () => {
-      const outcome = { type: OUTCOME_TYPES.GAIN_LIFE, value: 2 };
-      const updates = processEventOutcome(outcome, {}, mockState);
-      
-      expect(updates.lives).toBe(5);
-    });
-
-    it('should lose life', () => {
-      const outcome = { type: OUTCOME_TYPES.LOSE_LIFE, value: 1 };
-      const updates = processEventOutcome(outcome, {}, mockState);
-      
-      expect(updates.lives).toBe(2);
-    });
-
-    it('should trigger game over when lives reach 0', () => {
-      const outcome = { type: OUTCOME_TYPES.LOSE_LIFE, value: 3 };
-      const updates = processEventOutcome(outcome, {}, mockState);
-      
-      expect(updates.lives).toBe(0);
-      expect(updates.triggerGameOver).toBe(true);
-    });
-
-    it('should set lives to 1 for LOSE_ALL_BUT_ONE_LIFE', () => {
-      const outcome = { type: OUTCOME_TYPES.LOSE_ALL_BUT_ONE_LIFE };
-      const updates = processEventOutcome(outcome, {}, mockState);
-      
-      expect(updates.lives).toBe(1);
     });
 
     it('should change faction', () => {
@@ -178,13 +148,11 @@ describe('Systems - Event Processor', () => {
   describe('processAllOutcomes', () => {
     it('should process multiple outcomes in sequence', () => {
       const outcomes = [
-        { type: OUTCOME_TYPES.ADD_REQUISITION, value: 10 },
-        { type: OUTCOME_TYPES.GAIN_LIFE, value: 1 }
+        { type: OUTCOME_TYPES.ADD_REQUISITION, value: 10 }
       ];
       const updates = processAllOutcomes(outcomes, {}, mockState);
       
       expect(updates.requisition).toBe(60);
-      expect(updates.lives).toBe(4);
     });
 
     it('should handle empty outcomes array', () => {
@@ -216,11 +184,6 @@ describe('Systems - Event Processor', () => {
       expect(formatOutcome(outcome)).toBe('+25 Requisition');
     });
 
-    it('should format LOSE_LIFE', () => {
-      const outcome = { type: OUTCOME_TYPES.LOSE_LIFE, value: 2 };
-      expect(formatOutcome(outcome)).toBe('-2 Life');
-    });
-
     it('should format CHANGE_FACTION', () => {
       const outcome = { type: OUTCOME_TYPES.CHANGE_FACTION };
       expect(formatOutcome(outcome)).toBe('Switch to different theater');
@@ -240,13 +203,11 @@ describe('Systems - Event Processor', () => {
   describe('formatOutcomes', () => {
     it('should format multiple outcomes', () => {
       const outcomes = [
-        { type: OUTCOME_TYPES.ADD_REQUISITION, value: 10 },
-        { type: OUTCOME_TYPES.GAIN_LIFE, value: 1 }
+        { type: OUTCOME_TYPES.ADD_REQUISITION, value: 10 }
       ];
       const result = formatOutcomes(outcomes);
       
       expect(result).toContain('+10 Requisition');
-      expect(result).toContain('+1 Life');
     });
 
     it('should return "No effect" for empty array', () => {

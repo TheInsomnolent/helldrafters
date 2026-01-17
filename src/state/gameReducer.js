@@ -21,7 +21,6 @@ export const initialState = {
   },
   currentDiff: 1,
   requisition: 0,
-  lives: 3,
   samples: {
     common: 0,
     rare: 0,
@@ -96,18 +95,6 @@ export function gameReducer(state, action) {
       return {
         ...state,
         requisition: Math.max(0, state.requisition - action.payload)
-      };
-
-    case types.SET_LIVES:
-      return { ...state, lives: action.payload };
-
-    case types.ADD_LIVES:
-      return { ...state, lives: state.lives + action.payload };
-
-    case types.LOSE_LIVES:
-      return {
-        ...state,
-        lives: Math.max(0, state.lives - action.payload)
       };
 
     // Faction and subfaction

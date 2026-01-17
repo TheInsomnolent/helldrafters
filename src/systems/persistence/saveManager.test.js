@@ -18,7 +18,6 @@ describe('Systems - Save Manager', () => {
     },
     currentDiff: 4,
     requisition: 50,
-    lives: 3,
     burnedCards: ['p_liberator', 'st_gatling'],
     players: [
       {
@@ -56,7 +55,6 @@ describe('Systems - Save Manager', () => {
       expect(saveState.gameConfig).toEqual(mockGameState.gameConfig);
       expect(saveState.currentDiff).toBe(4);
       expect(saveState.requisition).toBe(50);
-      expect(saveState.lives).toBe(3);
       expect(saveState.players).toEqual(mockGameState.players);
       expect(saveState.exportedAt).toBeDefined();
     });
@@ -121,7 +119,6 @@ describe('Systems - Save Manager', () => {
       
       expect(normalized.phase).toBe(mockGameState.phase);
       expect(normalized.requisition).toBe(mockGameState.requisition);
-      expect(normalized.lives).toBe(mockGameState.lives);
     });
 
     it('should provide defaults for missing currentDiff', () => {
@@ -136,13 +133,6 @@ describe('Systems - Save Manager', () => {
       const normalized = normalizeLoadedState(incomplete);
       
       expect(normalized.requisition).toBe(0);
-    });
-
-    it('should provide defaults for missing lives', () => {
-      const incomplete = { ...mockGameState, lives: undefined };
-      const normalized = normalizeLoadedState(incomplete);
-      
-      expect(normalized.lives).toBe(3);
     });
 
     it('should provide defaults for missing arrays', () => {

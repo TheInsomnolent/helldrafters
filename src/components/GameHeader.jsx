@@ -10,7 +10,6 @@ import { SUBFACTION_CONFIG } from '../constants/balancingConfig';
 export default function GameHeader({ 
   currentDiff, 
   requisition, 
-  lives, 
   faction,
   subfaction,
   samples,
@@ -117,14 +116,6 @@ export default function GameHeader({
                 {samples?.superRare || 0}
               </span>
             </div>
-          </div>
-          
-          {/* Lives */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: '#ef4444' }}>
-            <AlertTriangle size={18} />
-            <span style={{ fontFamily: 'monospace', fontWeight: 'bold', fontSize: '20px' }}>
-              {lives} Lives
-            </span>
           </div>
           
           {/* Action Buttons */}

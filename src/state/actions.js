@@ -42,21 +42,6 @@ export const spendRequisition = (amount) => ({
   payload: amount
 });
 
-export const setLives = (lives) => ({
-  type: types.SET_LIVES,
-  payload: lives
-});
-
-export const addLives = (amount) => ({
-  type: types.ADD_LIVES,
-  payload: amount
-});
-
-export const loseLives = (amount) => ({
-  type: types.LOSE_LIVES,
-  payload: amount
-});
-
 // Faction and subfaction
 export const setSubfaction = (subfaction) => ({
   type: types.SET_SUBFACTION,
