@@ -11,6 +11,7 @@ import { getArmorComboDisplayName } from './utils/itemHelpers';
 import { processAllOutcomes, canAffordChoice, formatOutcome, formatOutcomes, needsPlayerChoice, applyGainBoosterWithSelection } from './systems/events/eventProcessor';
 import { exportGameStateToFile, parseSaveFile, normalizeLoadedState } from './systems/persistence/saveManager';
 import GameHeader from './components/GameHeader';
+import GameFooter from './components/GameFooter';
 import EventDisplay from './components/EventDisplay';
 import LoadoutDisplay from './components/LoadoutDisplay';
 import GameLobby from './components/GameLobby';
@@ -1253,6 +1254,9 @@ export default function HelldiversRoguelite() {
             </div>
           )}
         </div>
+        
+        {/* FOOTER */}
+        <GameFooter />
       </div>
     );
   }
@@ -3049,6 +3053,9 @@ export default function HelldiversRoguelite() {
         </div>
 
       </div>
+      
+      {/* FOOTER */}
+      <GameFooter />
     </div>
   );
 }
