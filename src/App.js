@@ -660,7 +660,7 @@ export default function HelldiversRoguelite() {
           </div>
           
           <h3 style={{ 
-            color: factionColors.PRIMARY, 
+            color: 'white', 
             fontWeight: 'bold', 
             fontSize: isArmorCombo ? '14px' : '18px', 
             lineHeight: '1.2', 
