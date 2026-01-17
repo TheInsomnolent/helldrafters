@@ -27,6 +27,9 @@ jobs:
 
       - name: Build application
         run: npm run build
+        env:
+          REACT_APP_BUILD_TIME: ${{ github.event.head_commit.timestamp }}
+          REACT_APP_COMMIT_SHA: ${{ github.sha }}
 
       - name: Deploy to GitHub Pages
         uses: peaceiris/actions-gh-pages@v3

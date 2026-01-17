@@ -1222,6 +1222,21 @@ export default function HelldiversRoguelite() {
                 Export saves your current game to a file. Import loads a saved game.
               </p>
             </div>
+
+            {/* Build Info */}
+            <div style={{ marginTop: '24px', paddingTop: '24px', borderTop: '1px solid rgba(100, 116, 139, 0.3)', textAlign: 'center' }}>
+              <div style={{ fontSize: '10px', color: '#475569', fontFamily: 'monospace' }}>
+                {process.env.REACT_APP_BUILD_TIME && (
+                  <div>Build: {process.env.REACT_APP_BUILD_TIME}</div>
+                )}
+                {process.env.REACT_APP_COMMIT_SHA && (
+                  <div>Commit: {process.env.REACT_APP_COMMIT_SHA.substring(0, 7)}</div>
+                )}
+                {!process.env.REACT_APP_BUILD_TIME && !process.env.REACT_APP_COMMIT_SHA && (
+                  <div>Local Development Build</div>
+                )}
+              </div>
+            </div>
           </div>
 
           {/* Debug Rarity Weight Visualization */}
