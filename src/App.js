@@ -1112,18 +1112,6 @@ export default function HelldiversRoguelite() {
                     <div style={{ color: '#94a3b8', fontSize: '11px', marginTop: '4px' }}>Display all available items in the draw pool (debug)</div>
                   </div>
                 </label>
-                <label style={{ display: 'flex', alignItems: 'center', gap: '12px', cursor: 'pointer', padding: '12px', backgroundColor: gameConfig.debugRarityWeights ? `${factionColors.PRIMARY}1A` : 'transparent', borderRadius: '4px', border: '1px solid rgba(100, 116, 139, 0.5)' }}>
-                  <input 
-                    type="checkbox" 
-                    checked={gameConfig.debugRarityWeights || false}
-                    onChange={(e) => dispatch(actions.updateGameConfig({ debugRarityWeights: e.target.checked }))}
-                    style={{ width: '20px', height: '20px', cursor: 'pointer' }}
-                  />
-                  <div>
-                    <div style={{ color: factionColors.PRIMARY, fontWeight: 'bold', fontSize: '14px' }}>Show Rarity Weights</div>
-                    <div style={{ color: '#94a3b8', fontSize: '11px', marginTop: '4px' }}>Display draw weight visualization and percentages (debug)</div>
-                  </div>
-                </label>
               </div>
             </div>
 
