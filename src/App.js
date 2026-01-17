@@ -677,32 +677,32 @@ export default function HelldiversRoguelite() {
             {displayName}
           </h3>
           
-            <div style={{ flexGrow: 1 }}>
-              <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px', marginTop: '8px' }}>
-                {displayItem.tags.map(tag => (
-                  <span key={tag} style={{
-                    fontSize: '10px',
-                    backgroundColor: 'rgba(51, 65, 85, 0.5)',
+          <div style={{ flexGrow: 1 }}>
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px', marginTop: '8px' }}>
+              {displayItem.tags.map(tag => (
+                <span key={tag} style={{
+                  fontSize: '10px',
+                  backgroundColor: 'rgba(51, 65, 85, 0.5)',
                   color: '#cbd5e1',
                   padding: '2px 4px',
                   borderRadius: '2px',
                   border: '1px solid rgba(71, 85, 105, 0.5)'
-                  }}>
-                    {tag}
-                  </span>
-                ))}
-              </div>
-              {armorPassiveDescription && (
-                <div style={{ marginTop: '10px' }}>
-                  <div style={{ color: '#94a3b8', fontSize: '9px', textTransform: 'uppercase', letterSpacing: '1px' }}>
-                    Armor Passive
-                  </div>
-                  <div style={{ color: '#cbd5e1', fontSize: '11px', lineHeight: '1.4', marginTop: '4px' }}>
-                    {armorPassiveDescription}
-                  </div>
-                </div>
-              )}
+                }}>
+                  {tag}
+                </span>
+              ))}
             </div>
+            {armorPassiveDescription && (
+              <div style={{ marginTop: '10px' }}>
+                <div style={{ color: '#94a3b8', fontSize: '9px', textTransform: 'uppercase', letterSpacing: '1px' }}>
+                  Armor Passive
+                </div>
+                <div style={{ color: '#cbd5e1', fontSize: '11px', lineHeight: '1.4', marginTop: '4px' }}>
+                  {armorPassiveDescription}
+                </div>
+              </div>
+            )}
+          </div>
           
           <div style={{ marginTop: '16px', paddingTop: '16px', borderTop: '1px solid rgba(71, 85, 105, 0.5)', textAlign: 'center' }}>
             <span style={{ color: factionColors.PRIMARY, fontWeight: 'bold', textTransform: 'uppercase', letterSpacing: '2px', fontSize: '14px' }}>
