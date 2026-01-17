@@ -597,9 +597,9 @@ export default function HelldiversRoguelite() {
       : item.name;
 
     let armorPassiveDescription = null;
-    const isArmorItem = Boolean(item?.armorClass || item?.type === TYPE.ARMOR);
+    const isArmorItem = isArmorCombo || item?.type === TYPE.ARMOR;
     if (isArmorItem) {
-      const armorPassiveKey = item.passive || displayItem.passive;
+      const armorPassiveKey = isArmorCombo ? item.passive : displayItem.passive;
       if (armorPassiveKey) {
         const description = ARMOR_PASSIVE_DESCRIPTIONS[armorPassiveKey];
         if (!description) {
