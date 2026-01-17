@@ -1,70 +1,102 @@
-# Getting Started with Create React App
+# Helldrafters
 
-This project was bootstrapped with [Create React App](https://github.com/facebook/create-react-app).
+**A roguelite draft director for Helldivers 2**
 
-## Available Scripts
+🎮 **[Play Now](https://theinsomnolent.github.io/helldrafters/)**
 
-In the project directory, you can run:
+---
 
-### `npm start`
+## What is Helldrafters?
 
-Runs the app in the development mode.\
-Open [http://localhost:3000](http://localhost:3000) to view it in your browser.
+Helldrafters is a companion app that transforms Helldivers 2 into a roguelite experience. Instead of choosing your loadout freely, you draft equipment cards between missions, building your arsenal as you progress through escalating difficulties.
 
-The page will reload when you make changes.\
-You may also see any lint errors in the console.
+Perfect for solo players or squads looking for a fresh challenge, Helldrafters adds strategic depth and replayability by forcing you to adapt to what the draft offers rather than relying on your usual meta loadouts.
 
-### `npm test`
+## How It Works
 
-Launches the test runner in the interactive watch mode.\
-See the section about [running tests](https://facebook.github.io/create-react-app/docs/running-tests) for more information.
+### The Core Loop
 
-### `npm run build`
+1. **Start at Difficulty 1** - Begin with just a Peacemaker pistol and basic stratagems
+2. **Complete a Mission** - Play a Helldivers 2 mission at your current difficulty
+3. **Draft Equipment** - Each player drafts one item from a random selection of weapons, armor, and stratagems
+4. **Advance or Perish** - Success raises the difficulty; failure triggers sacrifices
+5. **Reach Difficulty 10** - Complete all 10 difficulties to achieve victory!
 
-Builds the app for production to the `build` folder.\
-It correctly bundles React in production mode and optimizes the build for the best performance.
+### Key Features
 
-The build is minified and the filenames include the hashes.\
-Your app is ready to be deployed!
+- **Smart Drafting System**: Cards are weighted based on your current needs (need anti-tank? More likely to see AT weapons)
+- **Theater Selection**: Choose your faction (Terminids, Automatons, Illuminate) with subfaction variants that modify difficulty and rewards
+- **Solo or Co-op**: Supports 1-4 players with customizable game modes
+- **Events System**: Optional high-risk, high-reward events between missions
+- **Loadout Sacrifice**: Failed missions force you to sacrifice equipment, raising the stakes
+- **Custom Start Mode**: Configure starting difficulty and loadouts for challenge runs
+- **Multiple Game Modes**: 
+  - **Global Uniqueness**: Players can't draft the same cards
+  - **Burn Cards**: Once seen, a card never appears again
+  - **Brutality Mode**: Harsher penalties for non-extracted players
+  - **Endless Mode**: Keep playing past D10
 
-See the section about [deployment](https://facebook.github.io/create-react-app/docs/deployment) for more information.
+### Warbond Selection
 
-### `npm run eject`
+At the start of each run, players select which warbonds they own. The draft pool only includes equipment from those warbonds plus Superstore items (optional). This ensures you only see items you can actually equip in Helldivers 2.
 
-**Note: this is a one-way operation. Once you `eject`, you can't go back!**
+### The Draft
 
-If you aren't satisfied with the build tool and configuration choices, you can `eject` at any time. This command will remove the single build dependency from your project.
+Each mission, players take turns drafting from a hand of cards. The hand size increases with difficulty:
+- **D1-D2**: 2 cards
+- **D3-D4**: 3 cards
+- **D5-D6**: 4 cards
+- **D7-D8**: 5 cards
+- **D9-D10**: 6 cards
 
-Instead, it will copy all the configuration files and the transitive dependencies (webpack, Babel, ESLint, etc) right into your project so you have full control over them. All of the commands except `eject` will still work, but they will point to the copied scripts so you can tweak them. At this point you're on your own.
+Cards show:
+- Item name and type
+- Rarity (Common, Uncommon, Rare, Legendary)
+- Tags (AT, Fire, Explosive, etc.)
 
-You don't have to ever use `eject`. The curated feature set is suitable for small and middle deployments, and you shouldn't feel obligated to use this feature. However we understand that this tool wouldn't be useful if you couldn't customize it when you are ready for it.
+You can spend Requisition to reroll your hand, or lock specific slots to prevent certain item types from appearing.
 
-## Learn More
+## Feedback & Bug Reports
 
-You can learn more in the [Create React App documentation](https://facebook.github.io/create-react-app/docs/getting-started).
+Found a bug? Have a suggestion? Please [open an issue on GitHub](https://github.com/TheInsomnolent/helldrafters/issues).
 
-To learn React, check out the [React documentation](https://reactjs.org/).
+When reporting bugs, please include:
+- What you were doing when the bug occurred
+- Your game configuration (player count, game modes enabled, etc.)
+- Browser and device information
+- Screenshots if applicable
 
-### Code Splitting
+## Development
 
-This section has moved here: [https://facebook.github.io/create-react-app/docs/code-splitting](https://facebook.github.io/create-react-app/docs/code-splitting)
+### Running Locally
 
-### Analyzing the Bundle Size
+```bash
+npm install
+npm start
+```
 
-This section has moved here: [https://facebook.github.io/create-react-app/docs/analyzing-the-bundle-size](https://facebook.github.io/create-react-app/docs/analyzing-the-bundle-size)
+The app will open at [http://localhost:3000](http://localhost:3000).
 
-### Making a Progressive Web App
+### Building
 
-This section has moved here: [https://facebook.github.io/create-react-app/docs/making-a-progressive-web-app](https://facebook.github.io/create-react-app/docs/making-a-progressive-web-app)
+```bash
+npm run build
+```
 
-### Advanced Configuration
+### Testing
 
-This section has moved here: [https://facebook.github.io/create-react-app/docs/advanced-configuration](https://facebook.github.io/create-react-app/docs/advanced-configuration)
+```bash
+npm test        # Run tests
+npm run lint    # Check for linting errors
+```
 
-### Deployment
+## Support the Project
 
-This section has moved here: [https://facebook.github.io/create-react-app/docs/deployment](https://facebook.github.io/create-react-app/docs/deployment)
+If you enjoy Helldrafters, consider supporting development:
 
-### `npm run build` fails to minify
+[![ko-fi](https://ko-fi.com/img/githubbutton_sm.svg)](https://ko-fi.com/theinsomnolent)
 
-This section has moved here: [https://facebook.github.io/create-react-app/docs/troubleshooting#npm-run-build-fails-to-minify](https://facebook.github.io/create-react-app/docs/troubleshooting#npm-run-build-fails-to-minify)
+---
+
+**For Liberty! For Democracy! For Managed Mayhem!**
+
