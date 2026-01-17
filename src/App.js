@@ -600,12 +600,12 @@ export default function HelldiversRoguelite() {
     if (displayItem.type === TYPE.ARMOR) {
       const armorPassiveKey = isArmorCombo ? item.passive : displayItem.passive;
       if (armorPassiveKey) {
-        let description = ARMOR_PASSIVE_DESCRIPTIONS[armorPassiveKey];
+        const description = ARMOR_PASSIVE_DESCRIPTIONS[armorPassiveKey];
         if (!description) {
-          console.warn(`Missing armor passive description for ${armorPassiveKey}`);
-          description = 'Passive effect details unavailable.';
+          const armorIdentifier = displayItem?.name || displayItem?.id || 'unknown armor';
+          console.warn(`Missing armor passive description for ${armorPassiveKey} (${armorIdentifier})`);
         }
-        armorPassiveDescription = description;
+        armorPassiveDescription = description || 'Passive effect details unavailable.';
       }
     }
     
