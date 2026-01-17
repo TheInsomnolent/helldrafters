@@ -4,6 +4,7 @@ import { selectRandomEvent, EVENT_TYPES, EVENTS } from './systems/events/events'
 import { RARITY, TYPE, FACTION } from './constants/types';
 import { MASTER_DB } from './data/itemsByWarbond';
 import { STARTING_LOADOUT, DIFFICULTY_CONFIG } from './constants/gameConfig';
+import { ARMOR_PASSIVE_DESCRIPTIONS } from './constants/armorPassives';
 import { getItemById } from './utils/itemHelpers';
 import { getDraftHandSize, getWeightedPool, generateDraftHand } from './utils/draftHelpers';
 import { areStratagemSlotsFull, getFirstEmptyStratagemSlot } from './utils/loadoutHelpers';
@@ -594,6 +595,20 @@ export default function HelldiversRoguelite() {
     const displayName = isArmorCombo 
       ? item.items.map(armor => armor.name).join(' / ')
       : item.name;
+
+    let armorPassiveDescription = null;
+    const isArmorItem = isArmorCombo || item?.type === TYPE.ARMOR;
+    if (isArmorItem) {
+      const armorPassiveKey = item.passive;
+      if (armorPassiveKey) {
+        const description = ARMOR_PASSIVE_DESCRIPTIONS[armorPassiveKey];
+        if (!description && process.env.NODE_ENV === 'development') {
+          const armorIdentifier = isArmorCombo ? displayName : (item.name || item.id || 'unknown armor');
+          console.warn(`Missing armor passive description for ${armorPassiveKey} (${armorIdentifier})`);
+        }
+        armorPassiveDescription = description || 'Passive effect details unavailable.';
+      }
+    }
     
     return (
       <div 
@@ -684,6 +699,16 @@ export default function HelldiversRoguelite() {
                 </span>
               ))}
             </div>
+            {armorPassiveDescription && (
+              <div style={{ marginTop: '10px' }}>
+                <div style={{ color: '#94a3b8', fontSize: '9px', textTransform: 'uppercase', letterSpacing: '1px' }}>
+                  Armor Passive
+                </div>
+                <div style={{ color: '#cbd5e1', fontSize: '11px', lineHeight: '1.4', marginTop: '4px' }}>
+                  {armorPassiveDescription}
+                </div>
+              </div>
+            )}
           </div>
           
           <div style={{ marginTop: '16px', paddingTop: '16px', borderTop: '1px solid rgba(71, 85, 105, 0.5)', textAlign: 'center' }}>
