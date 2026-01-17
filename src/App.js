@@ -48,6 +48,7 @@ export default function HelldiversRoguelite() {
     customSetup,
     players,
     draftState,
+    sacrificeState,
     eventsEnabled,
     currentEvent,
     eventPlayerChoice,
@@ -155,7 +156,8 @@ export default function HelldiversRoguelite() {
         warbonds: lp.warbonds,
         includeSuperstore: lp.includeSuperstore,
         weaponRestricted: false,
-        lockedSlots: []
+        lockedSlots: [],
+        extracted: true
       }));
       dispatch(actions.setPlayers(newPlayers));
       dispatch(actions.setPhase('CUSTOM_SETUP'));
@@ -176,7 +178,8 @@ export default function HelldiversRoguelite() {
         warbonds: lp.warbonds,
         includeSuperstore: lp.includeSuperstore,
         weaponRestricted: false,
-        lockedSlots: []
+        lockedSlots: [],
+        extracted: true
       }));
       dispatch(actions.setPlayers(newPlayers));
       dispatch(actions.setDifficulty(1));
@@ -193,7 +196,8 @@ export default function HelldiversRoguelite() {
       loadout: { ...loadout },
       inventory: Object.values(loadout).flat().filter(id => id !== null),
       weaponRestricted: false,
-      lockedSlots: []
+      lockedSlots: [],
+      extracted: true
     }));
     dispatch(actions.setPlayers(newPlayers));
     dispatch(actions.setDifficulty(customSetup.difficulty));
@@ -1100,6 +1104,18 @@ export default function HelldiversRoguelite() {
                     <div style={{ color: '#94a3b8', fontSize: '11px', marginTop: '4px' }}>Manually trigger events from dashboard for testing</div>
                   </div>
                 </label>
+                <label style={{ display: 'flex', alignItems: 'center', gap: '12px', cursor: 'pointer', padding: '12px', backgroundColor: gameConfig.brutalityMode ? `${factionColors.PRIMARY}1A` : 'transparent', borderRadius: '4px', border: '1px solid rgba(100, 116, 139, 0.5)' }}>
+                  <input 
+                    type="checkbox" 
+                    checked={gameConfig.brutalityMode}
+                    onChange={(e) => dispatch(actions.updateGameConfig({ brutalityMode: e.target.checked }))}
+                    style={{ width: '20px', height: '20px', cursor: 'pointer' }}
+                  />
+                  <div>
+                    <div style={{ color: factionColors.PRIMARY, fontWeight: 'bold', fontSize: '14px' }}>Brutality Mode</div>
+                    <div style={{ color: '#94a3b8', fontSize: '11px', marginTop: '4px' }}>Non-extracted Helldivers sacrifice loadout items (down to Peacemaker & B-01). If disabled, only all-fail triggers sacrifice.</div>
+                  </div>
+                </label>
                 <label style={{ display: 'flex', alignItems: 'center', gap: '12px', cursor: 'pointer', padding: '12px', backgroundColor: gameConfig.showCardPool ? `${factionColors.PRIMARY}1A` : 'transparent', borderRadius: '4px', border: '1px solid rgba(100, 116, 139, 0.5)' }}>
                   <input 
                     type="checkbox" 
@@ -1858,6 +1874,296 @@ export default function HelldiversRoguelite() {
     );
   }
 
+  // SACRIFICE PHASE
+  if (phase === 'SACRIFICE') {
+    const playerIndex = sacrificeState.activePlayerIndex;
+    const player = players[playerIndex];
+    
+    if (!player) {
+      console.error('SACRIFICE: Invalid player index', playerIndex, 'players:', players.length);
+      return <div>Error: Invalid player state</div>;
+    }
+    
+    const sacrificableItems = [];
+    
+    // Collect all sacrificable items from player's loadout
+    // Cannot sacrifice P2-Peacemaker (s_peacemaker) or B-01 Tactical (a_b01)
+    if (player.loadout.primary) {
+      const item = getItemById(player.loadout.primary);
+      if (item) sacrificableItems.push({ ...item, slot: 'Primary' });
+    }
+    
+    if (player.loadout.secondary && player.loadout.secondary !== 's_peacemaker') {
+      const item = getItemById(player.loadout.secondary);
+      if (item) sacrificableItems.push({ ...item, slot: 'Secondary' });
+    }
+    
+    if (player.loadout.grenade && player.loadout.grenade !== 'g_he') {
+      const item = getItemById(player.loadout.grenade);
+      if (item) sacrificableItems.push({ ...item, slot: 'Grenade' });
+    }
+    
+    if (player.loadout.armor && player.loadout.armor !== 'a_b01') {
+      const item = getItemById(player.loadout.armor);
+      if (item) sacrificableItems.push({ ...item, slot: 'Armor' });
+    }
+    
+    if (player.loadout.booster) {
+      const item = getItemById(player.loadout.booster);
+      if (item) sacrificableItems.push({ ...item, slot: 'Booster' });
+    }
+    
+    player.loadout.stratagems.forEach((sid, idx) => {
+      if (sid) {
+        const item = getItemById(sid);
+        if (item) sacrificableItems.push({ ...item, slot: `Stratagem ${idx + 1}` });
+      }
+    });
+    
+    const handleSacrifice = (item) => {
+      // Sacrifice the item for the current active player
+      const playerIndex = sacrificeState.activePlayerIndex;
+      console.log('Sacrificing item', item.id, 'for player index', playerIndex, 'player:', players[playerIndex]?.name);
+      
+      // Apply sacrifice to the players array
+      const itemId = item.id;
+      const updatedPlayers = players.map((player, idx) => {
+        if (idx !== playerIndex) return player;
+        
+        // Remove from inventory
+        let newInventory = player.inventory.filter(id => id !== itemId);
+        
+        // Remove from loadout if equipped
+        const newLoadout = { 
+          ...player.loadout,
+          stratagems: [...player.loadout.stratagems]
+        };
+        
+        if (newLoadout.primary === itemId) newLoadout.primary = null;
+        if (newLoadout.secondary === itemId) {
+          newLoadout.secondary = 's_peacemaker';
+          if (!newInventory.includes('s_peacemaker')) {
+            newInventory.push('s_peacemaker');
+          }
+        }
+        if (newLoadout.grenade === itemId) {
+          newLoadout.grenade = 'g_he';
+          if (!newInventory.includes('g_he')) {
+            newInventory.push('g_he');
+          }
+        }
+        if (newLoadout.armor === itemId) {
+          newLoadout.armor = 'a_b01';
+          if (!newInventory.includes('a_b01')) {
+            newInventory.push('a_b01');
+          }
+        }
+        if (newLoadout.booster === itemId) newLoadout.booster = null;
+        
+        // Remove stratagem from all slots that match
+        for (let i = 0; i < newLoadout.stratagems.length; i++) {
+          if (newLoadout.stratagems[i] === itemId) {
+            newLoadout.stratagems[i] = null;
+          }
+        }
+        
+        return {
+          ...player,
+          inventory: newInventory,
+          loadout: newLoadout
+        };
+      });
+      
+      // Move to next player who needs to sacrifice, or end sacrifice phase
+      const currentIndex = sacrificeState.sacrificesRequired.indexOf(playerIndex);
+      const nextIndex = currentIndex + 1;
+      
+      console.log('Current position in sacrifice queue:', currentIndex, 'Next:', nextIndex, 'Total required:', sacrificeState.sacrificesRequired);
+      
+      if (nextIndex < sacrificeState.sacrificesRequired.length) {
+        // Move to next player
+        const nextPlayerIndex = sacrificeState.sacrificesRequired[nextIndex];
+        console.log('Moving to next player index:', nextPlayerIndex);
+        dispatch(actions.setPlayers(updatedPlayers));
+        dispatch(actions.updateSacrificeState({
+          activePlayerIndex: nextPlayerIndex
+        }));
+      } else {
+        // All sacrifices complete - reset extraction status and move to draft
+        console.log('All sacrifices complete, moving to draft');
+        const resetPlayers = updatedPlayers.map(p => ({ ...p, extracted: true }));
+        dispatch(actions.setPlayers(resetPlayers));
+        startDraftPhase();
+      }
+    };
+    
+    return (
+      <div style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column', padding: '24px' }}>
+        <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: '16px', gap: '12px' }}>
+          <button
+            onClick={exportGameState}
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: '8px',
+              padding: '8px 16px',
+              backgroundColor: 'rgba(100, 116, 139, 0.3)',
+              color: '#94a3b8',
+              border: '1px solid rgba(100, 116, 139, 0.5)',
+              borderRadius: '4px',
+              fontWeight: 'bold',
+              textTransform: 'uppercase',
+              fontSize: '12px',
+              cursor: 'pointer',
+              transition: 'all 0.2s'
+            }}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.backgroundColor = 'rgba(100, 116, 139, 0.5)';
+              e.currentTarget.style.color = factionColors.PRIMARY;
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.backgroundColor = 'rgba(100, 116, 139, 0.3)';
+              e.currentTarget.style.color = '#94a3b8';
+            }}
+          >
+            💾 Export
+          </button>
+        </div>
+        
+        <div style={{ width: '100%', maxWidth: '1200px', margin: '0 auto', flexGrow: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
+          <div style={{ textAlign: 'center', marginBottom: '40px' }}>
+            <div style={{
+              backgroundColor: 'rgba(239, 68, 68, 0.15)',
+              border: '2px solid rgba(239, 68, 68, 0.5)',
+              borderRadius: '8px',
+              padding: '16px 32px',
+              marginBottom: '24px',
+              display: 'inline-block'
+            }}>
+              <div style={{ color: '#ef4444', fontSize: '16px', fontWeight: 'bold', textTransform: 'uppercase', letterSpacing: '1px' }}>
+                ⚠️ EXTRACTION FAILURE PENALTY
+              </div>
+              <div style={{ color: '#94a3b8', fontSize: '12px', marginTop: '6px' }}>
+                Equipment Lost in Combat Zone
+              </div>
+            </div>
+            
+            <h1 style={{ fontSize: '36px', fontWeight: '900', color: 'white', textTransform: 'uppercase', margin: '0 0 8px 0' }}>
+              {player.name} <span style={{ color: '#64748b' }}>{'//'}</span> Sacrifice Item
+            </h1>
+            <p style={{ color: '#94a3b8', margin: '0' }}>
+              Select one item from your loadout to sacrifice (minimum gear protected)
+            </p>
+          </div>
+
+          {sacrificableItems.length === 0 ? (
+            <div style={{ 
+              backgroundColor: '#283548', 
+              padding: '40px', 
+              borderRadius: '12px', 
+              border: '1px solid rgba(100, 116, 139, 0.5)',
+              textAlign: 'center',
+              maxWidth: '600px'
+            }}>
+              <div style={{ fontSize: '48px', marginBottom: '16px' }}>🛡️</div>
+              <h3 style={{ color: factionColors.PRIMARY, fontSize: '20px', fontWeight: 'bold', marginBottom: '8px' }}>
+                No Items to Sacrifice
+              </h3>
+              <p style={{ color: '#94a3b8', margin: 0 }}>
+                You only have minimum required equipment (P2-Peacemaker & B-01 Tactical).
+              </p>
+              <button
+                onClick={() => {
+                  // Skip this player - move to next or end sacrifice phase
+                  const currentIndex = sacrificeState.sacrificesRequired.indexOf(sacrificeState.activePlayerIndex);
+                  const nextIndex = currentIndex + 1;
+                  
+                  if (nextIndex < sacrificeState.sacrificesRequired.length) {
+                    dispatch(actions.updateSacrificeState({
+                      activePlayerIndex: sacrificeState.sacrificesRequired[nextIndex]
+                    }));
+                  } else {
+                    const resetPlayers = players.map(p => ({ ...p, extracted: true }));
+                    dispatch(actions.setPlayers(resetPlayers));
+                    startDraftPhase();
+                  }
+                }}
+                style={{
+                  ...BUTTON_STYLES.PRIMARY,
+                  marginTop: '24px',
+                  padding: '12px 32px',
+                  border: 'none',
+                  borderRadius: '4px'
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.backgroundColor = COLORS.PRIMARY_HOVER;
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.backgroundColor = COLORS.PRIMARY;
+                }}
+              >
+                Continue
+              </button>
+            </div>
+          ) : (
+            <div style={{ 
+              display: 'grid', 
+              gridTemplateColumns: `repeat(${Math.min(sacrificableItems.length, 4)}, 1fr)`, 
+              gap: '24px', 
+              marginBottom: '48px',
+              width: '100%'
+            }}>
+              {sacrificableItems.map((item, idx) => (
+                <div 
+                  key={`${item.id}-${idx}`}
+                  onClick={() => {
+                    if (window.confirm(`Sacrifice ${item.name}? This item will be permanently removed from your inventory and loadout.`)) {
+                      handleSacrifice(item);
+                    }
+                  }}
+                  style={{
+                    backgroundColor: '#283548',
+                    border: '2px solid rgba(239, 68, 68, 0.5)',
+                    borderRadius: '12px',
+                    padding: '24px',
+                    cursor: 'pointer',
+                    transition: 'all 0.2s',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    gap: '12px'
+                  }}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.borderColor = '#ef4444';
+                    e.currentTarget.style.backgroundColor = '#1f2937';
+                    e.currentTarget.style.transform = 'translateY(-4px)';
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.borderColor = 'rgba(239, 68, 68, 0.5)';
+                    e.currentTarget.style.backgroundColor = '#283548';
+                    e.currentTarget.style.transform = 'translateY(0)';
+                  }}
+                >
+                  <div style={{ fontSize: '10px', color: '#64748b', textTransform: 'uppercase', letterSpacing: '1px' }}>
+                    {item.slot}
+                  </div>
+                  <div style={{ color: 'white', fontWeight: 'bold', fontSize: '18px' }}>
+                    {item.name}
+                  </div>
+                  <div style={{ fontSize: '12px', color: '#94a3b8' }}>
+                    {item.rarity}
+                  </div>
+                  <div style={{ fontSize: '11px', color: '#ef4444', fontStyle: 'italic', marginTop: 'auto' }}>
+                    Click to sacrifice
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      </div>
+    );
+  }
+
   if (phase === 'DRAFT') {
     const player = players[draftState.activePlayerIndex];
     
@@ -2357,6 +2663,58 @@ export default function HelldiversRoguelite() {
               </p>
             </div>
             
+            {/* Extraction Status */}
+            <div style={{ marginBottom: '32px' }}>
+              <label style={{ display: 'block', fontSize: '12px', fontWeight: 'bold', color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.15em', marginBottom: '16px' }}>
+                Extraction Status
+              </label>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                {players.map((player, idx) => (
+                  <label 
+                    key={player.id} 
+                    style={{ 
+                      display: 'flex', 
+                      alignItems: 'center', 
+                      gap: '12px', 
+                      cursor: 'pointer', 
+                      padding: '10px 16px', 
+                      backgroundColor: player.extracted ? 'rgba(34, 197, 94, 0.1)' : 'rgba(239, 68, 68, 0.1)', 
+                      borderRadius: '4px', 
+                      border: `1px solid ${player.extracted ? '#22c55e' : '#ef4444'}`,
+                      transition: 'all 0.2s'
+                    }}
+                  >
+                    <input 
+                      type="checkbox" 
+                      checked={player.extracted !== false}
+                      onChange={(e) => dispatch(actions.setPlayerExtracted(idx, e.target.checked))}
+                      style={{ width: '18px', height: '18px', cursor: 'pointer' }}
+                    />
+                    <div style={{ flex: 1, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                      <span style={{ color: player.extracted ? '#22c55e' : '#ef4444', fontWeight: 'bold', fontSize: '14px' }}>
+                        {player.name} extracted
+                      </span>
+                      {!player.extracted && gameConfig.brutalityMode && (
+                        <span style={{ fontSize: '11px', color: '#ef4444', fontStyle: 'italic' }}>
+                          Must sacrifice item
+                        </span>
+                      )}
+                      {!player.extracted && !gameConfig.brutalityMode && players.every(p => !p.extracted) && (
+                        <span style={{ fontSize: '11px', color: '#ef4444', fontStyle: 'italic' }}>
+                          TPK - Must sacrifice item
+                        </span>
+                      )}
+                    </div>
+                  </label>
+                ))}
+              </div>
+              <p style={{ fontSize: '11px', color: '#94a3b8', fontStyle: 'italic', margin: '8px 0 0 0', textAlign: 'center' }}>
+                {gameConfig.brutalityMode 
+                  ? 'Brutality Mode: Non-extracted Helldivers must sacrifice equipment' 
+                  : 'If all Helldivers fail to extract, all must sacrifice equipment'}
+              </p>
+            </div>
+            
             <div style={{ display: 'flex', gap: '16px', justifyContent: 'center' }}>
               <button 
                 onClick={() => {
@@ -2427,7 +2785,34 @@ export default function HelldiversRoguelite() {
                   }
                   
                   if (currentDiff < 10) dispatch(actions.setDifficulty(currentDiff + 1));
-                  startDraftPhase();
+                  
+                  // Check if sacrifice is required
+                  let sacrificesRequired = [];
+                  
+                  if (gameConfig.brutalityMode) {
+                    // Brutality mode: any non-extracted player must sacrifice
+                    sacrificesRequired = players
+                      .map((p, idx) => ({ player: p, idx }))
+                      .filter(({ player }) => !player.extracted)
+                      .map(({ idx }) => idx);
+                  } else {
+                    // Non-brutality: only if ALL players failed to extract
+                    const allFailed = players.every(p => !p.extracted);
+                    if (allFailed) {
+                      sacrificesRequired = players.map((_, idx) => idx);
+                    }
+                  }
+                  
+                  // Route to SACRIFICE or DRAFT
+                  if (sacrificesRequired.length > 0) {
+                    dispatch(actions.setSacrificeState({
+                      activePlayerIndex: sacrificesRequired[0],
+                      sacrificesRequired: sacrificesRequired
+                    }));
+                    dispatch(actions.setPhase('SACRIFICE'));
+                  } else {
+                    startDraftPhase();
+                  }
                 }}
                 style={{
                   ...BUTTON_STYLES.PRIMARY,

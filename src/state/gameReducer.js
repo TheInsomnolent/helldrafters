@@ -17,7 +17,8 @@ export const initialState = {
     customStart: false,
     endlessMode: false,
     debugEventsMode: false,
-    debugRarityWeights: false
+    debugRarityWeights: false,
+    brutalityMode: false
   },
   currentDiff: 1,
   requisition: 0,
@@ -33,6 +34,10 @@ export const initialState = {
     isRerolling: false,
     pendingStratagem: null,
     extraDraftRound: 0 // Tracks which extra draft round we're on (0 = normal draft)
+  },
+  sacrificeState: {
+    activePlayerIndex: 0,
+    sacrificesRequired: [] // Array of player indices who must sacrifice
   },
   burnedCards: [],
   customSetup: {
@@ -234,6 +239,82 @@ export function gameReducer(state, action) {
             ? { ...player, includeSuperstore: action.payload.includeSuperstore }
             : player
         )
+      };
+
+    case types.SET_PLAYER_EXTRACTED:
+      return {
+        ...state,
+        players: state.players.map((player, idx) =>
+          idx === action.payload.playerIndex
+            ? { ...player, extracted: action.payload.extracted }
+            : player
+        )
+      };
+
+    case types.SACRIFICE_ITEM:
+      return {
+        ...state,
+        players: state.players.map((player, idx) => {
+          if (idx !== action.payload.playerIndex) return player;
+          
+          const itemId = action.payload.itemId;
+          
+          // Remove from inventory
+          let newInventory = player.inventory.filter(id => id !== itemId);
+          
+          // Remove from loadout if equipped
+          const newLoadout = { 
+            ...player.loadout,
+            stratagems: [...player.loadout.stratagems]
+          };
+          
+          if (newLoadout.primary === itemId) newLoadout.primary = null;
+          if (newLoadout.secondary === itemId) {
+            newLoadout.secondary = 's_peacemaker';
+            // Ensure s_peacemaker is in inventory
+            if (!newInventory.includes('s_peacemaker')) {
+              newInventory.push('s_peacemaker');
+            }
+          }
+          if (newLoadout.grenade === itemId) {
+            newLoadout.grenade = 'g_he';
+            // Ensure g_he is in inventory
+            if (!newInventory.includes('g_he')) {
+              newInventory.push('g_he');
+            }
+          }
+          if (newLoadout.armor === itemId) {
+            newLoadout.armor = 'a_b01';
+            // Ensure a_b01 is in inventory
+            if (!newInventory.includes('a_b01')) {
+              newInventory.push('a_b01');
+            }
+          }
+          if (newLoadout.booster === itemId) newLoadout.booster = null;
+          
+          // Remove stratagem from all slots that match
+          for (let i = 0; i < newLoadout.stratagems.length; i++) {
+            if (newLoadout.stratagems[i] === itemId) {
+              newLoadout.stratagems[i] = null;
+            }
+          }
+          
+          return {
+            ...player,
+            inventory: newInventory,
+            loadout: newLoadout
+          };
+        })
+      };
+
+    // Sacrifice state
+    case types.SET_SACRIFICE_STATE:
+      return { ...state, sacrificeState: action.payload };
+
+    case types.UPDATE_SACRIFICE_STATE:
+      return {
+        ...state,
+        sacrificeState: { ...state.sacrificeState, ...action.payload }
       };
 
     // Draft state

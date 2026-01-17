@@ -160,6 +160,27 @@ export const setPlayerSuperstore = (playerIndex, includeSuperstore) => ({
   payload: { playerIndex, includeSuperstore }
 });
 
+export const setPlayerExtracted = (playerIndex, extracted) => ({
+  type: types.SET_PLAYER_EXTRACTED,
+  payload: { playerIndex, extracted }
+});
+
+export const sacrificeItem = (playerIndex, itemId) => ({
+  type: types.SACRIFICE_ITEM,
+  payload: { playerIndex, itemId }
+});
+
+// Sacrifice state
+export const setSacrificeState = (sacrificeState) => ({
+  type: types.SET_SACRIFICE_STATE,
+  payload: sacrificeState
+});
+
+export const updateSacrificeState = (updates) => ({
+  type: types.UPDATE_SACRIFICE_STATE,
+  payload: updates
+});
+
 // Draft state// Draft state
 export const setDraftState = (draftState) => ({
   type: types.SET_DRAFT_STATE,
