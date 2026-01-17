@@ -13,7 +13,6 @@ export default function GameFooter() {
       marginTop: 'auto'
     }}>
       <div style={{ 
-        maxWidth: '1400px', 
         margin: '0 auto',
         display: 'flex',
         justifyContent: 'center',
