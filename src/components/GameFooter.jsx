@@ -7,8 +7,7 @@ import { Coffee } from 'lucide-react';
 export default function GameFooter() {
   return (
     <div style={{ 
-      backgroundColor: '#0f1419', 
-      borderTop: '1px solid rgba(100, 116, 139, 0.3)',
+      backgroundColor: 'transparent', 
       padding: '20px 16px',
       marginTop: 'auto'
     }}>
