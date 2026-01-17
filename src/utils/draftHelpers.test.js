@@ -1,5 +1,6 @@
+/* eslint-disable jest/no-conditional-expect */
 import { getDraftHandSize, getWeightedPool, generateDraftHand } from './draftHelpers';
-import { RARITY, TYPE, FACTION, TAGS } from '../constants/types';
+import { TYPE, FACTION, TAGS } from '../constants/types';
 
 describe('Utils - Draft Helpers', () => {
   describe('getDraftHandSize', () => {

@@ -1,6 +1,6 @@
 import React from 'react';
 import { RARITY } from '../constants/types';
-import { getRareWeightMultiplier, SUBFACTION, SUBFACTION_CONFIG } from '../constants/balancingConfig';
+import { getRareWeightMultiplier, SUBFACTION_CONFIG } from '../constants/balancingConfig';
 import { COLORS, SHADOWS } from '../constants/theme';
 
 /**

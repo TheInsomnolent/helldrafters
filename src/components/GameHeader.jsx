@@ -1,5 +1,5 @@
 import React from 'react';
-import { AlertTriangle, XCircle } from 'lucide-react';
+import { XCircle } from 'lucide-react';
 import { DIFFICULTY_CONFIG } from '../constants/gameConfig';
 import { getFactionColors } from '../constants/theme';
 import { SUBFACTION_CONFIG } from '../constants/balancingConfig';

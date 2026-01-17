@@ -197,7 +197,7 @@ export default function DraftDisplay({
             Priority Requisition Authorized
           </h2>
           <h1 style={{ fontSize: '36px', fontWeight: '900', color: 'white', textTransform: 'uppercase', margin: '0 0 8px 0' }}>
-            {player.name} <span style={{ color: '#64748b' }}>//</span> Select Upgrade
+            {player.name} <span style={{ color: '#64748b' }}>{'//'}</span> Select Upgrade
           </h1>
           <p style={{ color: '#94a3b8', margin: '0' }}>
             Choose wisely. This equipment is vital for Difficulty {currentDiff + 1}.
@@ -234,7 +234,10 @@ export default function DraftDisplay({
               fontSize: '14px', 
               fontWeight: 'bold', 
               textTransform: 'uppercase', 
-              letterSpacing: '1pxslotLockCost} Req each)
+              letterSpacing: '1px',
+              margin: '0 0 8px 0'
+            }}>
+              Slot Locking ({slotLockCost} Req each)
             </h3>
             <p style={{ color: '#64748b', fontSize: '12px', margin: 0 }}>
               Prevent specific item types from appearing in your drafts. Locks persist across missions.
@@ -244,10 +247,7 @@ export default function DraftDisplay({
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: '12px' }}>
             {[TYPE.ARMOR, TYPE.PRIMARY, TYPE.SECONDARY, TYPE.GRENADE, TYPE.STRATAGEM].map(slotType => {
               const isLocked = lockedSlots.includes(slotType);
-              const canLock = !isLocked && requisition >= slotLockCostto-fit, minmax(140px, 1fr))', gap: '12px' }}>
-            {[TYPE.ARMOR, TYPE.PRIMARY, TYPE.SECONDARY, TYPE.GRENADE, TYPE.STRATAGEM].map(slotType => {
-              const isLocked = lockedSlots.includes(slotType);
-              const canLock = !isLocked && requisition >= SLOT_LOCK_COST && lockedSlots.length < MAX_LOCKED_SLOTS;
+              const canLock = !isLocked && requisition >= slotLockCost && lockedSlots.length < MAX_LOCKED_SLOTS;
               const canUnlock = isLocked;
               
               return (

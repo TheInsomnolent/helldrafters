@@ -1,5 +1,4 @@
 import React, { useState } from 'react';
-import { AlertTriangle } from 'lucide-react';
 import { EVENT_TYPES, OUTCOME_TYPES } from '../systems/events/events';
 import { MASTER_DB } from '../data/itemsByWarbond';
 import { getSubfactionsForFaction, SUBFACTION_CONFIG } from '../constants/balancingConfig';
