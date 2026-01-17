@@ -1,5 +1,7 @@
 import React from 'react';
-import { RefreshCw, XCircle } from 'lucide-react';
+import { RefreshCw, XCircle, Lock, Unlock } from 'lucide-react';
+import { TYPE } from '../constants/types';
+import { getSlotLockCost, MAX_LOCKED_SLOTS } from '../constants/balancingConfig';
 
 /**
  * Draft phase display component
@@ -9,9 +11,13 @@ export default function DraftDisplay({
   draftState,
   currentDiff,
   requisition,
+  lockedSlots,
+  gameConfig,
   onDraftPick,
   onRemoveCard,
   onReroll,
+  onLockSlot,
+  onUnlockSlot,
   onExport,
   onCancelRun,
   onStratagemReplacement,
@@ -19,6 +25,8 @@ export default function DraftDisplay({
   getItemById,
   ItemCard
 }) {
+  const slotLockCost = getSlotLockCost(gameConfig.playerCount);
+  
   return (
     <div style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column', padding: '24px' }}>
       {/* Top buttons */}
@@ -212,6 +220,91 @@ export default function DraftDisplay({
           ))}
         </div>
 
+        {/* Slot Locking Controls */}
+        <div style={{ 
+          marginBottom: '32px', 
+          padding: '24px', 
+          backgroundColor: 'rgba(30, 41, 59, 0.5)', 
+          borderRadius: '8px',
+          border: '1px solid rgba(100, 116, 139, 0.3)'
+        }}>
+          <div style={{ marginBottom: '16px' }}>
+            <h3 style={{ 
+              color: '#F5C642', 
+              fontSize: '14px', 
+              fontWeight: 'bold', 
+              textTransform: 'uppercase', 
+              letterSpacing: '1pxslotLockCost} Req each)
+            </h3>
+            <p style={{ color: '#64748b', fontSize: '12px', margin: 0 }}>
+              Prevent specific item types from appearing in your drafts. Locks persist across missions.
+            </p>
+          </div>
+          
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: '12px' }}>
+            {[TYPE.ARMOR, TYPE.PRIMARY, TYPE.SECONDARY, TYPE.GRENADE, TYPE.STRATAGEM].map(slotType => {
+              const isLocked = lockedSlots.includes(slotType);
+              const canLock = !isLocked && requisition >= slotLockCostto-fit, minmax(140px, 1fr))', gap: '12px' }}>
+            {[TYPE.ARMOR, TYPE.PRIMARY, TYPE.SECONDARY, TYPE.GRENADE, TYPE.STRATAGEM].map(slotType => {
+              const isLocked = lockedSlots.includes(slotType);
+              const canLock = !isLocked && requisition >= SLOT_LOCK_COST && lockedSlots.length < MAX_LOCKED_SLOTS;
+              const canUnlock = isLocked;
+              
+              return (
+                <button
+                  key={slotType}
+                  onClick={() => isLocked ? onUnlockSlot(slotType) : onLockSlot(slotType)}
+                  disabled={!canLock && !canUnlock}
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    gap: '8px',
+                    padding: '10px 16px',
+                    borderRadius: '4px',
+                    fontWeight: 'bold',
+                    fontSize: '12px',
+                    textTransform: 'uppercase',
+                    border: isLocked ? '2px solid #ef4444' : '2px solid rgba(100, 116, 139, 0.5)',
+                    backgroundColor: isLocked ? 'rgba(239, 68, 68, 0.1)' : 'transparent',
+                    color: isLocked ? '#ef4444' : (canLock ? '#94a3b8' : '#334155'),
+                    cursor: (canLock || canUnlock) ? 'pointer' : 'not-allowed',
+                    transition: 'all 0.2s'
+                  }}
+                  onMouseEnter={(e) => {
+                    if (canLock || canUnlock) {
+                      e.currentTarget.style.borderColor = isLocked ? '#dc2626' : '#F5C642';
+                      e.currentTarget.style.color = isLocked ? '#dc2626' : '#F5C642';
+                    }
+                  }}
+                  onMouseLeave={(e) => {
+                    if (canLock || canUnlock) {
+                      e.currentTarget.style.borderColor = isLocked ? '#ef4444' : 'rgba(100, 116, 139, 0.5)';
+                      e.currentTarget.style.color = isLocked ? '#ef4444' : '#94a3b8';
+                    }
+                  }}
+                >
+                  {isLocked ? <Lock size={14} /> : <Unlock size={14} />}
+                  {slotType}
+                </button>
+              );
+            })}
+          </div>
+          
+          {lockedSlots.length >= MAX_LOCKED_SLOTS && (
+            <div style={{ 
+              marginTop: '12px', 
+              padding: '8px', 
+              backgroundColor: 'rgba(239, 68, 68, 0.1)',
+              borderLeft: '3px solid #ef4444',
+              fontSize: '12px',
+              color: '#fca5a5'
+            }}>
+              Maximum of {MAX_LOCKED_SLOTS} slots can be locked simultaneously
+            </div>
+          )}
+        </div>
+
         <div style={{ display: 'flex', justifyContent: 'center', gap: '24px' }}>
           <button 
             onClick={() => onReroll(1)}
@@ -245,7 +338,7 @@ export default function DraftDisplay({
         </div>
         
         <div style={{ marginTop: '32px', textAlign: 'center' }}>
-          <span style={{ color: '#F5C642', fontFamily: 'monospace' }}>Current Requisition: {requisition} R</span>
+          <span style={{ color: '#F5C642', fontFamily: 'monospace' }}>Current Requisition: {Math.floor(requisition)} R</span>
         </div>
       </div>
     </div>

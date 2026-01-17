@@ -2,6 +2,7 @@ import React from 'react';
 import { AlertTriangle, XCircle } from 'lucide-react';
 import { DIFFICULTY_CONFIG } from '../constants/gameConfig';
 import { getFactionColors } from '../constants/theme';
+import { SUBFACTION_CONFIG } from '../constants/balancingConfig';
 
 /**
  * Game header component showing current difficulty, stats, and action buttons
@@ -11,11 +12,13 @@ export default function GameHeader({
   requisition, 
   lives, 
   faction,
+  subfaction,
   samples,
   onExport,
   onCancelRun 
 }) {
   const factionColors = getFactionColors(faction);
+  const subfactionName = SUBFACTION_CONFIG[subfaction]?.name || 'Unknown';
   return (
     <div style={{ 
       backgroundColor: '#0f1419', 
@@ -59,7 +62,7 @@ export default function GameHeader({
               color: factionColors.PRIMARY, 
               fontFamily: 'monospace' 
             }}>
-              Theater: {faction}
+              Theater: {faction} - {subfactionName}
             </div>
           </div>
         </div>
@@ -73,7 +76,7 @@ export default function GameHeader({
               style={{ width: '20px', height: '20px' }}
             />
             <span style={{ fontFamily: 'monospace', fontWeight: 'bold', fontSize: '20px' }}>
-              {requisition}
+              {Math.floor(requisition)}
             </span>
           </div>
           

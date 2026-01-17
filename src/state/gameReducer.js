@@ -1,4 +1,5 @@
 import { FACTION } from '../constants/types';
+import { getDefaultSubfaction } from '../constants/balancingConfig';
 import * as types from './actionTypes';
 
 /**
@@ -9,12 +10,14 @@ export const initialState = {
   gameConfig: {
     playerCount: 1,
     faction: FACTION.BUGS,
+    subfaction: getDefaultSubfaction(FACTION.BUGS),
     starRating: 3,
     globalUniqueness: true,
     burnCards: true,
     customStart: false,
     endlessMode: false,
-    debugEventsMode: false
+    debugEventsMode: false,
+    debugRarityWeights: false
   },
   currentDiff: 1,
   requisition: 0,
@@ -48,6 +51,8 @@ export const initialState = {
   eventBoosterSelection: null, // Selected booster ID
   eventSpecialDraft: null, // Array of item objects for special draft selection
   eventSpecialDraftType: null, // 'throwable' or 'secondary'
+  pendingFaction: null, // Faction to switch to (awaiting subfaction selection)
+  pendingSubfactionSelection: null, // Selected subfaction for pending faction change
   seenEvents: [],
   settingsOpen: false,
   disabledWarbonds: []
@@ -103,6 +108,42 @@ export function gameReducer(state, action) {
       return {
         ...state,
         lives: Math.max(0, state.lives - action.payload)
+      };
+
+    // Faction and subfaction
+    case types.SET_SUBFACTION:
+      return {
+        ...state,
+        gameConfig: { ...state.gameConfig, subfaction: action.payload }
+      };
+
+    // Draft slot locking (per-player)
+    case types.LOCK_PLAYER_DRAFT_SLOT:
+      return {
+        ...state,
+        players: state.players.map(p => 
+          p.id === action.payload.playerId
+            ? {
+                ...p,
+                lockedSlots: p.lockedSlots && p.lockedSlots.includes(action.payload.slotType)
+                  ? p.lockedSlots
+                  : [...(p.lockedSlots || []), action.payload.slotType]
+              }
+            : p
+        )
+      };
+
+    case types.UNLOCK_PLAYER_DRAFT_SLOT:
+      return {
+        ...state,
+        players: state.players.map(p => 
+          p.id === action.payload.playerId
+            ? {
+                ...p,
+                lockedSlots: (p.lockedSlots || []).filter(slot => slot !== action.payload.slotType)
+              }
+            : p
+        )
       };
 
     // Samples
@@ -279,6 +320,12 @@ export function gameReducer(state, action) {
     case types.SET_EVENT_SPECIAL_DRAFT_TYPE:
       return { ...state, eventSpecialDraftType: action.payload };
 
+    case types.SET_PENDING_FACTION:
+      return { ...state, pendingFaction: action.payload };
+
+    case types.SET_PENDING_SUBFACTION_SELECTION:
+      return { ...state, pendingSubfactionSelection: action.payload };
+
     case types.RESET_EVENT_SELECTIONS:
       return { 
         ...state, 
@@ -288,7 +335,9 @@ export function gameReducer(state, action) {
         eventBoosterDraft: null,
         eventBoosterSelection: null,
         eventSpecialDraft: null,
-        eventSpecialDraftType: null
+        eventSpecialDraftType: null,
+        pendingFaction: null,
+        pendingSubfactionSelection: null
       };
 
     // Custom setup

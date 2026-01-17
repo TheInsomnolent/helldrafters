@@ -1,10 +1,22 @@
 import React from 'react';
+import { Lock, Unlock } from 'lucide-react';
 import { getFactionColors } from '../constants/theme';
+import { TYPE } from '../constants/types';
 
 /**
  * Player loadout display component
  */
-export default function LoadoutDisplay({ player, getItemById, getArmorComboDisplayName, faction }) {
+export default function LoadoutDisplay({ 
+  player, 
+  getItemById, 
+  getArmorComboDisplayName, 
+  faction,
+  requisition,
+  slotLockCost,
+  maxLockedSlots,
+  onLockSlot,
+  onUnlockSlot 
+}) {
   const factionColors = getFactionColors(faction);
   
   // Get the equipped armor
@@ -14,6 +26,67 @@ export default function LoadoutDisplay({ player, getItemById, getArmorComboDispl
   const armorDisplayName = equippedArmor && getArmorComboDisplayName
     ? getArmorComboDisplayName(equippedArmor.passive, equippedArmor.armorClass, player.inventory)
     : equippedArmor?.name || 'None';
+
+  const lockedSlots = player.lockedSlots || [];
+
+  const renderSlotWithLock = (label, value, slotType) => {
+    const isLocked = lockedSlots.includes(slotType);
+    const canLock = !isLocked && requisition >= slotLockCost && lockedSlots.length < maxLockedSlots;
+    const canUnlock = isLocked;
+
+    return (
+      <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <div style={{ fontSize: '10px', color: '#64748b', textTransform: 'uppercase', marginBottom: '4px' }}>{label}</div>
+          <div style={{ 
+            fontSize: label === 'Primary' ? '14px' : '12px', 
+            fontWeight: label === 'Primary' ? 'bold' : 'normal',
+            color: label === 'Primary' ? factionColors.PRIMARY : (label === 'Secondary' ? 'white' : '#cbd5e1'),
+            overflow: 'hidden', 
+            textOverflow: 'ellipsis', 
+            whiteSpace: 'nowrap' 
+          }} title={value}>
+            {value}
+          </div>
+        </div>
+        {onLockSlot && onUnlockSlot && (
+          <button
+            onClick={() => isLocked ? onUnlockSlot(player.id, slotType) : onLockSlot(player.id, slotType)}
+            disabled={!canLock && !canUnlock}
+            style={{
+              padding: '4px',
+              backgroundColor: isLocked ? `${factionColors.PRIMARY}20` : 'transparent',
+              border: isLocked ? `1px solid ${factionColors.PRIMARY}` : '1px solid rgba(100, 116, 139, 0.5)',
+              borderRadius: '3px',
+              cursor: (canLock || canUnlock) ? 'pointer' : 'not-allowed',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              color: isLocked ? factionColors.PRIMARY : (canLock ? '#94a3b8' : '#334155'),
+              transition: 'all 0.2s',
+              minWidth: '24px',
+              minHeight: '24px'
+            }}
+            onMouseEnter={(e) => {
+              if (canLock || canUnlock) {
+                e.currentTarget.style.borderColor = factionColors.PRIMARY;
+                e.currentTarget.style.color = factionColors.PRIMARY;
+              }
+            }}
+            onMouseLeave={(e) => {
+              if (canLock || canUnlock) {
+                e.currentTarget.style.borderColor = isLocked ? factionColors.PRIMARY : 'rgba(100, 116, 139, 0.5)';
+                e.currentTarget.style.color = isLocked ? factionColors.PRIMARY : (canLock ? '#94a3b8' : '#334155');
+              }
+            }}
+            title={isLocked ? 'Unlock slot (free)' : `Lock slot (${slotLockCost} Req)`}
+          >
+            {isLocked ? <Lock size={12} /> : <Unlock size={12} />}
+          </button>
+        )}
+      </div>
+    );
+  };
   
   return (
     <div style={{ backgroundColor: '#283548', borderRadius: '8px', border: '1px solid rgba(100, 116, 139, 0.5)', overflow: 'hidden' }}>
@@ -24,31 +97,21 @@ export default function LoadoutDisplay({ player, getItemById, getArmorComboDispl
       <div style={{ padding: '16px', display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '16px' }}>
         {/* Primary */}
         <div style={{ gridColumn: 'span 2' }}>
-          <div style={{ fontSize: '10px', color: '#64748b', textTransform: 'uppercase', marginBottom: '4px' }}>Primary</div>
-          <div style={{ fontSize: '14px', fontWeight: 'bold', color: factionColors.PRIMARY, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={getItemById(player.loadout.primary)?.name}>
-            {getItemById(player.loadout.primary)?.name || 'None'}
-          </div>
+          {renderSlotWithLock('Primary', getItemById(player.loadout.primary)?.name || 'None', TYPE.PRIMARY)}
         </div>
         {/* Secondary */}
         <div style={{ gridColumn: 'span 2' }}>
-          <div style={{ fontSize: '10px', color: '#64748b', textTransform: 'uppercase', marginBottom: '4px' }}>Secondary</div>
-          <div style={{ fontSize: '14px', fontWeight: 'bold', color: 'white', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={getItemById(player.loadout.secondary)?.name}>
-            {getItemById(player.loadout.secondary)?.name}
-          </div>
+          {renderSlotWithLock('Secondary', getItemById(player.loadout.secondary)?.name, TYPE.SECONDARY)}
         </div>
         
         {/* Grenade */}
         <div style={{ gridColumn: 'span 2' }}>
-           <div style={{ fontSize: '10px', color: '#64748b', textTransform: 'uppercase', marginBottom: '4px' }}>Grenade</div>
-           <div style={{ fontSize: '12px', color: '#cbd5e1', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{getItemById(player.loadout.grenade)?.name}</div>
+          {renderSlotWithLock('Grenade', getItemById(player.loadout.grenade)?.name, TYPE.GRENADE)}
         </div>
 
          {/* Armor */}
          <div style={{ gridColumn: 'span 2' }}>
-           <div style={{ fontSize: '10px', color: '#64748b', textTransform: 'uppercase', marginBottom: '4px' }}>Armor</div>
-           <div style={{ fontSize: '12px', color: '#cbd5e1', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={armorDisplayName}>
-             {armorDisplayName}
-           </div>
+          {renderSlotWithLock('Armor', armorDisplayName, TYPE.ARMOR)}
         </div>
 
          {/* Booster */}
@@ -57,8 +120,21 @@ export default function LoadoutDisplay({ player, getItemById, getArmorComboDispl
            <div style={{ fontSize: '12px', color: '#cbd5e1', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{getItemById(player.loadout.booster)?.name || 'None'}</div>
         </div>
 
-         {/* Spacer for better alignment */}
-         <div style={{ gridColumn: 'span 2' }}></div>
+         {/* Lock info */}
+         {lockedSlots.length > 0 && (
+           <div style={{ gridColumn: 'span 2' }}>
+             <div style={{ 
+               fontSize: '9px', 
+               color: factionColors.PRIMARY,
+               backgroundColor: `${factionColors.PRIMARY}15`,
+               padding: '4px 8px',
+               borderRadius: '3px',
+               border: `1px solid ${factionColors.PRIMARY}40`
+             }}>
+               🔒 {lockedSlots.length}/{maxLockedSlots} slots locked
+             </div>
+           </div>
+         )}
 
         {/* Stratagems */}
         <div style={{ gridColumn: 'span 4', marginTop: '8px' }}>
@@ -77,3 +153,4 @@ export default function LoadoutDisplay({ player, getItemById, getArmorComboDispl
     </div>
   );
 }
+

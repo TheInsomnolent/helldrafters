@@ -4,6 +4,7 @@ import { TYPE, FACTION } from '../../constants/types';
 import { ARMOR_CLASS } from '../../constants/armorPassives';
 import { STARTING_LOADOUT } from '../../constants/gameConfig';
 import { getFirstEmptyStratagemSlot } from '../../utils/loadoutHelpers';
+import { getRequisitionMultiplier } from '../../constants/balancingConfig';
 
 /**
  * Process a single event outcome and return state updates
@@ -19,7 +20,13 @@ export const processEventOutcome = (outcome, choice, state, selections = {}) => 
 
   switch (outcome.type) {
     case OUTCOME_TYPES.ADD_REQUISITION:
-      updates.requisition = requisition + outcome.value;
+      // Apply dynamic scaling based on player count and subfaction
+      const reqMultiplier = getRequisitionMultiplier(
+        gameConfig.playerCount,
+        gameConfig.subfaction
+      );
+      const scaledReqValue = outcome.value * reqMultiplier;
+      updates.requisition = requisition + scaledReqValue;
       break;
 
     case OUTCOME_TYPES.SPEND_REQUISITION:
@@ -42,7 +49,10 @@ export const processEventOutcome = (outcome, choice, state, selections = {}) => 
       const allFactions = Object.values(FACTION);
       const otherFactions = allFactions.filter(f => f !== currentFaction);
       const randomFaction = otherFactions[Math.floor(Math.random() * otherFactions.length)];
-      updates.faction = randomFaction;
+      
+      // Instead of directly changing faction, prompt for subfaction selection
+      updates.needsSubfactionSelection = true;
+      updates.pendingFaction = randomFaction;
       break;
 
     case OUTCOME_TYPES.EXTRA_DRAFT:

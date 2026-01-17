@@ -1,5 +1,6 @@
 import { getItemById, anyItemHasTag, getUniqueArmorCombos, playerHasAccessToArmorCombo, hasArmorCombo } from './itemHelpers';
 import { RARITY, TAGS, TYPE, FACTION } from '../constants/types';
+import { getRareWeightMultiplier } from '../constants/balancingConfig';
 import { MASTER_DB } from '../data/itemsByWarbond';
 
 /**
@@ -20,9 +21,10 @@ export const getDraftHandSize = (starRating) => {
  * @param {Object} gameConfig - Game configuration
  * @param {string[]} burnedCards - Array of burned card IDs
  * @param {Object[]} allPlayers - All players (for global uniqueness)
+ * @param {string[]} lockedSlots - Array of TYPE values that are locked from draft
  * @returns {Object[]} Array of {item, weight} objects (or {armorCombo, weight} for armor)
  */
-export const getWeightedPool = (player, difficulty, gameConfig, burnedCards = [], allPlayers = []) => {
+export const getWeightedPool = (player, difficulty, gameConfig, burnedCards = [], allPlayers = [], lockedSlots = []) => {
   // 1. Filter out already owned items and boosters (boosters only come from events)
   let candidates = MASTER_DB.filter(item => 
     !player.inventory.includes(item.id) && item.type !== TYPE.BOOSTER
@@ -49,6 +51,11 @@ export const getWeightedPool = (player, difficulty, gameConfig, burnedCards = []
     candidates = candidates.filter(item => !burnedCards.includes(item.id));
   }
 
+  // 3.5. Filter out locked slot types
+  if (lockedSlots && lockedSlots.length > 0) {
+    candidates = candidates.filter(item => !lockedSlots.includes(item.type));
+  }
+
   // 4. Filter by global uniqueness (if enabled)
   if (gameConfig.globalUniqueness) {
     const allPlayerInventories = allPlayers.flatMap(p => p.inventory);
@@ -73,13 +80,16 @@ export const getWeightedPool = (player, difficulty, gameConfig, burnedCards = []
   });
 
   // 6. Apply weights to non-armor items
+  const rareMultiplier = getRareWeightMultiplier(gameConfig.playerCount, gameConfig.subfaction);
+  
   const weightedNonArmor = nonArmorCandidates.map(item => {
     let weight = 10; // Base weight
 
-    // Rarity Weights
+    // Rarity Weights (with dynamic rare multiplier)
     if (item.rarity === RARITY.COMMON) weight += 50;
     if (item.rarity === RARITY.UNCOMMON) weight += 25;
-    if (item.rarity === RARITY.RARE) weight += 5;
+    if (item.rarity === RARITY.RARE) weight += Math.round(5 * rareMultiplier);
+    if (item.rarity === RARITY.LEGENDARY) weight += Math.round(2 * rareMultiplier);
 
     // Faction Synergy
     if (gameConfig.faction === FACTION.BUGS && item.tags.includes(TAGS.FIRE)) weight += 30;
@@ -121,7 +131,8 @@ export const getWeightedPool = (player, difficulty, gameConfig, burnedCards = []
     const representativeItem = combo.items[0];
     if (representativeItem.rarity === RARITY.COMMON) weight += 50;
     if (representativeItem.rarity === RARITY.UNCOMMON) weight += 25;
-    if (representativeItem.rarity === RARITY.RARE) weight += 5;
+    if (representativeItem.rarity === RARITY.RARE) weight += Math.round(5 * rareMultiplier);
+    if (representativeItem.rarity === RARITY.LEGENDARY) weight += Math.round(2 * rareMultiplier);
     
     // Apply any armor-specific faction synergy based on tags
     if (gameConfig.faction === FACTION.BUGS && representativeItem.tags.includes(TAGS.FIRE)) weight += 30;
@@ -146,6 +157,7 @@ export const getWeightedPool = (player, difficulty, gameConfig, burnedCards = []
  * @param {Object[]} allPlayers - All players
  * @param {Function} onBurnCard - Callback when a card is burned (optional)
  * @param {number} customHandSize - Optional custom hand size override
+ * @param {string[]} lockedSlots - Array of TYPE values that are locked from draft
  * @returns {Object[]} Array of item objects or armor combo objects for the draft hand
  */
 export const generateDraftHand = (
@@ -155,14 +167,15 @@ export const generateDraftHand = (
   burnedCards = [],
   allPlayers = [],
   onBurnCard = null,
-  customHandSize = null
+  customHandSize = null,
+  lockedSlots = []
 ) => {
   if (!player) {
     console.warn('Player not found for draft generation');
     return [];
   }
 
-  const pool = getWeightedPool(player, difficulty, gameConfig, burnedCards, allPlayers);
+  const pool = getWeightedPool(player, difficulty, gameConfig, burnedCards, allPlayers, lockedSlots);
   const handSize = customHandSize !== null ? customHandSize : getDraftHandSize(gameConfig.starRating);
 
   const hand = [];

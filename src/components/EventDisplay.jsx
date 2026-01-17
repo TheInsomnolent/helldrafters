@@ -2,6 +2,8 @@ import React, { useState } from 'react';
 import { AlertTriangle } from 'lucide-react';
 import { EVENT_TYPES, OUTCOME_TYPES } from '../systems/events/events';
 import { MASTER_DB } from '../data/itemsByWarbond';
+import { getSubfactionsForFaction, SUBFACTION_CONFIG } from '../constants/balancingConfig';
+import { getFactionColors } from '../constants/theme';
 
 /**
  * EventDisplay component for showing and handling event interactions
@@ -27,10 +29,14 @@ export default function EventDisplay({
   eventBoosterSelection,
   eventSpecialDraft,
   eventSpecialDraftType,
+  pendingFaction,
+  pendingSubfactionSelection,
   onStratagemSelection,
   onTargetPlayerSelection,
   onTargetStratagemSelection,
   onBoosterSelection,
+  onSubfactionSelection,
+  onConfirmSubfaction,
   onSpecialDraftSelection,
   onConfirmSelections
 }) {
@@ -227,7 +233,7 @@ export default function EventDisplay({
               alt="Requisition"
               style={{ width: '20px', height: '20px' }}
             />
-            <span style={{ fontWeight: 'bold' }}>{requisition}</span>
+            <span style={{ fontWeight: 'bold' }}>{Math.floor(requisition)}</span>
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
             <AlertTriangle size={20} color="#ff4444" />
@@ -602,6 +608,95 @@ export default function EventDisplay({
                     onMouseLeave={(e) => e.target.style.backgroundColor = '#6b7280'}
                   >
                     SKIP
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Subfaction Selection */}
+          {pendingFaction && (
+            <div style={{ marginBottom: '24px' }}>
+              <div style={{ 
+                backgroundColor: '#1f2937', 
+                border: `2px solid ${getFactionColors(pendingFaction).PRIMARY}`,
+                borderRadius: '8px',
+                padding: '24px',
+                marginBottom: '16px'
+              }}>
+                <div style={{ fontSize: '18px', marginBottom: '16px', color: getFactionColors(pendingFaction).PRIMARY, textAlign: 'center' }}>
+                  Select Enemy Variant for {pendingFaction}
+                </div>
+
+                {/* Subfaction Selection Grid */}
+                <div style={{ marginBottom: '20px' }}>
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: '12px' }}>
+                    {getSubfactionsForFaction(pendingFaction).map((subfaction) => {
+                      const config = SUBFACTION_CONFIG[subfaction];
+                      const isSelected = pendingSubfactionSelection === subfaction;
+                      const factionColor = getFactionColors(pendingFaction).PRIMARY;
+                      
+                      return (
+                        <button
+                          key={subfaction}
+                          onClick={() => onSubfactionSelection(subfaction)}
+                          style={{
+                            padding: '16px',
+                            borderRadius: '4px',
+                            fontWeight: 'bold',
+                            textTransform: 'uppercase',
+                            transition: 'all 0.2s',
+                            fontSize: '13px',
+                            letterSpacing: '0.5px',
+                            backgroundColor: isSelected ? `${factionColor}15` : 'transparent',
+                            color: isSelected ? factionColor : '#64748b',
+                            border: isSelected ? `2px solid ${factionColor}` : '1px solid rgba(100, 116, 139, 0.5)',
+                            cursor: 'pointer',
+                            textAlign: 'left'
+                          }}
+                          onMouseEnter={(e) => {
+                            if (!isSelected) {
+                              e.currentTarget.style.backgroundColor = 'rgba(100, 116, 139, 0.1)';
+                              e.currentTarget.style.color = '#94a3b8';
+                            }
+                          }}
+                          onMouseLeave={(e) => {
+                            if (!isSelected) {
+                              e.currentTarget.style.backgroundColor = 'transparent';
+                              e.currentTarget.style.color = '#64748b';
+                            }
+                          }}
+                        >
+                          <div style={{ fontSize: '14px', marginBottom: '4px' }}>{config.name}</div>
+                          <div style={{ fontSize: '11px', color: isSelected ? factionColor : '#64748b', opacity: 0.8 }}>
+                            {config.description} • Req: {config.reqMultiplier}x • Rares: {config.rareWeightMultiplier}x
+                          </div>
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+
+                {/* Confirm Button */}
+                <div style={{ display: 'flex', gap: '12px', justifyContent: 'center' }}>
+                  <button
+                    onClick={onConfirmSubfaction}
+                    disabled={!pendingSubfactionSelection}
+                    style={{
+                      padding: '12px 32px',
+                      fontSize: '16px',
+                      fontWeight: 'bold',
+                      backgroundColor: pendingSubfactionSelection ? '#4ade80' : '#555',
+                      color: pendingSubfactionSelection ? '#0f1419' : '#888',
+                      border: 'none',
+                      borderRadius: '4px',
+                      cursor: pendingSubfactionSelection ? 'pointer' : 'not-allowed',
+                      transition: 'all 0.2s'
+                    }}
+                    onMouseEnter={(e) => pendingSubfactionSelection && (e.target.style.backgroundColor = '#22c55e')}
+                    onMouseLeave={(e) => pendingSubfactionSelection && (e.target.style.backgroundColor = '#4ade80')}
+                  >
+                    CONFIRM
                   </button>
                 </div>
               </div>

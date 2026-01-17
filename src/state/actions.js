@@ -57,6 +57,23 @@ export const loseLives = (amount) => ({
   payload: amount
 });
 
+// Faction and subfaction
+export const setSubfaction = (subfaction) => ({
+  type: types.SET_SUBFACTION,
+  payload: subfaction
+});
+
+// Draft slot locking (per-player)
+export const lockPlayerDraftSlot = (playerId, slotType) => ({
+  type: types.LOCK_PLAYER_DRAFT_SLOT,
+  payload: { playerId, slotType }
+});
+
+export const unlockPlayerDraftSlot = (playerId, slotType) => ({
+  type: types.UNLOCK_PLAYER_DRAFT_SLOT,
+  payload: { playerId, slotType }
+});
+
 // Samples
 export const addSamples = (samples) => ({
   type: types.ADD_SAMPLES,
@@ -106,6 +123,16 @@ export const setEventSpecialDraft = (items) => ({
 export const setEventSpecialDraftType = (draftType) => ({
   type: types.SET_EVENT_SPECIAL_DRAFT_TYPE,
   payload: draftType
+});
+
+export const setPendingFaction = (faction) => ({
+  type: types.SET_PENDING_FACTION,
+  payload: faction
+});
+
+export const setPendingSubfactionSelection = (subfaction) => ({
+  type: types.SET_PENDING_SUBFACTION_SELECTION,
+  payload: subfaction
 });
 
 export const resetEventSelections = () => ({

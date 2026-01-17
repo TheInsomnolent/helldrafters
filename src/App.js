@@ -14,9 +14,11 @@ import GameHeader from './components/GameHeader';
 import EventDisplay from './components/EventDisplay';
 import LoadoutDisplay from './components/LoadoutDisplay';
 import GameLobby from './components/GameLobby';
+import RarityWeightDebug from './components/RarityWeightDebug';
 import { gameReducer, initialState } from './state/gameReducer';
 import * as actions from './state/actions';
 import { COLORS, SHADOWS, BUTTON_STYLES, getFactionColors } from './constants/theme';
+import { getSubfactionsForFaction, SUBFACTION_CONFIG } from './constants/balancingConfig';
 
 // --- DATA CONSTANTS (imported from modules) ---
 
@@ -57,6 +59,8 @@ export default function HelldiversRoguelite() {
     eventBoosterSelection,
     eventSpecialDraft,
     eventSpecialDraftType,
+    pendingFaction,
+    pendingSubfactionSelection,
     seenEvents
   } = state;
   
@@ -151,7 +155,8 @@ export default function HelldiversRoguelite() {
         inventory: Object.values(initialLoadouts[i]).flat().filter(id => id !== null),
         warbonds: lp.warbonds,
         includeSuperstore: lp.includeSuperstore,
-        weaponRestricted: false
+        weaponRestricted: false,
+        lockedSlots: []
       }));
       dispatch(actions.setPlayers(newPlayers));
       dispatch(actions.setPhase('CUSTOM_SETUP'));
@@ -171,7 +176,8 @@ export default function HelldiversRoguelite() {
         inventory: Object.values(STARTING_LOADOUT).flat().filter(id => id !== null),
         warbonds: lp.warbonds,
         includeSuperstore: lp.includeSuperstore,
-        weaponRestricted: false
+        weaponRestricted: false,
+        lockedSlots: []
       }));
       dispatch(actions.setPlayers(newPlayers));
       dispatch(actions.setDifficulty(1));
@@ -188,7 +194,8 @@ export default function HelldiversRoguelite() {
       name: `Helldiver ${i + 1}`,
       loadout: { ...loadout },
       inventory: Object.values(loadout).flat().filter(id => id !== null),
-      weaponRestricted: false
+      weaponRestricted: false,
+      lockedSlots: []
     }));
     dispatch(actions.setPlayers(newPlayers));
     dispatch(actions.setDifficulty(customSetup.difficulty));
@@ -207,6 +214,7 @@ export default function HelldiversRoguelite() {
     
     const player = players[playerIdx];
     const handSize = getDraftHandSize(gameConfig.starRating);
+    const playerLockedSlots = player.lockedSlots || [];
 
     return generateDraftHand(
       player,
@@ -215,7 +223,8 @@ export default function HelldiversRoguelite() {
       burnedCards,
       players,
       (cardId) => dispatch(actions.addBurnedCard(cardId)),
-      handSize
+      handSize,
+      playerLockedSlots
     );
   };
 
@@ -428,10 +437,53 @@ export default function HelldiversRoguelite() {
     }));
   };
 
+  const handleLockSlot = (playerId, slotType) => {
+    const { getSlotLockCost, MAX_LOCKED_SLOTS } = require('./constants/balancingConfig');
+    const slotLockCost = getSlotLockCost(gameConfig.playerCount);
+    const player = players.find(p => p.id === playerId);
+    const playerLockedSlots = player?.lockedSlots || [];
+    
+    if (requisition < slotLockCost) return;
+    if (playerLockedSlots.length >= MAX_LOCKED_SLOTS) return;
+    if (playerLockedSlots.includes(slotType)) return;
+    
+    dispatch(actions.spendRequisition(slotLockCost));
+    dispatch(actions.lockPlayerDraftSlot(playerId, slotType));
+    
+    // Regenerate current hand if this is the active player
+    if (phase === 'DRAFT' && players[draftState.activePlayerIndex]?.id === playerId) {
+      dispatch(actions.updateDraftState({
+        roundCards: generateDraftHandForPlayer(draftState.activePlayerIndex)
+      }));
+    }
+  };
+
+  const handleUnlockSlot = (playerId, slotType) => {
+    const player = players.find(p => p.id === playerId);
+    const playerLockedSlots = player?.lockedSlots || [];
+    
+    if (!playerLockedSlots.includes(slotType)) return;
+    
+    // Confirm unlock action
+    if (!window.confirm(`Unlock ${slotType} slot? This will allow ${slotType} items to appear in future drafts.`)) {
+      return;
+    }
+    
+    dispatch(actions.unlockPlayerDraftSlot(playerId, slotType));
+    
+    // Regenerate current hand if this is the active player
+    if (phase === 'DRAFT' && players[draftState.activePlayerIndex]?.id === playerId) {
+      dispatch(actions.updateDraftState({
+        roundCards: generateDraftHandForPlayer(draftState.activePlayerIndex)
+      }));
+    }
+  };
+
   const removeCardFromDraft = (cardToRemove) => {
     // Remove single card and replace it with a new one
     const player = players[draftState.activePlayerIndex];
-    const pool = getWeightedPool(player, currentDiff, gameConfig, burnedCards, players);
+    const playerLockedSlots = player.lockedSlots || [];
+    const pool = getWeightedPool(player, currentDiff, gameConfig, burnedCards, players, playerLockedSlots);
     
     // Check if the card to remove is an armor combo
     const isRemovingArmorCombo = cardToRemove && cardToRemove.items && cardToRemove.passive;
@@ -863,7 +915,13 @@ export default function HelldiversRoguelite() {
                   return (
                     <button 
                       key={f}
-                      onClick={() => dispatch(actions.updateGameConfig({ faction: f }))}
+                      onClick={() => {
+                        const { getDefaultSubfaction } = require('./constants/balancingConfig');
+                        dispatch(actions.updateGameConfig({ 
+                          faction: f,
+                          subfaction: getDefaultSubfaction(f)
+                        }));
+                      }}
                       style={{
                         padding: '16px',
                         borderRadius: '4px',
@@ -879,6 +937,60 @@ export default function HelldiversRoguelite() {
                       }}
                     >
                       {f}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* Subfaction */}
+            <div style={{ marginBottom: '40px' }}>
+              <label style={{ display: 'block', fontSize: '12px', fontWeight: 'bold', color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.15em', marginBottom: '16px' }}>
+                Enemy Variant
+              </label>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: '12px' }}>
+                {getSubfactionsForFaction(gameConfig.faction).map(subfaction => {
+                  const isSelected = gameConfig.subfaction === subfaction;
+                  const config = SUBFACTION_CONFIG[subfaction];
+                  
+                  return (
+                    <button 
+                      key={subfaction}
+                      onClick={() => {
+                        console.log('Subfaction clicked:', subfaction);
+                        dispatch(actions.setSubfaction(subfaction));
+                      }}
+                      style={{
+                        padding: '16px',
+                        borderRadius: '4px',
+                        fontWeight: 'bold',
+                        textTransform: 'uppercase',
+                        transition: 'all 0.2s',
+                        fontSize: '13px',
+                        letterSpacing: '0.5px',
+                        backgroundColor: isSelected ? `${factionColors.PRIMARY}15` : 'transparent',
+                        color: isSelected ? factionColors.PRIMARY : '#64748b',
+                        border: isSelected ? `2px solid ${factionColors.PRIMARY}` : '1px solid rgba(100, 116, 139, 0.5)',
+                        cursor: 'pointer',
+                        textAlign: 'left'
+                      }}
+                      onMouseEnter={(e) => {
+                        if (!isSelected) {
+                          e.currentTarget.style.backgroundColor = 'rgba(100, 116, 139, 0.1)';
+                          e.currentTarget.style.color = '#94a3b8';
+                        }
+                      }}
+                      onMouseLeave={(e) => {
+                        if (!isSelected) {
+                          e.currentTarget.style.backgroundColor = 'transparent';
+                          e.currentTarget.style.color = '#64748b';
+                        }
+                      }}
+                    >
+                      <div style={{ fontSize: '14px', marginBottom: '4px' }}>{config.name}</div>
+                      <div style={{ fontSize: '11px', color: isSelected ? factionColors.PRIMARY : '#64748b', opacity: 0.8 }}>
+                        {config.description} • Req: {config.reqMultiplier}x • Rares: {config.rareWeightMultiplier}x
+                      </div>
                     </button>
                   );
                 })}
@@ -1007,6 +1119,18 @@ export default function HelldiversRoguelite() {
                     <div style={{ color: '#94a3b8', fontSize: '11px', marginTop: '4px' }}>Display all available items in the draw pool (debug)</div>
                   </div>
                 </label>
+                <label style={{ display: 'flex', alignItems: 'center', gap: '12px', cursor: 'pointer', padding: '12px', backgroundColor: gameConfig.debugRarityWeights ? `${factionColors.PRIMARY}1A` : 'transparent', borderRadius: '4px', border: '1px solid rgba(100, 116, 139, 0.5)' }}>
+                  <input 
+                    type="checkbox" 
+                    checked={gameConfig.debugRarityWeights || false}
+                    onChange={(e) => dispatch(actions.updateGameConfig({ debugRarityWeights: e.target.checked }))}
+                    style={{ width: '20px', height: '20px', cursor: 'pointer' }}
+                  />
+                  <div>
+                    <div style={{ color: factionColors.PRIMARY, fontWeight: 'bold', fontSize: '14px' }}>Show Rarity Weights</div>
+                    <div style={{ color: '#94a3b8', fontSize: '11px', marginTop: '4px' }}>Display draw weight visualization and percentages (debug)</div>
+                  </div>
+                </label>
               </div>
             </div>
 
@@ -1102,6 +1226,13 @@ export default function HelldiversRoguelite() {
               </p>
             </div>
           </div>
+
+          {/* Debug Rarity Weight Visualization */}
+          {gameConfig.debugRarityWeights && (
+            <div style={{ marginTop: '40px' }}>
+              <RarityWeightDebug gameConfig={gameConfig} />
+            </div>
+          )}
         </div>
       </div>
     );
@@ -1443,6 +1574,12 @@ export default function HelldiversRoguelite() {
         return; // Don't close event yet, wait for booster selection
       }
 
+      // Check if we need subfaction selection
+      if (updates.needsSubfactionSelection && updates.pendingFaction) {
+        dispatch(actions.setPendingFaction(updates.pendingFaction));
+        return; // Don't close event yet, wait for subfaction selection
+      }
+
       // Check if we need special draft (throwable or secondary for all players)
       if (updates.needsSpecialDraft && updates.specialDraftType) {
         // Generate draft pool based on type
@@ -1480,7 +1617,12 @@ export default function HelldiversRoguelite() {
       if (updates.lives !== undefined) dispatch(actions.setLives(updates.lives));
       if (updates.players !== undefined) dispatch(actions.setPlayers(updates.players));
       if (updates.currentDiff !== undefined) dispatch(actions.setDifficulty(updates.currentDiff));
-      if (updates.faction !== undefined) dispatch(actions.updateGameConfig({ faction: updates.faction }));
+      if (updates.faction !== undefined || updates.subfaction !== undefined) {
+        const configUpdates = {};
+        if (updates.faction !== undefined) configUpdates.faction = updates.faction;
+        if (updates.subfaction !== undefined) configUpdates.subfaction = updates.subfaction;
+        dispatch(actions.updateGameConfig(configUpdates));
+      }
       if (updates.bonusRequisition !== undefined) dispatch(actions.addRequisition(updates.bonusRequisition));
       
       // Handle burned cards from transformation
@@ -1515,14 +1657,17 @@ export default function HelldiversRoguelite() {
         dispatch(actions.resetEventSelections());
         
         // Start first draft round for the redrafting player
+        const redraftPlayer = updates.players[updates.redraftPlayerIndex];
+        const playerLockedSlots = redraftPlayer?.lockedSlots || [];
         const redraftHand = generateDraftHand(
-          updates.players[updates.redraftPlayerIndex],
+          redraftPlayer,
           currentDiff,
           gameConfig,
           burnedCards,
           updates.players,
           (cardId) => dispatch(actions.addBurnedCard(cardId)),
-          getDraftHandSize(gameConfig.starRating)
+          getDraftHandSize(gameConfig.starRating),
+          playerLockedSlots
         );
         
         dispatch(actions.setDraftState({
@@ -1664,8 +1809,12 @@ export default function HelldiversRoguelite() {
         if (updates.lives !== undefined) dispatch(actions.setLives(updates.lives));
         if (updates.players !== undefined) dispatch(actions.setPlayers(updates.players));
         if (updates.currentDiff !== undefined) dispatch(actions.setDifficulty(updates.currentDiff));
-        if (updates.faction !== undefined) dispatch(actions.updateGameConfig({ faction: updates.faction }));
-        if (updates.bonusRequisition !== undefined) dispatch(actions.addRequisition(updates.bonusRequisition));
+      if (updates.faction !== undefined || updates.subfaction !== undefined) {
+        const configUpdates = {};
+        if (updates.faction !== undefined) configUpdates.faction = updates.faction;
+        if (updates.subfaction !== undefined) configUpdates.subfaction = updates.subfaction;
+        dispatch(actions.updateGameConfig(configUpdates));
+      }
         
         // Handle game over
         if (updates.triggerGameOver) {
@@ -1691,6 +1840,8 @@ export default function HelldiversRoguelite() {
         eventBoosterSelection={eventBoosterSelection}
         eventSpecialDraft={eventSpecialDraft}
         eventSpecialDraftType={eventSpecialDraftType}
+        pendingFaction={pendingFaction}
+        pendingSubfactionSelection={pendingSubfactionSelection}
         players={players}
         currentDiff={currentDiff}
         requisition={requisition}
@@ -1706,6 +1857,19 @@ export default function HelldiversRoguelite() {
         onTargetPlayerSelection={(playerIndex) => dispatch(actions.setEventTargetPlayerSelection(playerIndex))}
         onTargetStratagemSelection={(selection) => dispatch(actions.setEventTargetStratagemSelection(selection))}
         onBoosterSelection={(boosterId) => dispatch(actions.setEventBoosterSelection(boosterId))}
+        onSubfactionSelection={(subfaction) => dispatch(actions.setPendingSubfactionSelection(subfaction))}
+        onConfirmSubfaction={() => {
+          // Apply the faction and subfaction change
+          dispatch(actions.updateGameConfig({ 
+            faction: pendingFaction,
+            subfaction: pendingSubfactionSelection
+          }));
+          // Close the event
+          dispatch(actions.setCurrentEvent(null));
+          dispatch(actions.setEventPlayerChoice(null));
+          dispatch(actions.resetEventSelections());
+          dispatch(actions.setPhase('DASHBOARD'));
+        }}
         onSpecialDraftSelection={(playerIndex, itemId) => {
           // Store selection for this player
           if (!window.__specialDraftSelections) {
@@ -2018,6 +2182,7 @@ export default function HelldiversRoguelite() {
         requisition={requisition}
         lives={lives}
         faction={gameConfig.faction}
+        subfaction={gameConfig.subfaction}
         samples={state.samples}
         onExport={exportGameState}
         onCancelRun={() => dispatch(actions.setPhase('MENU'))}
@@ -2028,9 +2193,23 @@ export default function HelldiversRoguelite() {
         
         {/* PLAYER ROSTER */}
         <div style={{ display: 'grid', gridTemplateColumns: gameConfig.playerCount > 1 ? 'repeat(auto-fit, minmax(400px, 1fr))' : '1fr', gap: '32px', marginBottom: '48px' }}>
-          {players.map(player => (
-            <LoadoutDisplay key={player.id} player={player} getItemById={getItemById} getArmorComboDisplayName={getArmorComboDisplayName} faction={gameConfig.faction} />
-          ))}
+          {players.map(player => {
+            const { getSlotLockCost, MAX_LOCKED_SLOTS } = require('./constants/balancingConfig');
+            return (
+              <LoadoutDisplay 
+                key={player.id} 
+                player={player} 
+                getItemById={getItemById} 
+                getArmorComboDisplayName={getArmorComboDisplayName} 
+                faction={gameConfig.faction}
+                requisition={requisition}
+                slotLockCost={getSlotLockCost(gameConfig.playerCount)}
+                maxLockedSlots={MAX_LOCKED_SLOTS}
+                onLockSlot={handleLockSlot}
+                onUnlockSlot={handleUnlockSlot}
+              />
+            );
+          })}
         </div>
 
         {/* CONTROLS */}
@@ -2252,7 +2431,14 @@ export default function HelldiversRoguelite() {
                   if (document.getElementById('rareSamples')) document.getElementById('rareSamples').value = '0';
                   if (document.getElementById('superRareSamples')) document.getElementById('superRareSamples').value = '0';
                   
-                  dispatch(actions.addRequisition(1));
+                  // Calculate dynamic requisition based on player count and subfaction
+                  const { getRequisitionMultiplier } = require('./constants/balancingConfig');
+                  const reqMultiplier = getRequisitionMultiplier(
+                    gameConfig.playerCount,
+                    gameConfig.subfaction
+                  );
+                  const reqGained = 1 * reqMultiplier;
+                  dispatch(actions.addRequisition(reqGained));
                   
                   // Clear weapon restrictions from all players
                   const updatedPlayers = players.map(p => ({
