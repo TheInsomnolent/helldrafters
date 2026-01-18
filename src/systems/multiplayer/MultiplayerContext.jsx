@@ -51,7 +51,7 @@ export function MultiplayerProvider({ children }) {
   const [isHost, setIsHost] = useState(false);
   const [lobbyId, setLobbyId] = useState(null);
   const [lobbyData, setLobbyData] = useState(null);
-  const [playerId] = useState(getOrCreatePlayerId);
+  const [playerId, setPlayerId] = useState(getOrCreatePlayerId);
   const [playerSlot, setPlayerSlot] = useState(null);
   const [playerName, setPlayerName] = useState('');
   const [connectionStatus, setConnectionStatus] = useState('disconnected'); // disconnected, connecting, connected
@@ -144,8 +144,15 @@ export function MultiplayerProvider({ children }) {
     setError(null);
     
     try {
-      const playerInfo = { id: playerId, name };
-      const result = await joinLobby(joinLobbyId, playerInfo, slot);
+      let activePlayerId = playerId;
+      let result = await joinLobby(joinLobbyId, { id: activePlayerId, name }, slot);
+      
+      if (!result.success && result.errorCode === 'PLAYER_ID_CONFLICT') {
+        activePlayerId = uuidv4();
+        sessionStorage.setItem('helldrafters_player_id', activePlayerId);
+        setPlayerId(activePlayerId);
+        result = await joinLobby(joinLobbyId, { id: activePlayerId, name }, slot);
+      }
       
       if (!result.success) {
         setError(result.error);
