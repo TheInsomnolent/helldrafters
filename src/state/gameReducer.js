@@ -1,5 +1,6 @@
 import { FACTION } from '../constants/types';
 import { getDefaultSubfaction } from '../constants/balancingConfig';
+import { getEnduranceMissionCount } from '../constants/gameConfig';
 import * as types from './actionTypes';
 
 /**
@@ -16,6 +17,7 @@ export const initialState = {
     burnCards: true,
     customStart: false,
     endlessMode: false,
+    enduranceMode: false,
     debugEventsMode: false,
     debugRarityWeights: false,
     brutalityMode: false
@@ -26,6 +28,11 @@ export const initialState = {
     common: 0,
     rare: 0,
     superRare: 0
+  },
+  // Endurance mode state
+  enduranceState: {
+    currentMission: 1,     // Current mission within the operation (1-indexed)
+    totalMissions: 1       // Total missions required for current difficulty
   },
   players: [],
   draftState: {
@@ -461,6 +468,7 @@ export function gameReducer(state, action) {
         // Ensure new fields exist with defaults
         samples: action.payload.samples || { common: 0, rare: 0, superRare: 0 },
         seenEvents: action.payload.seenEvents || [],
+        enduranceState: action.payload.enduranceState || { currentMission: 1, totalMissions: 1 },
         players: (action.payload.players || []).map(p => ({
           ...p,
           weaponRestricted: p.weaponRestricted || false,
@@ -471,6 +479,42 @@ export function gameReducer(state, action) {
         }))
       };
     }
+
+    // Endurance mode
+    case types.SET_ENDURANCE_STATE:
+      return { ...state, enduranceState: action.payload };
+
+    case types.ADVANCE_ENDURANCE_MISSION: {
+      const { currentMission, totalMissions } = state.enduranceState;
+      if (currentMission < totalMissions) {
+        // Advance to next mission within the operation
+        return {
+          ...state,
+          enduranceState: {
+            ...state.enduranceState,
+            currentMission: currentMission + 1
+          }
+        };
+      }
+      // Operation complete - reset for next difficulty
+      const nextDiff = state.currentDiff + 1;
+      return {
+        ...state,
+        enduranceState: {
+          currentMission: 1,
+          totalMissions: getEnduranceMissionCount(nextDiff)
+        }
+      };
+    }
+
+    case types.RESET_ENDURANCE_STATE:
+      return {
+        ...state,
+        enduranceState: {
+          currentMission: 1,
+          totalMissions: getEnduranceMissionCount(state.currentDiff)
+        }
+      };
 
     case types.RESET_GAME:
       return { ...initialState };

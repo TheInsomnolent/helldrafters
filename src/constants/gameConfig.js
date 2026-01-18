@@ -21,3 +21,30 @@ export const DIFFICULTY_CONFIG = [
   { level: 9, name: 'Helldive', reqAT: true },
   { level: 10, name: 'Super Helldive', reqAT: true }
 ];
+
+/**
+ * Mission counts per difficulty for Endurance mode.
+ * Players must complete this many missions at each difficulty before advancing.
+ * Key is difficulty level (1-10), value is mission count.
+ */
+export const ENDURANCE_MISSION_COUNTS = {
+  1: 1,  // Trivial - 1 mission
+  2: 1,  // Easy - 1 mission
+  3: 2,  // Medium - 2 missions
+  4: 2,  // Challenging - 2 missions
+  5: 3,  // Hard - 3 missions
+  6: 3,  // Extreme - 3 missions
+  7: 3,  // Suicide Mission - 3 missions
+  8: 3,  // Impossible - 3 missions
+  9: 3,  // Helldive - 3 missions
+  10: 3  // Super Helldive - 3 missions
+};
+
+/**
+ * Get the number of missions required for a difficulty in endurance mode.
+ * @param {number} difficulty - The difficulty level (1-10)
+ * @returns {number} The number of missions required
+ */
+export function getEnduranceMissionCount(difficulty) {
+  return ENDURANCE_MISSION_COUNTS[difficulty] || 1;
+}

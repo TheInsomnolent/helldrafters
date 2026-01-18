@@ -265,6 +265,20 @@ export const setBurnedCards = (cards) => ({
   payload: cards
 });
 
+// Endurance mode
+export const setEnduranceState = (state) => ({
+  type: types.SET_ENDURANCE_STATE,
+  payload: state
+});
+
+export const advanceEnduranceMission = () => ({
+  type: types.ADVANCE_ENDURANCE_MISSION
+});
+
+export const resetEnduranceState = () => ({
+  type: types.RESET_ENDURANCE_STATE
+});
+
 // Full state operations
 export const loadGameState = (state) => ({
   type: types.LOAD_GAME_STATE,

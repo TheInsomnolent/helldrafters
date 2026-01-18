@@ -1,4 +1,4 @@
-import { STARTING_LOADOUT, DIFFICULTY_CONFIG } from './gameConfig';
+import { STARTING_LOADOUT, DIFFICULTY_CONFIG, ENDURANCE_MISSION_COUNTS, getEnduranceMissionCount } from './gameConfig';
 
 describe('Constants - Game Configuration', () => {
   describe('STARTING_LOADOUT', () => {
@@ -60,6 +60,50 @@ describe('Constants - Game Configuration', () => {
         expect(config).toHaveProperty('name');
         expect(config).toHaveProperty('reqAT');
       });
+    });
+  });
+
+  describe('ENDURANCE_MISSION_COUNTS', () => {
+    it('should have mission counts for all 10 difficulties', () => {
+      for (let i = 1; i <= 10; i++) {
+        expect(ENDURANCE_MISSION_COUNTS[i]).toBeDefined();
+        expect(typeof ENDURANCE_MISSION_COUNTS[i]).toBe('number');
+      }
+    });
+
+    it('should have correct mission counts per difficulty', () => {
+      // Trivial and Easy = 1 mission
+      expect(ENDURANCE_MISSION_COUNTS[1]).toBe(1);
+      expect(ENDURANCE_MISSION_COUNTS[2]).toBe(1);
+      
+      // Medium and Challenging = 2 missions
+      expect(ENDURANCE_MISSION_COUNTS[3]).toBe(2);
+      expect(ENDURANCE_MISSION_COUNTS[4]).toBe(2);
+      
+      // Hard through Super Helldive = 3 missions
+      expect(ENDURANCE_MISSION_COUNTS[5]).toBe(3);
+      expect(ENDURANCE_MISSION_COUNTS[6]).toBe(3);
+      expect(ENDURANCE_MISSION_COUNTS[7]).toBe(3);
+      expect(ENDURANCE_MISSION_COUNTS[8]).toBe(3);
+      expect(ENDURANCE_MISSION_COUNTS[9]).toBe(3);
+      expect(ENDURANCE_MISSION_COUNTS[10]).toBe(3);
+    });
+  });
+
+  describe('getEnduranceMissionCount', () => {
+    it('should return correct mission count for each difficulty', () => {
+      expect(getEnduranceMissionCount(1)).toBe(1);
+      expect(getEnduranceMissionCount(2)).toBe(1);
+      expect(getEnduranceMissionCount(3)).toBe(2);
+      expect(getEnduranceMissionCount(4)).toBe(2);
+      expect(getEnduranceMissionCount(5)).toBe(3);
+      expect(getEnduranceMissionCount(10)).toBe(3);
+    });
+
+    it('should return 1 for unknown difficulties', () => {
+      expect(getEnduranceMissionCount(0)).toBe(1);
+      expect(getEnduranceMissionCount(11)).toBe(1);
+      expect(getEnduranceMissionCount(undefined)).toBe(1);
     });
   });
 });
