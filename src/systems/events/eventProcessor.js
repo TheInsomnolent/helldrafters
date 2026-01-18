@@ -327,6 +327,10 @@ export const processEventOutcome = (outcome, choice, state, selections = {}) => 
           newPlayers.forEach(player => {
             const randomArmor = lightArmors[Math.floor(Math.random() * lightArmors.length)];
             player.loadout.armor = randomArmor.id;
+            // Add armor to inventory if not already present
+            if (!player.inventory.includes(randomArmor.id)) {
+              player.inventory.push(randomArmor.id);
+            }
           });
           
           updates.players = newPlayers;
@@ -353,6 +357,10 @@ export const processEventOutcome = (outcome, choice, state, selections = {}) => 
           newPlayers.forEach(player => {
             const randomArmor = heavyArmors[Math.floor(Math.random() * heavyArmors.length)];
             player.loadout.armor = randomArmor.id;
+            // Add armor to inventory if not already present
+            if (!player.inventory.includes(randomArmor.id)) {
+              player.inventory.push(randomArmor.id);
+            }
           });
           
           updates.players = newPlayers;
