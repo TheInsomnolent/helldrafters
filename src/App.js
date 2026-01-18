@@ -507,7 +507,7 @@ function HelldiversRogueliteApp() {
     
     // In multiplayer, only the player whose turn it is can select replacement
     if (isMultiplayer && playerSlot !== currentPlayerIdx) {
-      console.log('Not your turn to select replacement', { playerSlot, currentPlayerIdx });
+      console.warn('Not your turn to select replacement', { playerSlot, currentPlayerIdx });
       return;
     }
     
@@ -608,7 +608,7 @@ function HelldiversRogueliteApp() {
       const updatedPlayers = [...players];
       const player = updatedPlayers[playerIndex];
       
-      if (!player || !player.loadout || !draftState.pendingStratagem) {
+      if (!player || !player?.loadout || !draftState.pendingStratagem) {
         console.error('STRATAGEM_REPLACEMENT: Invalid state', { 
           playerIndex, 
           slotIndex, 
