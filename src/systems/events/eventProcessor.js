@@ -74,14 +74,59 @@ export const processEventOutcome = (outcome, choice, state, selections = {}) => 
       break;
 
     case OUTCOME_TYPES.GAIN_BOOSTER:
-      // Generate booster draft instead of directly applying
-      updates.needsBoosterSelection = true;
-      const boosterDraft = generateBoosterDraft(players, gameConfig, state.burnedCards || []);
-      updates.boosterDraft = boosterDraft;
-      updates.boosterOutcome = outcome;
-      // If burn mode is enabled, mark these boosters to be burned when shown
-      if (gameConfig.burnCards && boosterDraft.length > 0) {
-        updates.burnBoosterDraft = boosterDraft;
+      // Check if this is a random booster assignment (no draft selection needed)
+      if (outcome.targetPlayer === 'random') {
+        // Get available boosters (not already owned, not burned)
+        let availableBoosters = MASTER_DB.filter(item => item.type === TYPE.BOOSTER);
+        
+        // Filter out boosters that any player already has (globally unique)
+        const existingBoosters = new Set();
+        players.forEach(player => {
+          if (player.loadout.booster) {
+            existingBoosters.add(player.loadout.booster);
+          }
+        });
+        availableBoosters = availableBoosters.filter(b => !existingBoosters.has(b.id));
+        
+        // Filter out burned cards if burn mode is enabled
+        if (gameConfig.burnCards && burnedCards.length > 0) {
+          availableBoosters = availableBoosters.filter(b => !burnedCards.includes(b.id));
+        }
+        
+        if (availableBoosters.length > 0 && players.length > 0) {
+          // Select a random booster
+          const randomBooster = availableBoosters[Math.floor(Math.random() * availableBoosters.length)];
+          
+          // Select a random player
+          const randomPlayerIndex = Math.floor(Math.random() * players.length);
+          
+          // Assign booster to random player
+          const newPlayers = [...players];
+          newPlayers[randomPlayerIndex].loadout.booster = randomBooster.id;
+          if (!newPlayers[randomPlayerIndex].inventory.includes(randomBooster.id)) {
+            newPlayers[randomPlayerIndex].inventory.push(randomBooster.id);
+          }
+          
+          updates.players = newPlayers;
+          updates.gainedBoosterName = randomBooster.name;
+          updates.gainedBoosterPlayerIndex = randomPlayerIndex;
+          
+          // Burn the booster if burn mode is enabled
+          if (gameConfig.burnCards) {
+            if (!updates.newBurnedCards) updates.newBurnedCards = [];
+            updates.newBurnedCards.push(randomBooster.id);
+          }
+        }
+      } else {
+        // Generate booster draft for player selection (choose or all)
+        updates.needsBoosterSelection = true;
+        const boosterDraft = generateBoosterDraft(players, gameConfig, state.burnedCards || []);
+        updates.boosterDraft = boosterDraft;
+        updates.boosterOutcome = outcome;
+        // If burn mode is enabled, mark these boosters to be burned when shown
+        if (gameConfig.burnCards && boosterDraft.length > 0) {
+          updates.burnBoosterDraft = boosterDraft;
+        }
       }
       break;
 
@@ -415,6 +460,30 @@ export const processAllOutcomes = (outcomes, choice, state, selections = {}) => 
       ...state,
       ...allUpdates // Apply previous updates
     }, selections);
+    
+    // Special handling for multiple random booster gains
+    if (updates.gainedBoosterName && updates.gainedBoosterPlayerIndex !== undefined) {
+      if (!allUpdates.gainedBoosters) {
+        allUpdates.gainedBoosters = [];
+      }
+      allUpdates.gainedBoosters.push({
+        boosterName: updates.gainedBoosterName,
+        playerIndex: updates.gainedBoosterPlayerIndex
+      });
+      // Remove single-item properties to avoid confusion
+      delete updates.gainedBoosterName;
+      delete updates.gainedBoosterPlayerIndex;
+    }
+    
+    // Accumulate burned cards from multiple outcomes
+    if (updates.newBurnedCards && updates.newBurnedCards.length > 0) {
+      if (!allUpdates.newBurnedCards) {
+        allUpdates.newBurnedCards = [];
+      }
+      allUpdates.newBurnedCards.push(...updates.newBurnedCards);
+      delete updates.newBurnedCards;
+    }
+    
     Object.assign(allUpdates, updates);
   });
 
