@@ -948,7 +948,7 @@ function HelldiversRogueliteApp() {
               </div>
               <div>
                 <div style={{ fontSize: '12px', color: '#64748b', marginBottom: '4px' }}>Requisition</div>
-                <div style={{ fontSize: '32px', fontWeight: 'bold', color: '#22c55e' }}>{requisition}</div>
+                <div style={{ fontSize: '32px', fontWeight: 'bold', color: '#22c55e' }}>{Math.floor(requisition)}</div>
               </div>
               <div>
                 <div style={{ fontSize: '12px', color: '#64748b', marginBottom: '4px' }}>Theater</div>
@@ -1062,7 +1062,7 @@ function HelldiversRogueliteApp() {
               </div>
               <div>
                 <div style={{ fontSize: '12px', color: '#64748b', marginBottom: '4px' }}>Requisition Earned</div>
-                <div style={{ fontSize: '24px', fontWeight: 'bold', color: factionColors.PRIMARY }}>{requisition}</div>
+                <div style={{ fontSize: '24px', fontWeight: 'bold', color: factionColors.PRIMARY }}>{Math.floor(requisition)}</div>
               </div>
               <div>
                 <div style={{ fontSize: '12px', color: '#64748b', marginBottom: '4px' }}>Squad Size</div>
@@ -2771,7 +2771,7 @@ function HelldiversRogueliteApp() {
           </>)}
           
           <div style={{ marginTop: '32px', textAlign: 'center' }}>
-            <span style={{ color: factionColors.PRIMARY, fontFamily: 'monospace' }}>Current Requisition: {requisition} R</span>
+            <span style={{ color: factionColors.PRIMARY, fontFamily: 'monospace' }}>Current Requisition: {Math.floor(requisition)} R</span>
           </div>
         </div>
         </div>
