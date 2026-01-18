@@ -649,11 +649,6 @@ function WarbondCard({ warbond, selected, onToggle, onEditItems, disabled = fals
           e.currentTarget.style.backgroundColor = COLORS.BG_MAIN;
         }
       }}
-        if (!disabled && !selected) {
-          e.currentTarget.style.borderColor = COLORS.CARD_BORDER;
-          e.currentTarget.style.backgroundColor = COLORS.BG_MAIN;
-        }
-      }}
     >
       <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
         {/* Warbond Info */}
