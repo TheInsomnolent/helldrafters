@@ -23,6 +23,7 @@ import { MultiplayerModeSelect, JoinGameScreen, MultiplayerWaitingRoom, Multipla
 import { MultiplayerProvider, useMultiplayer } from './systems/multiplayer';
 import { gameReducer, initialState } from './state/gameReducer';
 import * as actions from './state/actions';
+import * as types from './state/actionTypes';
 import { COLORS, SHADOWS, BUTTON_STYLES, GRADIENTS, getFactionColors } from './constants/theme';
 import { getWarbondById } from './constants/warbonds';
 
@@ -513,7 +514,7 @@ function HelldiversRogueliteApp() {
     // In multiplayer as client, send action to host instead of processing locally
     if (isMultiplayer && !isHost) {
       sendAction({
-        type: 'STRATAGEM_REPLACEMENT',
+        type: types.STRATAGEM_REPLACEMENT,
         payload: {
           playerIndex: currentPlayerIdx,
           slotIndex: slotIndex
@@ -602,7 +603,7 @@ function HelldiversRogueliteApp() {
     }
     
     // Handle stratagem replacement from clients
-    if (action.type === 'STRATAGEM_REPLACEMENT') {
+    if (action.type === types.STRATAGEM_REPLACEMENT) {
       const { playerIndex, slotIndex } = action.payload;
       const updatedPlayers = [...players];
       const player = updatedPlayers[playerIndex];
