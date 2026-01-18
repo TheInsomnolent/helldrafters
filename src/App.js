@@ -197,6 +197,7 @@ function HelldiversRogueliteApp() {
         inventory: Object.values(initialLoadouts[i]).flat().filter(id => id !== null),
         warbonds: lp.warbonds,
         includeSuperstore: lp.includeSuperstore,
+        excludedItems: lp.excludedItems || [],
         weaponRestricted: false,
         lockedSlots: [],
         extracted: true
@@ -219,6 +220,7 @@ function HelldiversRogueliteApp() {
         inventory: Object.values(STARTING_LOADOUT).flat().filter(id => id !== null),
         warbonds: lp.warbonds,
         includeSuperstore: lp.includeSuperstore,
+        excludedItems: lp.excludedItems || [],
         weaponRestricted: false,
         lockedSlots: [],
         extracted: true
@@ -589,6 +591,17 @@ function HelldiversRogueliteApp() {
       return true;
     }
     
+    // Handle draft reroll from clients
+    if (action.type === 'DRAFT_REROLL') {
+      const { cost } = action.payload;
+      if (requisition < cost) return true; // Action consumed but rejected
+      dispatch(actions.spendRequisition(cost));
+      dispatch(actions.updateDraftState({
+        roundCards: generateDraftHandForPlayer(draftState.activePlayerIndex)
+      }));
+      return true;
+    }
+    
     return false; // Action not handled
   };
 
@@ -613,6 +626,19 @@ function HelldiversRogueliteApp() {
 
   const rerollDraft = (cost) => {
     if (requisition < cost) return;
+    
+    // In multiplayer as client, send action to host instead of processing locally
+    if (isMultiplayer && !isHost) {
+      sendAction({
+        type: 'DRAFT_REROLL',
+        payload: {
+          cost: cost,
+          playerIndex: draftState.activePlayerIndex
+        }
+      });
+      return;
+    }
+    
     dispatch(actions.spendRequisition(cost));
     dispatch(actions.updateDraftState({
       roundCards: generateDraftHandForPlayer(draftState.activePlayerIndex)
@@ -2632,6 +2658,20 @@ function HelldiversRogueliteApp() {
               {player.name}'s Current Loadout
             </div>
             <div style={{ display: 'flex', gap: '24px', flexWrap: 'wrap', justifyContent: 'center' }}>
+              {/* Primary */}
+              <div style={{ textAlign: 'center' }}>
+                <div style={{ fontSize: '10px', color: '#94a3b8', marginBottom: '4px' }}>Primary</div>
+                <div style={{ 
+                  padding: '4px 8px', 
+                  backgroundColor: player.loadout.primary ? 'rgba(100, 116, 139, 0.3)' : 'rgba(100, 116, 139, 0.1)',
+                  borderRadius: '4px',
+                  fontSize: '10px',
+                  color: player.loadout.primary ? factionColors.PRIMARY : '#64748b'
+                }}>
+                  {player.loadout.primary ? getItemById(player.loadout.primary)?.name || '—' : '—'}
+                </div>
+              </div>
+              
               {/* Stratagems */}
               <div style={{ textAlign: 'center' }}>
                 <div style={{ fontSize: '10px', color: '#94a3b8', marginBottom: '4px' }}>Stratagems</div>
@@ -2671,17 +2711,17 @@ function HelldiversRogueliteApp() {
                 </div>
               </div>
               
-              {/* Throwable */}
+              {/* Grenade */}
               <div style={{ textAlign: 'center' }}>
-                <div style={{ fontSize: '10px', color: '#94a3b8', marginBottom: '4px' }}>Throwable</div>
+                <div style={{ fontSize: '10px', color: '#94a3b8', marginBottom: '4px' }}>Grenade</div>
                 <div style={{ 
                   padding: '4px 8px', 
-                  backgroundColor: player.loadout.throwable ? 'rgba(100, 116, 139, 0.3)' : 'rgba(100, 116, 139, 0.1)',
+                  backgroundColor: player.loadout.grenade ? 'rgba(100, 116, 139, 0.3)' : 'rgba(100, 116, 139, 0.1)',
                   borderRadius: '4px',
                   fontSize: '10px',
-                  color: player.loadout.throwable ? '#cbd5e1' : '#64748b'
+                  color: player.loadout.grenade ? '#cbd5e1' : '#64748b'
                 }}>
-                  {player.loadout.throwable ? getItemById(player.loadout.throwable)?.name || '—' : '—'}
+                  {player.loadout.grenade ? getItemById(player.loadout.grenade)?.name || '—' : '—'}
                 </div>
               </div>
               
