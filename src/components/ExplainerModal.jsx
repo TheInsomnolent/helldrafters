@@ -6,9 +6,26 @@ import { getFactionColors } from '../constants/theme';
  * Modal component that explains the game mechanics
  */
 export default function ExplainerModal({ isOpen, onClose, faction = 'Terminids' }) {
-  if (!isOpen) return null;
-  
   const factionColors = getFactionColors(faction);
+  
+  // Handle escape key to close modal
+  React.useEffect(() => {
+    const handleEscape = (e) => {
+      if (e.key === 'Escape') {
+        onClose();
+      }
+    };
+    
+    if (isOpen) {
+      document.addEventListener('keydown', handleEscape);
+    }
+    
+    return () => {
+      document.removeEventListener('keydown', handleEscape);
+    };
+  }, [isOpen, onClose]);
+  
+  if (!isOpen) return null;
   
   return (
     <div 
@@ -27,6 +44,9 @@ export default function ExplainerModal({ isOpen, onClose, faction = 'Terminids' 
         overflowY: 'auto'
       }}
       onClick={onClose}
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="explainer-modal-title"
     >
       <div 
         style={{
@@ -60,7 +80,9 @@ export default function ExplainerModal({ isOpen, onClose, faction = 'Terminids' 
             textTransform: 'uppercase',
             letterSpacing: '0.05em',
             margin: 0
-          }}>
+          }}
+          id="explainer-modal-title"
+          >
             Mission Briefing
           </h2>
           <button
