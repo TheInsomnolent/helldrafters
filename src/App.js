@@ -18,6 +18,7 @@ import LoadoutDisplay from './components/LoadoutDisplay';
 import GameLobby from './components/GameLobby';
 import GameConfiguration from './components/GameConfiguration';
 import RarityWeightDebug from './components/RarityWeightDebug';
+import RarityBadge from './components/RarityBadge';
 import { MultiplayerModeSelect, JoinGameScreen, MultiplayerWaitingRoom, MultiplayerStatusBar } from './components/MultiplayerLobby';
 import { MultiplayerProvider, useMultiplayer } from './systems/multiplayer';
 import { gameReducer, initialState } from './state/gameReducer';
@@ -728,25 +729,6 @@ function HelldiversRogueliteApp() {
   };
 
   // --- UI COMPONENTS ---
-
-  const RarityBadge = ({ rarity }) => {
-    const colors = {
-      [RARITY.COMMON]: { bg: '#6b7280', color: 'white' },
-      [RARITY.UNCOMMON]: { bg: '#22c55e', color: 'black' },
-      [RARITY.RARE]: { bg: '#f97316', color: 'black' },
-      [RARITY.LEGENDARY]: { bg: '#9333ea', color: 'white' }
-    };
-    const style = colors[rarity] || colors[RARITY.COMMON];
-    return <span style={{
-      fontSize: '10px',
-      textTransform: 'uppercase',
-      fontWeight: 'bold',
-      padding: '2px 8px',
-      borderRadius: '4px',
-      backgroundColor: style.bg,
-      color: style.color
-    }}>{rarity}</span>;
-  };
 
   const ItemCard = ({ item, onSelect, onRemove }) => {
     // Guard: if item is undefined, don't render

@@ -3,6 +3,7 @@ import { EVENT_TYPES, OUTCOME_TYPES } from '../systems/events/events';
 import { MASTER_DB } from '../data/itemsByWarbond';
 import { getSubfactionsForFaction, SUBFACTION_CONFIG } from '../constants/balancingConfig';
 import { getFactionColors } from '../constants/theme';
+import RarityBadge from './RarityBadge';
 
 /**
  * EventDisplay component for showing and handling event interactions
