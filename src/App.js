@@ -503,6 +503,25 @@ function HelldiversRogueliteApp() {
 
   const handleStratagemReplacement = (slotIndex) => {
     const currentPlayerIdx = draftState.activePlayerIndex;
+    
+    // In multiplayer, only the player whose turn it is can select replacement
+    if (isMultiplayer && playerSlot !== currentPlayerIdx) {
+      console.log('Not your turn to select replacement', { playerSlot, currentPlayerIdx });
+      return;
+    }
+    
+    // In multiplayer as client, send action to host instead of processing locally
+    if (isMultiplayer && !isHost) {
+      sendAction({
+        type: 'STRATAGEM_REPLACEMENT',
+        payload: {
+          playerIndex: currentPlayerIdx,
+          slotIndex: slotIndex
+        }
+      });
+      return;
+    }
+    
     const updatedPlayers = [...players];
     const player = updatedPlayers[currentPlayerIdx];
     const item = draftState.pendingStratagem;
@@ -514,6 +533,7 @@ function HelldiversRogueliteApp() {
     player.loadout.stratagems[slotIndex] = item.id;
     
     dispatch(actions.setPlayers(updatedPlayers));
+    dispatch(actions.updateDraftState({ pendingStratagem: null }));
 
     // Next player, extra draft, or finish
     proceedToNextDraft(updatedPlayers);
@@ -548,12 +568,11 @@ function HelldiversRogueliteApp() {
         // Special handling for stratagems when slots are full
         if (item.type === TYPE.STRATAGEM) {
           if (areStratagemSlotsFull(player.loadout)) {
-            // For now, just add to first slot as replacement (could be enhanced)
-            player.loadout.stratagems[0] = item.id;
-            player.inventory.push(item.id);
-            dispatch(actions.setPlayers(updatedPlayers));
-            proceedToNextDraft(updatedPlayers);
-            return true;
+            // Set pending stratagem to trigger modal for player to choose which slot to replace
+            dispatch(actions.updateDraftState({
+              pendingStratagem: item
+            }));
+            return true; // Action was handled, wait for STRATAGEM_REPLACEMENT action
           }
         }
 
@@ -574,6 +593,31 @@ function HelldiversRogueliteApp() {
       dispatch(actions.setPlayers(updatedPlayers));
       proceedToNextDraft(updatedPlayers);
       return true; // Action was handled
+    }
+    
+    // Handle stratagem replacement from clients
+    if (action.type === 'STRATAGEM_REPLACEMENT') {
+      const { playerIndex, slotIndex } = action.payload;
+      const updatedPlayers = [...players];
+      const player = updatedPlayers[playerIndex];
+      
+      if (!player || !player.loadout || !draftState.pendingStratagem) {
+        console.error('STRATAGEM_REPLACEMENT: Invalid state', { playerIndex, slotIndex });
+        return true;
+      }
+      
+      const item = draftState.pendingStratagem;
+      
+      // Add to inventory
+      player.inventory.push(item.id);
+      
+      // Replace the selected slot
+      player.loadout.stratagems[slotIndex] = item.id;
+      
+      dispatch(actions.setPlayers(updatedPlayers));
+      dispatch(actions.updateDraftState({ pendingStratagem: null }));
+      proceedToNextDraft(updatedPlayers);
+      return true;
     }
     
     // Handle extraction status toggle from clients
