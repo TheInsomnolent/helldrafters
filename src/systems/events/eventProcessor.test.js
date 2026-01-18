@@ -136,6 +136,38 @@ describe('Systems - Event Processor', () => {
       expect(Array.isArray(updates.boosterDraft)).toBe(true);
     });
 
+    it('should apply a random booster without selection', () => {
+      const multiPlayerState = {
+        ...mockState,
+        players: [
+          { ...mockState.players[0] },
+          {
+            id: 2,
+            name: 'Helldiver 2',
+            inventory: ['s_peacemaker', 'g_he', 'a_b01'],
+            loadout: {
+              primary: null,
+              secondary: 's_peacemaker',
+              grenade: 'g_he',
+              armor: 'a_b01',
+              booster: null,
+              stratagems: [null, null, null, null]
+            }
+          }
+        ]
+      };
+      const outcome = { type: OUTCOME_TYPES.GAIN_BOOSTER, targetPlayer: 'random' };
+      const updates = processEventOutcome(outcome, {}, multiPlayerState);
+
+      expect(updates.needsBoosterSelection).toBeUndefined();
+      expect(updates.players).toBeDefined();
+      const playersWithBoosters = updates.players.filter(player => player.loadout.booster);
+      expect(playersWithBoosters.length).toBe(1);
+      expect(playersWithBoosters[0].inventory).toContain(playersWithBoosters[0].loadout.booster);
+      expect(updates.gainedItems).toBeDefined();
+      expect(updates.gainedItems.length).toBe(1);
+    });
+
     it('should redraft player inventory', () => {
       const outcome = { type: OUTCOME_TYPES.REDRAFT, value: 3 };
       const updates = processEventOutcome(outcome, {}, mockState);
@@ -290,6 +322,43 @@ describe('Systems - Event Processor', () => {
       const updates = processAllOutcomes(outcomes, {}, mockState);
       
       expect(updates.requisition).toBe(60);
+    });
+
+    it('should distribute multiple random boosters across the squad', () => {
+      const multiPlayerState = {
+        ...mockState,
+        players: [
+          { ...mockState.players[0] },
+          {
+            id: 2,
+            name: 'Helldiver 2',
+            inventory: ['s_peacemaker', 'g_he', 'a_b01'],
+            loadout: {
+              primary: null,
+              secondary: 's_peacemaker',
+              grenade: 'g_he',
+              armor: 'a_b01',
+              booster: null,
+              stratagems: [null, null, null, null]
+            }
+          }
+        ]
+      };
+      const outcomes = [
+        { type: OUTCOME_TYPES.GAIN_BOOSTER, targetPlayer: 'random' },
+        { type: OUTCOME_TYPES.GAIN_BOOSTER, targetPlayer: 'random' }
+      ];
+      const updates = processAllOutcomes(outcomes, {}, multiPlayerState);
+
+      expect(updates.players).toBeDefined();
+      updates.players.forEach(player => {
+        expect(player.loadout.booster).toBeDefined();
+        expect(player.inventory).toContain(player.loadout.booster);
+      });
+      const boosters = updates.players.map(player => player.loadout.booster);
+      expect(new Set(boosters).size).toBe(boosters.length);
+      expect(updates.gainedItems).toBeDefined();
+      expect(updates.gainedItems.length).toBe(2);
     });
 
     it('should handle empty outcomes array', () => {
