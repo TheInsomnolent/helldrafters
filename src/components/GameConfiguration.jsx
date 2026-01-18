@@ -214,18 +214,6 @@ export default function GameConfiguration({
               <div style={{ color: '#94a3b8', fontSize: '11px', marginTop: '4px' }}>Non-extracted Helldivers sacrifice loadout items (down to Peacemaker & B-01). If disabled, only all-fail triggers sacrifice.</div>
             </div>
           </label>
-          <label style={{ display: 'flex', alignItems: 'center', gap: '12px', cursor: 'pointer', padding: '12px', backgroundColor: gameConfig.showCardPool ? `${factionColors.PRIMARY}1A` : 'transparent', borderRadius: '4px', border: '1px solid rgba(100, 116, 139, 0.5)' }}>
-            <input 
-              type="checkbox" 
-              checked={gameConfig.showCardPool}
-              onChange={(e) => onUpdateGameConfig({ showCardPool: e.target.checked })}
-              style={{ width: '20px', height: '20px', cursor: 'pointer' }}
-            />
-            <div>
-              <div style={{ color: factionColors.PRIMARY, fontWeight: 'bold', fontSize: '14px' }}>Show Card Pool</div>
-              <div style={{ color: '#94a3b8', fontSize: '11px', marginTop: '4px' }}>Display rarity weights and card pool during draft</div>
-            </div>
-          </label>
         </div>
       </div>
     </div>
