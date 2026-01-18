@@ -1,5 +1,4 @@
 import React from 'react';
-import { XCircle } from 'lucide-react';
 import { DIFFICULTY_CONFIG } from '../constants/gameConfig';
 import { getFactionColors } from '../constants/theme';
 import { SUBFACTION_CONFIG } from '../constants/balancingConfig';
@@ -13,8 +12,7 @@ export default function GameHeader({
   faction,
   subfaction,
   samples,
-  onExport,
-  onCancelRun 
+  onExport 
 }) {
   const factionColors = getFactionColors(faction);
   const subfactionName = SUBFACTION_CONFIG[subfaction]?.name || 'Unknown';
@@ -146,33 +144,6 @@ export default function GameHeader({
             }}
           >
             💾 Export
-          </button>
-          <button
-            onClick={() => {
-              if (window.confirm('Are you sure you want to cancel this run? All progress will be lost.')) {
-                onCancelRun();
-              }
-            }}
-            style={{
-              display: 'flex',
-              alignItems: 'center',
-              gap: '8px',
-              padding: '8px 16px',
-              backgroundColor: 'rgba(127, 29, 29, 0.3)',
-              color: '#ef4444',
-              border: '1px solid #7f1d1d',
-              borderRadius: '4px',
-              fontWeight: 'bold',
-              textTransform: 'uppercase',
-              fontSize: '12px',
-              cursor: 'pointer',
-              transition: 'all 0.2s'
-            }}
-            onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'rgba(127, 29, 29, 0.5)'}
-            onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'rgba(127, 29, 29, 0.3)'}
-          >
-            <XCircle size={16} />
-            Cancel Run
           </button>
         </div>
       </div>

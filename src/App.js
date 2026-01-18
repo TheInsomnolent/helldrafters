@@ -2392,36 +2392,6 @@ function HelldiversRogueliteApp() {
           >
             💾 Export
           </button>
-          {/* Hide Cancel Run in multiplayer - use Disconnect instead */}
-          {!isMultiplayer && (
-            <button
-              onClick={() => {
-                if (window.confirm('Are you sure you want to cancel this run? All progress will be lost.')) {
-                  dispatch(actions.setPhase('MENU'));
-                }
-              }}
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: '8px',
-                padding: '8px 16px',
-                backgroundColor: 'rgba(127, 29, 29, 0.3)',
-                color: '#ef4444',
-                border: '1px solid #7f1d1d',
-                borderRadius: '4px',
-                fontWeight: 'bold',
-                textTransform: 'uppercase',
-                fontSize: '12px',
-                cursor: 'pointer',
-                transition: 'all 0.2s'
-              }}
-              onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'rgba(127, 29, 29, 0.5)'}
-              onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'rgba(127, 29, 29, 0.3)'}
-            >
-              <XCircle size={16} />
-              Cancel Run
-            </button>
-          )}
         </div>
         
         {/* Stratagem Replacement Modal */}
@@ -2811,7 +2781,6 @@ function HelldiversRogueliteApp() {
         subfaction={gameConfig.subfaction}
         samples={state.samples}
         onExport={exportGameState}
-        onCancelRun={() => dispatch(actions.setPhase('MENU'))}
       />
 
       {/* MAIN CONTENT */}
