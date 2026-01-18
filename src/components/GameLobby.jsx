@@ -910,7 +910,9 @@ function ItemSelectionModal({
               fontSize: '12px',
               fontWeight: 'bold',
               cursor: 'pointer',
-              textTransform: 'uppercase'
+              textTransform: 'uppercase',
+              whiteSpace: 'nowrap',
+              flexShrink: 0
             }}
           >
             Select All
@@ -926,7 +928,9 @@ function ItemSelectionModal({
               fontSize: '12px',
               fontWeight: 'bold',
               cursor: 'pointer',
-              textTransform: 'uppercase'
+              textTransform: 'uppercase',
+              whiteSpace: 'nowrap',
+              flexShrink: 0
             }}
           >
             Deselect All
@@ -940,7 +944,9 @@ function ItemSelectionModal({
         <div style={{
           flex: 1,
           overflowY: 'auto',
-          padding: '24px'
+          padding: '24px',
+          scrollbarWidth: 'thin',
+          scrollbarColor: 'rgba(100, 116, 139, 0.3) transparent'
         }}>
           {Object.entries(itemsByType).map(([type, typeItems]) => (
             <div key={type} style={{ marginBottom: '24px' }}>
@@ -964,12 +970,15 @@ function ItemSelectionModal({
                 {typeItems.map(item => {
                   const isIncluded = !localExcluded.has(item.id);
                   const iconUrl = getItemIconUrl(item);
+                  const isWideAspect = item.type === TYPE.PRIMARY || item.type === TYPE.SECONDARY;
+                  
                   return (
                     <label
                       key={item.id}
                       style={{
                         display: 'flex',
-                        alignItems: 'center',
+                        flexDirection: isWideAspect ? 'column' : 'row',
+                        alignItems: isWideAspect ? 'stretch' : 'center',
                         gap: '10px',
                         padding: '10px 12px',
                         backgroundColor: isIncluded ? 'rgba(34, 197, 94, 0.1)' : COLORS.BG_MAIN,
@@ -979,53 +988,88 @@ function ItemSelectionModal({
                         transition: 'all 0.2s'
                       }}
                     >
-                      <input
-                        type="checkbox"
-                        checked={isIncluded}
-                        onChange={() => toggleItem(item.id)}
-                        style={{ 
-                          width: '18px', 
-                          height: '18px', 
-                          cursor: 'pointer',
-                          accentColor: '#22c55e',
-                          flexShrink: 0
-                        }}
-                      />
-                      {iconUrl && (
-                        <img 
-                          src={iconUrl} 
-                          alt=""
-                          style={{
-                            width: '28px',
-                            height: '28px',
-                            objectFit: 'contain',
-                            flexShrink: 0,
-                            opacity: isIncluded ? 1 : 0.5
-                          }}
-                          onError={(e) => {
-                            e.target.style.display = 'none';
+                      {/* Top row: checkbox and text */}
+                      <div style={{ 
+                        display: 'flex', 
+                        alignItems: 'center', 
+                        gap: '10px',
+                        flex: isWideAspect ? undefined : 1
+                      }}>
+                        <input
+                          type="checkbox"
+                          checked={isIncluded}
+                          onChange={() => toggleItem(item.id)}
+                          style={{ 
+                            width: '18px', 
+                            height: '18px', 
+                            cursor: 'pointer',
+                            accentColor: '#22c55e',
+                            flexShrink: 0
                           }}
                         />
-                      )}
-                      <div style={{ flex: 1, minWidth: 0 }}>
-                        <div style={{
-                          color: isIncluded ? 'white' : COLORS.TEXT_MUTED,
-                          fontSize: '13px',
-                          fontWeight: '500',
-                          whiteSpace: 'nowrap',
-                          overflow: 'hidden',
-                          textOverflow: 'ellipsis'
-                        }}>
-                          {item.name}
-                        </div>
-                        <div style={{
-                          color: COLORS.TEXT_DISABLED,
-                          fontSize: '10px',
-                          textTransform: 'uppercase'
-                        }}>
-                          {item.rarity}
+                        {/* Show square icons inline for non-weapons */}
+                        {iconUrl && !isWideAspect && (
+                          <img 
+                            src={iconUrl} 
+                            alt=""
+                            style={{
+                              width: '28px',
+                              height: '28px',
+                              objectFit: 'contain',
+                              flexShrink: 0,
+                              opacity: isIncluded ? 1 : 0.5
+                            }}
+                            onError={(e) => {
+                              e.target.style.display = 'none';
+                            }}
+                          />
+                        )}
+                        <div style={{ flex: 1, minWidth: 0 }}>
+                          <div style={{
+                            color: isIncluded ? 'white' : COLORS.TEXT_MUTED,
+                            fontSize: '13px',
+                            fontWeight: '500',
+                            lineHeight: '1.3',
+                            wordBreak: 'break-word'
+                          }}>
+                            {item.name}
+                          </div>
+                          <div style={{
+                            color: COLORS.TEXT_DISABLED,
+                            fontSize: '10px',
+                            textTransform: 'uppercase'
+                          }}>
+                            {item.rarity}
+                          </div>
                         </div>
                       </div>
+                      {/* Weapon images below text for wide aspect ratio */}
+                      {iconUrl && isWideAspect && (
+                        <div style={{
+                          width: '100%',
+                          height: '40px',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          backgroundColor: 'rgba(0, 0, 0, 0.3)',
+                          borderRadius: '4px',
+                          overflow: 'hidden'
+                        }}>
+                          <img 
+                            src={iconUrl} 
+                            alt=""
+                            style={{
+                              maxWidth: '100%',
+                              maxHeight: '100%',
+                              objectFit: 'contain',
+                              opacity: isIncluded ? 1 : 0.5
+                            }}
+                            onError={(e) => {
+                              e.target.parentElement.style.display = 'none';
+                            }}
+                          />
+                        </div>
+                      )}
                     </label>
                   );
                 })}

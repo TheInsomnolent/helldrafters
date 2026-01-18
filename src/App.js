@@ -835,7 +835,9 @@ function HelldiversRogueliteApp() {
           transition: 'all 0.2s',
           display: 'flex',
           flexDirection: 'column',
-          minHeight: '280px'
+          minHeight: '280px',
+          width: '280px',
+          flexShrink: 0
         }}
       >
         {onRemove && (
@@ -894,14 +896,17 @@ function HelldiversRogueliteApp() {
               display: 'flex', 
               justifyContent: 'center', 
               alignItems: 'center', 
-              marginBottom: '8px',
-              height: '48px'
+              marginBottom: '12px',
+              height: '80px',
+              backgroundColor: 'rgba(0, 0, 0, 0.2)',
+              borderRadius: '4px',
+              padding: '8px'
             }}>
               <img 
                 src={iconUrl} 
                 alt={displayName}
                 style={{
-                  maxHeight: '48px',
+                  maxHeight: '100%',
                   maxWidth: '100%',
                   objectFit: 'contain'
                 }}
@@ -917,7 +922,8 @@ function HelldiversRogueliteApp() {
             fontWeight: 'bold', 
             fontSize: isArmorCombo ? '14px' : '18px', 
             lineHeight: '1.2', 
-            marginBottom: '4px' 
+            marginBottom: '4px',
+            wordBreak: 'break-word'
           }}>
             {displayName}
           </h3>
