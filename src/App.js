@@ -2899,8 +2899,10 @@ function HelldiversRogueliteApp() {
         
         {/* PLAYER ROSTER */}
         <div style={{ display: 'grid', gridTemplateColumns: gameConfig.playerCount > 1 ? 'repeat(auto-fit, minmax(400px, 1fr))' : '1fr', gap: '32px', marginBottom: '48px' }}>
-          {players.map(player => {
+          {players.map((player, index) => {
             const { getSlotLockCost, MAX_LOCKED_SLOTS } = require('./constants/balancingConfig');
+            // In multiplayer, only allow the current player to lock their own slots
+            const isCurrentPlayer = !isMultiplayer || (playerSlot === index);
             return (
               <LoadoutDisplay 
                 key={player.id} 
@@ -2911,8 +2913,8 @@ function HelldiversRogueliteApp() {
                 requisition={requisition}
                 slotLockCost={getSlotLockCost(gameConfig.playerCount)}
                 maxLockedSlots={MAX_LOCKED_SLOTS}
-                onLockSlot={handleLockSlot}
-                onUnlockSlot={handleUnlockSlot}
+                onLockSlot={isCurrentPlayer ? handleLockSlot : undefined}
+                onUnlockSlot={isCurrentPlayer ? handleUnlockSlot : undefined}
               />
             );
           })}
