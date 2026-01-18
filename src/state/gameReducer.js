@@ -255,6 +255,16 @@ export function gameReducer(state, action) {
         )
       };
 
+    case types.SET_PLAYER_EXCLUDED_ITEMS:
+      return {
+        ...state,
+        players: state.players.map((player, idx) =>
+          idx === action.payload.playerIndex
+            ? { ...player, excludedItems: action.payload.excludedItems }
+            : player
+        )
+      };
+
     case types.SET_PLAYER_EXTRACTED:
       return {
         ...state,

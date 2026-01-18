@@ -177,8 +177,9 @@ export default function DraftDisplay({
         </div>
 
         <div style={{ 
-          display: 'grid', 
-          gridTemplateColumns: `repeat(${Math.min(draftState.roundCards.length, 4)}, 1fr)`, 
+          display: 'flex', 
+          flexWrap: 'wrap',
+          justifyContent: 'center',
           gap: '24px', 
           marginBottom: '48px' 
         }}>

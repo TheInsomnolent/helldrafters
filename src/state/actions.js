@@ -170,6 +170,11 @@ export const setPlayerSuperstore = (playerIndex, includeSuperstore) => ({
   payload: { playerIndex, includeSuperstore }
 });
 
+export const setPlayerExcludedItems = (playerIndex, excludedItems) => ({
+  type: types.SET_PLAYER_EXCLUDED_ITEMS,
+  payload: { playerIndex, excludedItems }
+});
+
 export const setPlayerExtracted = (playerIndex, extracted) => ({
   type: types.SET_PLAYER_EXTRACTED,
   payload: { playerIndex, extracted }

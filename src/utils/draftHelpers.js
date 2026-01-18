@@ -34,7 +34,7 @@ export const getDraftHandSize = (starRating) => {
 
 /**
  * Get weighted pool of available items for a player
- * @param {Object} player - Player object with inventory, loadout, warbonds, and includeSuperstore
+ * @param {Object} player - Player object with inventory, loadout, warbonds, includeSuperstore, and excludedItems
  * @param {number} difficulty - Current difficulty level
  * @param {Object} gameConfig - Game configuration
  * @param {string[]} burnedCards - Array of burned card IDs
@@ -62,6 +62,11 @@ export const getWeightedPool = (player, difficulty, gameConfig, burnedCards = []
       // Exclude items with warbond/superstore tags that aren't accessible
       return !item.warbond && !item.superstore;
     });
+  }
+
+  // 2.5. Filter out excluded items (items the player doesn't own)
+  if (player.excludedItems && player.excludedItems.length > 0) {
+    candidates = candidates.filter(item => !player.excludedItems.includes(item.id));
   }
 
   // 3. Filter out burned cards (if burn mode enabled)
