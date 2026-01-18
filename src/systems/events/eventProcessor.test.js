@@ -144,6 +144,142 @@ describe('Systems - Event Processor', () => {
       expect(updates.players[0].inventory.length).toBeLessThan(mockState.players[0].inventory.length);
       expect(updates.bonusRequisition).toBeGreaterThan(0);
     });
+
+    it('should give all players random light armor and add to inventory', () => {
+      const multiPlayerState = {
+        ...mockState,
+        players: [
+          { ...mockState.players[0] },
+          {
+            id: 2,
+            name: 'Helldiver 2',
+            inventory: ['s_peacemaker', 'g_he', 'a_b01'],
+            loadout: {
+              primary: null,
+              secondary: 's_peacemaker',
+              grenade: 'g_he',
+              armor: 'a_b01',
+              booster: null,
+              stratagems: [null, null, null, null]
+            }
+          }
+        ],
+        burnedCards: []
+      };
+      
+      const outcome = { type: OUTCOME_TYPES.GAIN_RANDOM_LIGHT_ARMOR_AND_DRAFT_THROWABLE };
+      const updates = processEventOutcome(outcome, {}, multiPlayerState);
+      
+      expect(updates.players).toBeDefined();
+      expect(updates.players.length).toBe(2);
+      
+      // Each player should have a light armor assigned
+      updates.players.forEach(player => {
+        expect(player.loadout.armor).toBeDefined();
+        expect(player.loadout.armor).not.toBe('a_b01'); // Should be different from default
+        // Armor should be in inventory
+        expect(player.inventory).toContain(player.loadout.armor);
+      });
+      
+      // Should trigger special draft for throwables
+      expect(updates.needsSpecialDraft).toBe(true);
+      expect(updates.specialDraftType).toBe('throwable');
+    });
+
+    it('should give all players random heavy armor and add to inventory', () => {
+      const multiPlayerState = {
+        ...mockState,
+        players: [
+          { ...mockState.players[0] },
+          {
+            id: 2,
+            name: 'Helldiver 2',
+            inventory: ['s_peacemaker', 'g_he', 'a_b01'],
+            loadout: {
+              primary: null,
+              secondary: 's_peacemaker',
+              grenade: 'g_he',
+              armor: 'a_b01',
+              booster: null,
+              stratagems: [null, null, null, null]
+            }
+          }
+        ],
+        burnedCards: []
+      };
+      
+      const outcome = { type: OUTCOME_TYPES.GAIN_RANDOM_HEAVY_ARMOR_AND_DRAFT_SECONDARY };
+      const updates = processEventOutcome(outcome, {}, multiPlayerState);
+      
+      expect(updates.players).toBeDefined();
+      expect(updates.players.length).toBe(2);
+      
+      // Each player should have a heavy armor assigned
+      updates.players.forEach(player => {
+        expect(player.loadout.armor).toBeDefined();
+        // Armor should be in inventory
+        expect(player.inventory).toContain(player.loadout.armor);
+      });
+      
+      // Should trigger special draft for secondaries
+      expect(updates.needsSpecialDraft).toBe(true);
+      expect(updates.specialDraftType).toBe('secondary');
+    });
+
+    it('should give each player a different random armor', () => {
+      const multiPlayerState = {
+        ...mockState,
+        players: [
+          { ...mockState.players[0] },
+          {
+            id: 2,
+            name: 'Helldiver 2',
+            inventory: ['s_peacemaker'],
+            loadout: {
+              primary: null,
+              secondary: 's_peacemaker',
+              grenade: null,
+              armor: 'a_b01',
+              booster: null,
+              stratagems: [null, null, null, null]
+            }
+          },
+          {
+            id: 3,
+            name: 'Helldiver 3',
+            inventory: ['s_peacemaker'],
+            loadout: {
+              primary: null,
+              secondary: 's_peacemaker',
+              grenade: null,
+              armor: 'a_b01',
+              booster: null,
+              stratagems: [null, null, null, null]
+            }
+          }
+        ],
+        burnedCards: []
+      };
+      
+      const outcome = { type: OUTCOME_TYPES.GAIN_RANDOM_LIGHT_ARMOR_AND_DRAFT_THROWABLE };
+      
+      // Run multiple times to check randomness
+      let hasDifferentArmors = false;
+      for (let i = 0; i < 10; i++) {
+        const updates = processEventOutcome(outcome, {}, multiPlayerState);
+        const armors = updates.players.map(p => p.loadout.armor);
+        
+        // Check if at least one run has different armors between players
+        const uniqueArmors = new Set(armors);
+        if (uniqueArmors.size > 1) {
+          hasDifferentArmors = true;
+          break;
+        }
+      }
+      
+      // With multiple players and multiple armor options, we should eventually see different armors
+      expect(hasDifferentArmors).toBe(true);
+    });
   });
 
   describe('processAllOutcomes', () => {
