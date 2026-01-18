@@ -3,6 +3,7 @@ import { EVENT_TYPES, OUTCOME_TYPES } from '../systems/events/events';
 import { MASTER_DB } from '../data/itemsByWarbond';
 import { getSubfactionsForFaction, SUBFACTION_CONFIG } from '../constants/balancingConfig';
 import { getFactionColors } from '../constants/theme';
+import { RARITY } from '../constants/types';
 
 /**
  * EventDisplay component for showing and handling event interactions
@@ -43,6 +44,22 @@ export default function EventDisplay({
   const getItemName = (itemId) => {
     const item = MASTER_DB.find(i => i.id === itemId);
     return item ? item.name : 'Unknown';
+  };
+
+  // Helper to get item by ID
+  const getItemById = (itemId) => {
+    return MASTER_DB.find(i => i.id === itemId);
+  };
+
+  // Helper to get rarity style
+  const getRarityStyle = (rarity) => {
+    const colors = {
+      [RARITY.COMMON]: { bg: '#6b7280', color: 'white' },
+      [RARITY.UNCOMMON]: { bg: '#22c55e', color: 'black' },
+      [RARITY.RARE]: { bg: '#f97316', color: 'black' },
+      [RARITY.LEGENDARY]: { bg: '#9333ea', color: 'white' }
+    };
+    return colors[rarity] || colors[RARITY.COMMON];
   };
 
   // Check if current event choice needs stratagem/player selection
@@ -575,7 +592,10 @@ export default function EventDisplay({
                 <div style={{ marginBottom: '20px' }}>
                   <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))', gap: '12px' }}>
                     {eventBoosterDraft.map((boosterId, idx) => {
-                      const boosterName = getItemName(boosterId);
+                      const booster = getItemById(boosterId);
+                      const boosterName = booster ? booster.name : 'Unknown';
+                      const boosterRarity = booster ? booster.rarity : RARITY.COMMON;
+                      const rarityStyle = getRarityStyle(boosterRarity);
                       return (
                         <button
                           key={idx}
@@ -590,7 +610,11 @@ export default function EventDisplay({
                             cursor: 'pointer',
                             fontWeight: eventBoosterSelection === boosterId ? 'bold' : 'normal',
                             transition: 'all 0.2s',
-                            textAlign: 'center'
+                            textAlign: 'center',
+                            display: 'flex',
+                            flexDirection: 'column',
+                            gap: '8px',
+                            alignItems: 'center'
                           }}
                           onMouseEnter={(e) => {
                             if (eventBoosterSelection !== boosterId) {
@@ -605,7 +629,18 @@ export default function EventDisplay({
                             }
                           }}
                         >
-                          {boosterName}
+                          <div>{boosterName}</div>
+                          <span style={{
+                            fontSize: '10px',
+                            textTransform: 'uppercase',
+                            fontWeight: 'bold',
+                            padding: '2px 8px',
+                            borderRadius: '4px',
+                            backgroundColor: rarityStyle.bg,
+                            color: rarityStyle.color
+                          }}>
+                            {boosterRarity}
+                          </span>
                         </button>
                       );
                     })}
