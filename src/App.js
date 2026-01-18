@@ -439,7 +439,7 @@ function HelldiversRogueliteApp() {
     // In multiplayer as client, send action to host instead of processing locally
     if (isMultiplayer && !isHost) {
       sendAction({
-        type: 'DRAFT_PICK',
+        type: types.DRAFT_PICK,
         payload: {
           playerIndex: currentPlayerIdx,
           item: item
@@ -551,7 +551,7 @@ function HelldiversRogueliteApp() {
   
   // Update the ref whenever dependencies change
   draftPickHandlerRef.current = (action) => {
-    if (action.type === 'DRAFT_PICK') {
+    if (action.type === types.DRAFT_PICK) {
       const { playerIndex, item } = action.payload;
       
       // Process the draft pick for this player
@@ -634,7 +634,7 @@ function HelldiversRogueliteApp() {
     }
     
     // Handle extraction status toggle from clients
-    if (action.type === 'SET_PLAYER_EXTRACTED') {
+    if (action.type === types.SET_PLAYER_EXTRACTED) {
       const { playerIndex, extracted } = action.payload;
       dispatch(actions.setPlayerExtracted(playerIndex, extracted));
       return true;
