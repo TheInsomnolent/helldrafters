@@ -4,6 +4,9 @@ import * as types from './actionTypes';
 
 /**
  * Check if debug mode is enabled via query string
+ * Note: This is evaluated once at initialization. Debug mode cannot be toggled
+ * during runtime - users must refresh the page with ?debug=true to enable it.
+ * This is intentional to prevent accidental enabling of debug features in production.
  */
 const isDebugModeEnabled = () => {
   if (typeof window === 'undefined') return false;
