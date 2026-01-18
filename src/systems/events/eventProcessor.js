@@ -459,11 +459,22 @@ export const processEventOutcome = (outcome, choice, state, selections = {}) => 
             player.inventory.push('p_constitution');
           }
           
-          // Set secondary to senator if player has access
-          if (hasAccess('s_senator')) {
-            player.loadout.secondary = 's_senator';
-            if (!player.inventory.includes('s_senator')) {
-              player.inventory.push('s_senator');
+          // Set secondary based on player position
+          if (index === 0) {
+            // Player 1: P-4 Senator (if available)
+            if (hasAccess('s_senator')) {
+              player.loadout.secondary = 's_senator';
+              if (!player.inventory.includes('s_senator')) {
+                player.inventory.push('s_senator');
+              }
+            }
+          } else {
+            // Players 2, 3, 4: CQC-2 Saber (if available)
+            if (hasAccess('s_saber')) {
+              player.loadout.secondary = 's_saber';
+              if (!player.inventory.includes('s_saber')) {
+                player.inventory.push('s_saber');
+              }
             }
           }
           
@@ -489,7 +500,7 @@ export const processEventOutcome = (outcome, choice, state, selections = {}) => 
           // Clear all stratagems first
           player.loadout.stratagems = [null, null, null, null];
           
-          // Add specific stratagems based on player position
+          // Add specific stratagem for player 1
           if (index === 0) {
             // Player 1: CQC-1 One True Flag (if available)
             if (hasAccess('st_flag')) {
@@ -498,20 +509,8 @@ export const processEventOutcome = (outcome, choice, state, selections = {}) => 
                 player.inventory.push('st_flag');
               }
             }
-          } else {
-            // Players 2, 3, 4: CQC-2 Saber (if available)
-            if (hasAccess('s_saber')) {
-              // Saber is a secondary weapon, but the issue asks for it as a stratagem
-              // Let me check if it should be replacing secondary or be added as equipment
-              // Based on the issue description "Give Players 2,3,4 the CQC-2 Saber"
-              // and "Give all players the P-4 Senator", it seems saber should override
-              // the secondary for players 2,3,4
-              player.loadout.secondary = 's_saber';
-              if (!player.inventory.includes('s_saber')) {
-                player.inventory.push('s_saber');
-              }
-            }
           }
+          // Players 2, 3, 4 get no stratagems (already cleared above)
         });
         
         updates.players = newPlayers;

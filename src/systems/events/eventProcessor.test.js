@@ -312,6 +312,94 @@ describe('Systems - Event Processor', () => {
       // With multiple players and multiple armor options, we should eventually see different armors
       expect(hasDifferentArmors).toBe(true);
     });
+
+    it('should apply ceremonial loadout with proper equipment distribution', () => {
+      const multiPlayerState = {
+        ...mockState,
+        players: [
+          {
+            id: 1,
+            name: 'Helldiver 1',
+            inventory: ['s_peacemaker', 'g_he', 'a_b01'],
+            warbonds: ['helldivers_mobilize', 'steeled_veterans', 'masters_of_ceremony'],
+            includeSuperstore: false,
+            loadout: {
+              primary: null,
+              secondary: 's_peacemaker',
+              grenade: 'g_he',
+              armor: 'a_b01',
+              booster: null,
+              stratagems: ['st_ops', null, null, null]
+            }
+          },
+          {
+            id: 2,
+            name: 'Helldiver 2',
+            inventory: ['s_peacemaker', 'g_he', 'a_b01'],
+            warbonds: ['helldivers_mobilize', 'masters_of_ceremony'],
+            includeSuperstore: false,
+            loadout: {
+              primary: null,
+              secondary: 's_peacemaker',
+              grenade: 'g_he',
+              armor: 'a_b01',
+              booster: null,
+              stratagems: [null, null, null, null]
+            }
+          },
+          {
+            id: 3,
+            name: 'Helldiver 3',
+            inventory: ['s_peacemaker'],
+            warbonds: ['helldivers_mobilize', 'masters_of_ceremony'],
+            includeSuperstore: false,
+            loadout: {
+              primary: null,
+              secondary: 's_peacemaker',
+              grenade: null,
+              armor: 'a_b01',
+              booster: null,
+              stratagems: [null, null, null, null]
+            }
+          }
+        ],
+        burnedCards: []
+      };
+      
+      const outcome = { type: OUTCOME_TYPES.SET_CEREMONIAL_LOADOUT };
+      const updates = processEventOutcome(outcome, {}, multiPlayerState);
+      
+      expect(updates.players).toBeDefined();
+      expect(updates.players.length).toBe(3);
+      expect(updates.ceremonialLoadoutApplied).toBe(true);
+      
+      // All players should have constitution as primary
+      updates.players.forEach(player => {
+        expect(player.loadout.primary).toBe('p_constitution');
+        expect(player.inventory).toContain('p_constitution');
+      });
+      
+      // Player 1 should have senator and parade commander armor
+      expect(updates.players[0].loadout.secondary).toBe('s_senator');
+      expect(updates.players[0].inventory).toContain('s_senator');
+      expect(updates.players[0].loadout.armor).toBe('a_re1861');
+      expect(updates.players[0].inventory).toContain('a_re1861');
+      
+      // Player 1 should have the flag stratagem
+      expect(updates.players[0].loadout.stratagems[0]).toBe('st_flag');
+      expect(updates.players[0].inventory).toContain('st_flag');
+      
+      // Players 2 and 3 should have saber and honorary guard armor
+      for (let i = 1; i < 3; i++) {
+        expect(updates.players[i].loadout.secondary).toBe('s_saber');
+        expect(updates.players[i].inventory).toContain('s_saber');
+        expect(updates.players[i].loadout.armor).toBe('a_re2310');
+        expect(updates.players[i].inventory).toContain('a_re2310');
+        
+        // Should have no stratagems
+        expect(updates.players[i].loadout.stratagems).toEqual([null, null, null, null]);
+      }
+    });
   });
 
   describe('processAllOutcomes', () => {
