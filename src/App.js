@@ -23,6 +23,7 @@ import { MultiplayerProvider, useMultiplayer } from './systems/multiplayer';
 import { gameReducer, initialState } from './state/gameReducer';
 import * as actions from './state/actions';
 import { COLORS, SHADOWS, BUTTON_STYLES, GRADIENTS, getFactionColors } from './constants/theme';
+import { getWarbondById } from './constants/warbonds';
 
 // --- DATA CONSTANTS (imported from modules) ---
 
@@ -813,6 +814,15 @@ function HelldiversRogueliteApp() {
       }
     }
     
+    // Get warbond info for display
+    const warbondId = displayItem.warbond;
+    const isSuperstore = displayItem.superstore;
+    const warbondInfo = warbondId ? getWarbondById(warbondId) : null;
+    const sourceName = isSuperstore ? 'Superstore' : (warbondInfo?.name || 'Unknown');
+    
+    // Get item icon URL if available
+    const iconUrl = displayItem.icon;
+    
     return (
       <div 
         style={{
@@ -824,7 +834,7 @@ function HelldiversRogueliteApp() {
           transition: 'all 0.2s',
           display: 'flex',
           flexDirection: 'column',
-          height: '256px'
+          minHeight: '280px'
         }}
       >
         {onRemove && (
@@ -877,18 +887,54 @@ function HelldiversRogueliteApp() {
             </div>
           </div>
           
+          {/* Item Icon */}
+          {iconUrl && (
+            <div style={{ 
+              display: 'flex', 
+              justifyContent: 'center', 
+              alignItems: 'center', 
+              marginBottom: '8px',
+              height: '48px'
+            }}>
+              <img 
+                src={iconUrl} 
+                alt={displayName}
+                style={{
+                  maxHeight: '48px',
+                  maxWidth: '100%',
+                  objectFit: 'contain'
+                }}
+                onError={(e) => {
+                  e.target.style.display = 'none';
+                }}
+              />
+            </div>
+          )}
+          
           <h3 style={{ 
             color: 'white', 
             fontWeight: 'bold', 
             fontSize: isArmorCombo ? '14px' : '18px', 
             lineHeight: '1.2', 
-            marginBottom: '8px' 
+            marginBottom: '4px' 
           }}>
             {displayName}
           </h3>
           
+          {/* Warbond Source */}
+          <div style={{ 
+            fontSize: '10px', 
+            color: isSuperstore ? '#c084fc' : '#60a5fa', 
+            fontWeight: 'bold',
+            textTransform: 'uppercase',
+            letterSpacing: '0.5px',
+            marginBottom: '8px'
+          }}>
+            {sourceName}
+          </div>
+          
           <div style={{ flexGrow: 1 }}>
-            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px', marginTop: '8px' }}>
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px' }}>
               {(displayItem.tags || []).map(tag => (
                 <span key={tag} style={{
                   fontSize: '10px',

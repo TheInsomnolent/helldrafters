@@ -173,7 +173,7 @@ export default function GameLobby({
     <div style={{ minHeight: '100vh', background: GRADIENTS.BACKGROUND, color: 'white', padding: '80px 24px' }}>
       <div style={{ maxWidth: '1200px', margin: '0 auto' }}>
         {/* Header */}
-        <div style={{ textAlign: 'center', marginBottom: '48px' }}>
+        <div style={{ textAlign: 'center', marginBottom: '32px' }}>
           <h1 style={{ fontSize: '72px', fontWeight: '900', color: factionColors.PRIMARY, margin: '0 0 8px 0', letterSpacing: '0.05em', textTransform: 'uppercase', textShadow: factionColors.GLOW }}>
             {isMultiplayer ? 'SQUAD LOADOUT' : 'LOADOUT SETUP'}
           </h1>
@@ -183,6 +183,119 @@ export default function GameLobby({
             </p>
           </div>
         </div>
+
+        {/* Action Buttons - Moved to top */}
+        <div style={{ display: 'flex', justifyContent: 'space-between', gap: '16px', marginBottom: '32px' }}>
+          {/* Exit/Back Button */}
+          <button
+            onClick={handleExitLobby}
+            style={{
+              padding: '16px 32px',
+              backgroundColor: 'rgba(239, 68, 68, 0.1)',
+              color: '#ef4444',
+              border: '2px solid #7f1d1d',
+              borderRadius: '4px',
+              fontWeight: '900',
+              fontSize: '14px',
+              textTransform: 'uppercase',
+              letterSpacing: '0.1em',
+              cursor: 'pointer',
+              transition: 'all 0.2s',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '8px'
+            }}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.backgroundColor = 'rgba(239, 68, 68, 0.2)';
+              e.currentTarget.style.borderColor = '#ef4444';
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.backgroundColor = 'rgba(239, 68, 68, 0.1)';
+              e.currentTarget.style.borderColor = '#7f1d1d';
+            }}
+          >
+            <LogOut size={18} />
+            {isMultiplayer ? 'EXIT LOBBY' : 'BACK TO MENU'}
+          </button>
+
+          {/* Ready / Start Button */}
+          {isMultiplayer ? (
+            <button
+              onClick={handleReadyToggle}
+              style={{
+                ...BUTTON_STYLES.PRIMARY,
+                padding: '16px 48px',
+                borderRadius: '4px',
+                fontSize: '16px',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '12px',
+                backgroundColor: isReady ? '#22c55e' : factionColors.PRIMARY,
+                color: isReady ? 'white' : 'black'
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.transform = 'translateY(-2px)';
+                e.currentTarget.style.boxShadow = isReady ? SHADOWS.GLOW_GREEN : factionColors.SHADOW_HOVER;
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.transform = 'translateY(0)';
+                e.currentTarget.style.boxShadow = 'none';
+              }}
+            >
+              {isReady ? (
+                <>
+                  <CheckCircle size={20} />
+                  READY! (CLICK TO UNREADY)
+                </>
+              ) : (
+                <>
+                  READY UP <CheckCircle size={20} />
+                </>
+              )}
+            </button>
+          ) : (
+            <button
+              onClick={handleSoloStart}
+              style={{
+                ...BUTTON_STYLES.PRIMARY,
+                padding: '16px 48px',
+                borderRadius: '4px',
+                fontSize: '16px',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '12px'
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.backgroundColor = factionColors.PRIMARY_HOVER;
+                e.currentTarget.style.transform = 'translateY(-2px)';
+                e.currentTarget.style.boxShadow = factionColors.SHADOW_HOVER;
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.backgroundColor = factionColors.PRIMARY;
+                e.currentTarget.style.transform = 'translateY(0)';
+                e.currentTarget.style.boxShadow = factionColors.SHADOW;
+              }}
+            >
+              START RUN <CheckCircle size={20} />
+            </button>
+          )}
+        </div>
+
+        {/* Multiplayer waiting message */}
+        {isMultiplayer && isReady && !allPlayersReady() && (
+          <div style={{ 
+            textAlign: 'center', 
+            marginBottom: '24px', 
+            padding: '16px', 
+            backgroundColor: 'rgba(34, 197, 94, 0.1)', 
+            borderRadius: '4px',
+            border: '1px solid rgba(34, 197, 94, 0.3)'
+          }}>
+            <p style={{ color: '#22c55e', margin: 0, fontWeight: 'bold' }}>
+              Waiting for all players to ready up...
+            </p>
+          </div>
+        )}
 
         {/* Multiplayer: Show all players' status in slot order */}
         {isMultiplayer && allPlayers.length > 0 && (
@@ -318,7 +431,7 @@ export default function GameLobby({
               <h3 style={{ fontSize: '14px', fontWeight: 'bold', color: COLORS.TEXT_SECONDARY, marginBottom: '16px', textTransform: 'uppercase', letterSpacing: '0.15em', borderLeft: `4px solid ${factionColors.PRIMARY}`, paddingLeft: '12px' }}>
                 STANDARD (FREE)
               </h3>
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: '12px' }}>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: '12px' }}>
                 {standardWarbonds.map(wb => (
                   <WarbondCard
                     key={wb.id}
@@ -389,119 +502,6 @@ export default function GameLobby({
             </div>
           </div>
         </div>
-
-        {/* Action Buttons */}
-        <div style={{ display: 'flex', justifyContent: 'space-between', gap: '16px' }}>
-          {/* Exit/Back Button */}
-          <button
-            onClick={handleExitLobby}
-            style={{
-              padding: '16px 32px',
-              backgroundColor: 'rgba(239, 68, 68, 0.1)',
-              color: '#ef4444',
-              border: '2px solid #7f1d1d',
-              borderRadius: '4px',
-              fontWeight: '900',
-              fontSize: '14px',
-              textTransform: 'uppercase',
-              letterSpacing: '0.1em',
-              cursor: 'pointer',
-              transition: 'all 0.2s',
-              display: 'flex',
-              alignItems: 'center',
-              gap: '8px'
-            }}
-            onMouseEnter={(e) => {
-              e.currentTarget.style.backgroundColor = 'rgba(239, 68, 68, 0.2)';
-              e.currentTarget.style.borderColor = '#ef4444';
-            }}
-            onMouseLeave={(e) => {
-              e.currentTarget.style.backgroundColor = 'rgba(239, 68, 68, 0.1)';
-              e.currentTarget.style.borderColor = '#7f1d1d';
-            }}
-          >
-            <LogOut size={18} />
-            {isMultiplayer ? 'EXIT LOBBY' : 'BACK TO MENU'}
-          </button>
-
-          {/* Ready / Start Button */}
-          {isMultiplayer ? (
-            <button
-              onClick={handleReadyToggle}
-              style={{
-                ...BUTTON_STYLES.PRIMARY,
-                padding: '16px 48px',
-                borderRadius: '4px',
-                fontSize: '16px',
-                display: 'flex',
-                alignItems: 'center',
-                gap: '12px',
-                backgroundColor: isReady ? '#22c55e' : factionColors.PRIMARY,
-                color: isReady ? 'white' : 'black'
-              }}
-              onMouseEnter={(e) => {
-                e.currentTarget.style.transform = 'translateY(-2px)';
-                e.currentTarget.style.boxShadow = isReady ? SHADOWS.GLOW_GREEN : factionColors.SHADOW_HOVER;
-              }}
-              onMouseLeave={(e) => {
-                e.currentTarget.style.transform = 'translateY(0)';
-                e.currentTarget.style.boxShadow = 'none';
-              }}
-            >
-              {isReady ? (
-                <>
-                  <CheckCircle size={20} />
-                  READY! (CLICK TO UNREADY)
-                </>
-              ) : (
-                <>
-                  READY UP <CheckCircle size={20} />
-                </>
-              )}
-            </button>
-          ) : (
-            <button
-              onClick={handleSoloStart}
-              style={{
-                ...BUTTON_STYLES.PRIMARY,
-                padding: '16px 48px',
-                borderRadius: '4px',
-                fontSize: '16px',
-                display: 'flex',
-                alignItems: 'center',
-                gap: '12px'
-              }}
-              onMouseEnter={(e) => {
-                e.currentTarget.style.backgroundColor = factionColors.PRIMARY_HOVER;
-                e.currentTarget.style.transform = 'translateY(-2px)';
-                e.currentTarget.style.boxShadow = factionColors.SHADOW_HOVER;
-              }}
-              onMouseLeave={(e) => {
-                e.currentTarget.style.backgroundColor = factionColors.PRIMARY;
-                e.currentTarget.style.transform = 'translateY(0)';
-                e.currentTarget.style.boxShadow = factionColors.SHADOW;
-              }}
-            >
-              START RUN <CheckCircle size={20} />
-            </button>
-          )}
-        </div>
-
-        {/* Multiplayer waiting message */}
-        {isMultiplayer && isReady && !allPlayersReady() && (
-          <div style={{ 
-            textAlign: 'center', 
-            marginTop: '24px', 
-            padding: '16px', 
-            backgroundColor: 'rgba(34, 197, 94, 0.1)', 
-            borderRadius: '4px',
-            border: '1px solid rgba(34, 197, 94, 0.3)'
-          }}>
-            <p style={{ color: '#22c55e', margin: 0, fontWeight: 'bold' }}>
-              Waiting for all players to ready up...
-            </p>
-          </div>
-        )}
       </div>
     </div>
   );
