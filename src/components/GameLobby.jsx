@@ -1,8 +1,10 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { CheckCircle, LogOut, Users, Crown } from 'lucide-react';
-import { WARBONDS, WARBOND_TYPE, DEFAULT_WARBONDS } from '../constants/warbonds';
+import { CheckCircle, LogOut, Users, Crown, Settings, X } from 'lucide-react';
+import { WARBONDS, WARBOND_TYPE, DEFAULT_WARBONDS, getWarbondById } from '../constants/warbonds';
 import { COLORS, SHADOWS, GRADIENTS, BUTTON_STYLES, getFactionColors } from '../constants/theme';
 import { useMultiplayer } from '../systems/multiplayer';
+import { MASTER_DB, SUPERSTORE_ITEMS } from '../data/itemsByWarbond';
+import { TYPE } from '../constants/types';
 
 // Local storage key for saving player configuration
 const STORAGE_KEY = 'helldrafters_player_config';
@@ -61,11 +63,13 @@ export default function GameLobby({
   const [myConfig, setMyConfig] = useState({
     name: mpPlayerName || savedConfig?.name || 'Helldiver',
     warbonds: savedConfig?.warbonds || [...DEFAULT_WARBONDS],
-    includeSuperstore: savedConfig?.includeSuperstore || false
+    includeSuperstore: savedConfig?.includeSuperstore || false,
+    excludedItems: savedConfig?.excludedItems || []
   });
   
   const [isReady, setIsReady] = useState(false);
   const [editingName, setEditingName] = useState(false);
+  const [itemSelectionModal, setItemSelectionModal] = useState(null); // null or { warbondId: string } or { superstore: true }
   
   // Track if we've done initial name sync to avoid loops
   const initialNameSyncDone = React.useRef(false);
@@ -99,6 +103,7 @@ export default function GameLobby({
         name: myConfig.name,
         warbonds: myConfig.warbonds,
         includeSuperstore: myConfig.includeSuperstore,
+        excludedItems: myConfig.excludedItems,
         ready: isReady
       });
     }
@@ -113,7 +118,8 @@ export default function GameLobby({
         .map(p => ({
           name: p.name,
           warbonds: p.warbonds || [...DEFAULT_WARBONDS],
-          includeSuperstore: p.includeSuperstore || false
+          includeSuperstore: p.includeSuperstore || false,
+          excludedItems: p.excludedItems || []
         }));
       
       // Small delay to ensure UI shows all ready
@@ -137,6 +143,32 @@ export default function GameLobby({
       : [...myConfig.warbonds, warbondId];
     
     updateMyConfig({ warbonds: newWarbonds });
+  };
+
+  const handleEditItems = (warbondId) => {
+    setItemSelectionModal({ warbondId });
+  };
+
+  const handleEditSuperstoreItems = () => {
+    setItemSelectionModal({ superstore: true });
+  };
+
+  const handleSaveExcludedItems = (newExcluded) => {
+    // Merge with existing excluded items, removing items from the current warbond/superstore first
+    const currentWarbondId = itemSelectionModal?.warbondId;
+    const isSuperstore = itemSelectionModal?.superstore;
+    
+    // Get items that should be managed by this modal
+    const managedItems = isSuperstore 
+      ? SUPERSTORE_ITEMS 
+      : MASTER_DB.filter(item => item.warbond === currentWarbondId && item.type !== TYPE.BOOSTER);
+    const managedIds = new Set(managedItems.map(i => i.id));
+    
+    // Keep excluded items from other warbonds/superstore, add new exclusions
+    const otherExcluded = myConfig.excludedItems.filter(id => !managedIds.has(id));
+    const updatedExcluded = [...otherExcluded, ...newExcluded];
+    
+    updateMyConfig({ excludedItems: updatedExcluded });
   };
 
   const handleReadyToggle = () => {
@@ -438,6 +470,7 @@ export default function GameLobby({
                     warbond={wb}
                     selected={myConfig.warbonds.includes(wb.id)}
                     onToggle={() => toggleWarbond(wb.id)}
+                    onEditItems={handleEditItems}
                     disabled={wb.id === 'helldivers_mobilize'} // Always include
                     factionColors={factionColors}
                   />
@@ -457,6 +490,7 @@ export default function GameLobby({
                     warbond={wb}
                     selected={myConfig.warbonds.includes(wb.id)}
                     onToggle={() => toggleWarbond(wb.id)}
+                    onEditItems={handleEditItems}
                     factionColors={factionColors}
                   />
                 ))}
@@ -475,6 +509,7 @@ export default function GameLobby({
                     warbond={wb}
                     selected={myConfig.warbonds.includes(wb.id)}
                     onToggle={() => toggleWarbond(wb.id)}
+                    onEditItems={handleEditItems}
                     factionColors={factionColors}
                   />
                 ))}
@@ -483,32 +518,80 @@ export default function GameLobby({
 
             {/* Superstore Toggle */}
             <div style={{ backgroundColor: COLORS.BG_MAIN, borderRadius: '4px', padding: '24px', border: `1px solid ${COLORS.CARD_BORDER}` }}>
-              <label style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', cursor: 'pointer' }}>
-                <div style={{ flex: 1 }}>
-                  <div style={{ fontSize: '18px', fontWeight: '900', color: COLORS.ACCENT_PURPLE, textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '8px' }}>
-                    ▸ INCLUDE SUPERSTORE ITEMS
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                <label style={{ display: 'flex', alignItems: 'center', flex: 1, cursor: 'pointer' }}>
+                  <div style={{ flex: 1 }}>
+                    <div style={{ fontSize: '18px', fontWeight: '900', color: COLORS.ACCENT_PURPLE, textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '8px' }}>
+                      ▸ INCLUDE SUPERSTORE ITEMS
+                    </div>
+                    <div style={{ fontSize: '13px', color: COLORS.TEXT_MUTED, lineHeight: '1.5' }}>
+                      Allow items from the rotating Superstore in drafts
+                    </div>
                   </div>
-                  <div style={{ fontSize: '13px', color: COLORS.TEXT_MUTED, lineHeight: '1.5' }}>
-                    Allow items from the rotating Superstore in drafts
-                  </div>
-                </div>
-                <input
-                  type="checkbox"
-                  checked={myConfig.includeSuperstore}
-                  onChange={(e) => updateMyConfig({ includeSuperstore: e.target.checked })}
-                  style={{ width: '24px', height: '24px', cursor: 'pointer', accentColor: COLORS.ACCENT_PURPLE }}
-                />
-              </label>
+                  <input
+                    type="checkbox"
+                    checked={myConfig.includeSuperstore}
+                    onChange={(e) => updateMyConfig({ includeSuperstore: e.target.checked })}
+                    style={{ width: '24px', height: '24px', cursor: 'pointer', accentColor: COLORS.ACCENT_PURPLE }}
+                  />
+                </label>
+              </div>
+              {myConfig.includeSuperstore && (
+                <button
+                  onClick={handleEditSuperstoreItems}
+                  style={{
+                    marginTop: '16px',
+                    width: '100%',
+                    padding: '10px',
+                    backgroundColor: 'rgba(100, 116, 139, 0.2)',
+                    color: COLORS.TEXT_SECONDARY,
+                    border: `1px solid ${COLORS.CARD_BORDER}`,
+                    borderRadius: '4px',
+                    fontSize: '12px',
+                    fontWeight: 'bold',
+                    textTransform: 'uppercase',
+                    cursor: 'pointer',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    gap: '8px',
+                    transition: 'all 0.2s'
+                  }}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.backgroundColor = 'rgba(100, 116, 139, 0.4)';
+                    e.currentTarget.style.color = 'white';
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.backgroundColor = 'rgba(100, 116, 139, 0.2)';
+                    e.currentTarget.style.color = COLORS.TEXT_SECONDARY;
+                  }}
+                >
+                  <Settings size={16} />
+                  Customize Superstore Items
+                </button>
+              )}
             </div>
           </div>
         </div>
+
+        {/* Item Selection Modal */}
+        {itemSelectionModal && (
+          <ItemSelectionModal
+            warbondId={itemSelectionModal.warbondId}
+            isSuperstore={itemSelectionModal.superstore}
+            excludedItems={myConfig.excludedItems}
+            onSave={handleSaveExcludedItems}
+            onClose={() => setItemSelectionModal(null)}
+            factionColors={factionColors}
+          />
+        )}
       </div>
     </div>
   );
 }
 
 // Warbond selection card component
-function WarbondCard({ warbond, selected, onToggle, disabled = false, factionColors }) {
+function WarbondCard({ warbond, selected, onToggle, onEditItems, disabled = false, factionColors }) {
   const getBorderColor = () => {
     if (disabled) return COLORS.CARD_BORDER;
     if (selected) {
@@ -531,10 +614,17 @@ function WarbondCard({ warbond, selected, onToggle, disabled = false, factionCol
     return factionColors.PRIMARY;
   };
 
+  const handleCardClick = (e) => {
+    // Don't toggle if clicking on the edit button
+    if (e.target.closest('[data-edit-button]')) return;
+    if (!disabled) {
+      onToggle();
+    }
+  };
+
   return (
-    <button
-      onClick={onToggle}
-      disabled={disabled}
+    <div
+      onClick={handleCardClick}
       style={{
         position: 'relative',
         borderRadius: '4px',
@@ -542,8 +632,7 @@ function WarbondCard({ warbond, selected, onToggle, disabled = false, factionCol
         border: `2px solid ${getBorderColor()}`,
         transition: 'all 0.2s',
         backgroundColor: selected ? 'rgba(0, 0, 0, 0.4)' : COLORS.BG_MAIN,
-        cursor: disabled ? 'not-allowed' : 'pointer',
-        opacity: disabled ? 0.6 : 1,
+        cursor: disabled ? 'default' : 'pointer',
         transform: selected ? 'scale(1.02)' : 'scale(1)',
         boxShadow: selected ? getGlowColor() : 'none',
         textAlign: 'left'
@@ -555,6 +644,11 @@ function WarbondCard({ warbond, selected, onToggle, disabled = false, factionCol
         }
       }}
       onMouseLeave={(e) => {
+        if (!disabled && !selected) {
+          e.currentTarget.style.borderColor = COLORS.CARD_BORDER;
+          e.currentTarget.style.backgroundColor = COLORS.BG_MAIN;
+        }
+      }}
         if (!disabled && !selected) {
           e.currentTarget.style.borderColor = COLORS.CARD_BORDER;
           e.currentTarget.style.backgroundColor = COLORS.BG_MAIN;
@@ -618,22 +712,356 @@ function WarbondCard({ warbond, selected, onToggle, disabled = false, factionCol
             />
           </div>
         )}
+        
+        {/* Edit Items Button - only show when selected */}
+        {selected && onEditItems && (
+          <button
+            data-edit-button
+            onClick={(e) => {
+              e.stopPropagation();
+              onEditItems(warbond.id);
+            }}
+            style={{
+              width: '100%',
+              padding: '8px',
+              backgroundColor: 'rgba(100, 116, 139, 0.2)',
+              color: COLORS.TEXT_SECONDARY,
+              border: `1px solid ${COLORS.CARD_BORDER}`,
+              borderRadius: '4px',
+              fontSize: '11px',
+              fontWeight: 'bold',
+              textTransform: 'uppercase',
+              cursor: 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: '6px',
+              transition: 'all 0.2s',
+              position: 'relative',
+              zIndex: 10
+            }}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.backgroundColor = 'rgba(100, 116, 139, 0.4)';
+              e.currentTarget.style.color = 'white';
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.backgroundColor = 'rgba(100, 116, 139, 0.2)';
+              e.currentTarget.style.color = COLORS.TEXT_SECONDARY;
+            }}
+          >
+            <Settings size={14} />
+            Customize Items
+          </button>
+        )}
       </div>
       {disabled && (
         <div style={{
           position: 'absolute',
-          inset: 0,
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: selected && onEditItems ? '50px' : 0,
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'center',
           backgroundColor: 'rgba(0, 0, 0, 0.7)',
-          borderRadius: '4px'
+          borderRadius: '4px',
+          pointerEvents: 'none'
         }}>
           <span style={{ fontSize: '11px', fontWeight: 'bold', color: factionColors.PRIMARY, textTransform: 'uppercase', letterSpacing: '0.1em' }}>
             ● REQUIRED
           </span>
         </div>
       )}
-    </button>
+    </div>
+  );
+}
+
+// Item selection modal component
+function ItemSelectionModal({ 
+  warbondId, 
+  isSuperstore, 
+  excludedItems, 
+  onSave, 
+  onClose, 
+  factionColors 
+}) {
+  const [localExcluded, setLocalExcluded] = useState(new Set(excludedItems));
+  
+  // Get items for this warbond or superstore
+  const items = isSuperstore 
+    ? SUPERSTORE_ITEMS 
+    : MASTER_DB.filter(item => item.warbond === warbondId && item.type !== TYPE.BOOSTER);
+  
+  const warbondInfo = warbondId ? getWarbondById(warbondId) : null;
+  const title = isSuperstore ? 'Superstore Items' : (warbondInfo?.name || 'Items');
+  
+  // Group items by type
+  const itemsByType = items.reduce((acc, item) => {
+    if (!acc[item.type]) acc[item.type] = [];
+    acc[item.type].push(item);
+    return acc;
+  }, {});
+  
+  const toggleItem = (itemId) => {
+    setLocalExcluded(prev => {
+      const next = new Set(prev);
+      if (next.has(itemId)) {
+        next.delete(itemId);
+      } else {
+        next.add(itemId);
+      }
+      return next;
+    });
+  };
+  
+  const selectAll = () => {
+    setLocalExcluded(new Set());
+  };
+  
+  const deselectAll = () => {
+    setLocalExcluded(new Set(items.map(i => i.id)));
+  };
+  
+  const handleSave = () => {
+    onSave(Array.from(localExcluded));
+    onClose();
+  };
+  
+  const includedCount = items.length - localExcluded.size;
+  
+  return (
+    <div style={{
+      position: 'fixed',
+      top: 0,
+      left: 0,
+      right: 0,
+      bottom: 0,
+      backgroundColor: 'rgba(0, 0, 0, 0.85)',
+      display: 'flex',
+      alignItems: 'center',
+      justifyContent: 'center',
+      zIndex: 1000,
+      padding: '24px'
+    }}>
+      <div style={{
+        backgroundColor: COLORS.CARD_BG,
+        borderRadius: '12px',
+        border: `2px solid ${factionColors.PRIMARY}`,
+        maxWidth: '800px',
+        width: '100%',
+        maxHeight: '80vh',
+        display: 'flex',
+        flexDirection: 'column'
+      }}>
+        {/* Header */}
+        <div style={{
+          padding: '24px',
+          borderBottom: `1px solid ${COLORS.CARD_BORDER}`,
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between'
+        }}>
+          <div>
+            <h2 style={{ 
+              color: factionColors.PRIMARY, 
+              fontSize: '24px', 
+              fontWeight: 'bold', 
+              margin: 0,
+              textTransform: 'uppercase'
+            }}>
+              {title}
+            </h2>
+            <p style={{ color: COLORS.TEXT_MUTED, fontSize: '14px', margin: '8px 0 0 0' }}>
+              Select items you own. Unchecked items won't appear in drafts.
+            </p>
+          </div>
+          <button
+            onClick={onClose}
+            style={{
+              width: '36px',
+              height: '36px',
+              borderRadius: '4px',
+              backgroundColor: 'rgba(239, 68, 68, 0.2)',
+              color: '#ef4444',
+              border: '1px solid #7f1d1d',
+              cursor: 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center'
+            }}
+          >
+            <X size={20} />
+          </button>
+        </div>
+        
+        {/* Quick actions */}
+        <div style={{
+          padding: '16px 24px',
+          borderBottom: `1px solid ${COLORS.CARD_BORDER}`,
+          display: 'flex',
+          alignItems: 'center',
+          gap: '12px'
+        }}>
+          <button
+            onClick={selectAll}
+            style={{
+              padding: '8px 16px',
+              backgroundColor: 'rgba(34, 197, 94, 0.2)',
+              color: '#22c55e',
+              border: '1px solid rgba(34, 197, 94, 0.5)',
+              borderRadius: '4px',
+              fontSize: '12px',
+              fontWeight: 'bold',
+              cursor: 'pointer',
+              textTransform: 'uppercase'
+            }}
+          >
+            Select All
+          </button>
+          <button
+            onClick={deselectAll}
+            style={{
+              padding: '8px 16px',
+              backgroundColor: 'rgba(239, 68, 68, 0.2)',
+              color: '#ef4444',
+              border: '1px solid rgba(239, 68, 68, 0.5)',
+              borderRadius: '4px',
+              fontSize: '12px',
+              fontWeight: 'bold',
+              cursor: 'pointer',
+              textTransform: 'uppercase'
+            }}
+          >
+            Deselect All
+          </button>
+          <span style={{ marginLeft: 'auto', color: COLORS.TEXT_MUTED, fontSize: '14px' }}>
+            {includedCount} / {items.length} items selected
+          </span>
+        </div>
+        
+        {/* Items list */}
+        <div style={{
+          flex: 1,
+          overflowY: 'auto',
+          padding: '24px'
+        }}>
+          {Object.entries(itemsByType).map(([type, typeItems]) => (
+            <div key={type} style={{ marginBottom: '24px' }}>
+              <h3 style={{
+                color: factionColors.PRIMARY,
+                fontSize: '14px',
+                fontWeight: 'bold',
+                textTransform: 'uppercase',
+                letterSpacing: '0.1em',
+                marginBottom: '12px',
+                borderLeft: `3px solid ${factionColors.PRIMARY}`,
+                paddingLeft: '12px'
+              }}>
+                {type}
+              </h3>
+              <div style={{
+                display: 'grid',
+                gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))',
+                gap: '8px'
+              }}>
+                {typeItems.map(item => {
+                  const isIncluded = !localExcluded.has(item.id);
+                  return (
+                    <label
+                      key={item.id}
+                      style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '10px',
+                        padding: '10px 12px',
+                        backgroundColor: isIncluded ? 'rgba(34, 197, 94, 0.1)' : COLORS.BG_MAIN,
+                        borderRadius: '4px',
+                        border: `1px solid ${isIncluded ? 'rgba(34, 197, 94, 0.3)' : COLORS.CARD_BORDER}`,
+                        cursor: 'pointer',
+                        transition: 'all 0.2s'
+                      }}
+                    >
+                      <input
+                        type="checkbox"
+                        checked={isIncluded}
+                        onChange={() => toggleItem(item.id)}
+                        style={{ 
+                          width: '18px', 
+                          height: '18px', 
+                          cursor: 'pointer',
+                          accentColor: '#22c55e'
+                        }}
+                      />
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <div style={{
+                          color: isIncluded ? 'white' : COLORS.TEXT_MUTED,
+                          fontSize: '13px',
+                          fontWeight: '500',
+                          whiteSpace: 'nowrap',
+                          overflow: 'hidden',
+                          textOverflow: 'ellipsis'
+                        }}>
+                          {item.name}
+                        </div>
+                        <div style={{
+                          color: COLORS.TEXT_DISABLED,
+                          fontSize: '10px',
+                          textTransform: 'uppercase'
+                        }}>
+                          {item.rarity}
+                        </div>
+                      </div>
+                    </label>
+                  );
+                })}
+              </div>
+            </div>
+          ))}
+        </div>
+        
+        {/* Footer */}
+        <div style={{
+          padding: '16px 24px',
+          borderTop: `1px solid ${COLORS.CARD_BORDER}`,
+          display: 'flex',
+          justifyContent: 'flex-end',
+          gap: '12px'
+        }}>
+          <button
+            onClick={onClose}
+            style={{
+              padding: '12px 24px',
+              backgroundColor: 'transparent',
+              color: COLORS.TEXT_MUTED,
+              border: `1px solid ${COLORS.CARD_BORDER}`,
+              borderRadius: '4px',
+              fontWeight: 'bold',
+              cursor: 'pointer',
+              textTransform: 'uppercase',
+              fontSize: '14px'
+            }}
+          >
+            Cancel
+          </button>
+          <button
+            onClick={handleSave}
+            style={{
+              padding: '12px 24px',
+              backgroundColor: factionColors.PRIMARY,
+              color: 'black',
+              border: 'none',
+              borderRadius: '4px',
+              fontWeight: 'bold',
+              cursor: 'pointer',
+              textTransform: 'uppercase',
+              fontSize: '14px'
+            }}
+          >
+            Save Selection
+          </button>
+        </div>
+      </div>
+    </div>
   );
 }
