@@ -101,6 +101,7 @@ function HelldiversRogueliteApp() {
     eventBoosterSelection,
     eventSpecialDraft,
     eventSpecialDraftType,
+    eventSpecialDraftSelections,
     pendingFaction,
     pendingSubfactionSelection,
     seenEvents
@@ -1771,6 +1772,7 @@ function HelldiversRogueliteApp() {
         // Set up special draft state
         dispatch(actions.setEventSpecialDraft(availableItems));
         dispatch(actions.setEventSpecialDraftType(updates.specialDraftType));
+        dispatch(actions.setEventSpecialDraftSelections(new Array(players.length).fill(null)));
         
         // Apply player updates (armor changes)
         if (updates.players !== undefined) dispatch(actions.setPlayers(updates.players));
@@ -1907,37 +1909,39 @@ function HelldiversRogueliteApp() {
       // Handle special draft completion (all players have selected)
       if (eventSpecialDraft && eventSpecialDraftType) {
         // Check if all players have their selections stored
-        const allPlayersSelected = window.__specialDraftSelections && 
-                                   window.__specialDraftSelections.length === players.length;
+        const allPlayersSelected = Array.isArray(eventSpecialDraftSelections) && 
+                                   eventSpecialDraftSelections.length === players.length &&
+                                   eventSpecialDraftSelections.every(selection => selection !== null && selection !== undefined);
         
-        if (allPlayersSelected) {
-          const newPlayers = [...players];
-          const selections = window.__specialDraftSelections;
-          
-          // Apply selections and burn cards
-          selections.forEach((itemId, playerIndex) => {
-            if (eventSpecialDraftType === 'throwable') {
-              newPlayers[playerIndex].loadout.grenade = itemId;
-            } else if (eventSpecialDraftType === 'secondary') {
-              newPlayers[playerIndex].loadout.secondary = itemId;
-            }
-            
-            // Burn the selected card if burn mode is enabled
-            if (gameConfig.burnCards) {
-              dispatch(actions.addBurnedCard(itemId));
-            }
-          });
-          
-          dispatch(actions.setPlayers(newPlayers));
-          
-          // Clean up
-          window.__specialDraftSelections = null;
-          dispatch(actions.setCurrentEvent(null));
-          dispatch(actions.setEventPlayerChoice(null));
-          dispatch(actions.resetEventSelections());
-          dispatch(actions.setPhase('DASHBOARD'));
+        if (!allPlayersSelected) {
           return;
         }
+
+        const newPlayers = [...players];
+        const selections = eventSpecialDraftSelections;
+        
+        // Apply selections and burn cards
+        selections.forEach((itemId, playerIndex) => {
+          if (eventSpecialDraftType === 'throwable') {
+            newPlayers[playerIndex].loadout.grenade = itemId;
+          } else if (eventSpecialDraftType === 'secondary') {
+            newPlayers[playerIndex].loadout.secondary = itemId;
+          }
+          
+          // Burn the selected card if burn mode is enabled
+          if (gameConfig.burnCards) {
+            dispatch(actions.addBurnedCard(itemId));
+          }
+        });
+        
+        dispatch(actions.setPlayers(newPlayers));
+        
+        // Clean up
+        dispatch(actions.setCurrentEvent(null));
+        dispatch(actions.setEventPlayerChoice(null));
+        dispatch(actions.resetEventSelections());
+        dispatch(actions.setPhase('DASHBOARD'));
+        return;
       }
       
       if (currentEvent.outcomes) {
@@ -2013,12 +2017,15 @@ function HelldiversRogueliteApp() {
         eventBoosterSelection={eventBoosterSelection}
         eventSpecialDraft={eventSpecialDraft}
         eventSpecialDraftType={eventSpecialDraftType}
+        eventSpecialDraftSelections={eventSpecialDraftSelections}
         pendingFaction={pendingFaction}
         pendingSubfactionSelection={pendingSubfactionSelection}
         players={players}
         currentDiff={currentDiff}
         requisition={requisition}
         isHost={!isMultiplayer || isHost}
+        isMultiplayer={isMultiplayer}
+        playerSlot={playerSlot}
         needsPlayerChoice={needsPlayerChoice}
         canAffordChoice={canAffordChoice}
         formatOutcome={formatOutcome}
@@ -2044,11 +2051,22 @@ function HelldiversRogueliteApp() {
           dispatch(actions.setPhase('DASHBOARD'));
         }}
         onSpecialDraftSelection={(playerIndex, itemId) => {
-          // Store selection for this player
-          if (!window.__specialDraftSelections) {
-            window.__specialDraftSelections = new Array(players.length).fill(null);
+          if (isMultiplayer && playerSlot !== playerIndex) {
+            return;
           }
-          window.__specialDraftSelections[playerIndex] = itemId;
+
+          if (isMultiplayer && !isHost) {
+            sendAction({
+              type: 'SET_EVENT_SPECIAL_DRAFT_SELECTION',
+              payload: {
+                playerIndex,
+                itemId
+              }
+            });
+            return;
+          }
+
+          dispatch(actions.setEventSpecialDraftSelection(playerIndex, itemId));
         }}
         onConfirmSelections={handleEventChoice}
       />

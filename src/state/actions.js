@@ -110,6 +110,16 @@ export const setEventSpecialDraftType = (draftType) => ({
   payload: draftType
 });
 
+export const setEventSpecialDraftSelections = (selections) => ({
+  type: types.SET_EVENT_SPECIAL_DRAFT_SELECTIONS,
+  payload: selections
+});
+
+export const setEventSpecialDraftSelection = (playerIndex, itemId) => ({
+  type: types.SET_EVENT_SPECIAL_DRAFT_SELECTION,
+  payload: { playerIndex, itemId }
+});
+
 export const setPendingFaction = (faction) => ({
   type: types.SET_PENDING_FACTION,
   payload: faction
