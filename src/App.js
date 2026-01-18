@@ -9,6 +9,7 @@ import { getItemById } from './utils/itemHelpers';
 import { getDraftHandSize, getWeightedPool, generateDraftHand, generateRandomDraftOrder } from './utils/draftHelpers';
 import { areStratagemSlotsFull, getFirstEmptyStratagemSlot } from './utils/loadoutHelpers';
 import { getArmorComboDisplayName } from './utils/itemHelpers';
+import { getItemIconUrl } from './utils/iconHelpers';
 import { processAllOutcomes, canAffordChoice, formatOutcome, formatOutcomes, needsPlayerChoice, applyGainBoosterWithSelection } from './systems/events/eventProcessor';
 import { exportGameStateToFile, parseSaveFile, normalizeLoadedState } from './systems/persistence/saveManager';
 import GameHeader from './components/GameHeader';
@@ -820,8 +821,8 @@ function HelldiversRogueliteApp() {
     const warbondInfo = warbondId ? getWarbondById(warbondId) : null;
     const sourceName = isSuperstore ? 'Superstore' : (warbondInfo?.name || 'Unknown');
     
-    // Get item icon URL if available
-    const iconUrl = displayItem.icon;
+    // Get item icon URL - use helper function
+    const iconUrl = getItemIconUrl(displayItem);
     
     return (
       <div 

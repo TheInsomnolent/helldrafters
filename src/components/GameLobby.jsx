@@ -5,6 +5,7 @@ import { COLORS, SHADOWS, GRADIENTS, BUTTON_STYLES, getFactionColors } from '../
 import { useMultiplayer } from '../systems/multiplayer';
 import { MASTER_DB, SUPERSTORE_ITEMS } from '../data/itemsByWarbond';
 import { TYPE } from '../constants/types';
+import { getItemIconUrl } from '../utils/iconHelpers';
 
 // Local storage key for saving player configuration
 const STORAGE_KEY = 'helldrafters_player_config';
@@ -962,6 +963,7 @@ function ItemSelectionModal({
               }}>
                 {typeItems.map(item => {
                   const isIncluded = !localExcluded.has(item.id);
+                  const iconUrl = getItemIconUrl(item);
                   return (
                     <label
                       key={item.id}
@@ -985,9 +987,26 @@ function ItemSelectionModal({
                           width: '18px', 
                           height: '18px', 
                           cursor: 'pointer',
-                          accentColor: '#22c55e'
+                          accentColor: '#22c55e',
+                          flexShrink: 0
                         }}
                       />
+                      {iconUrl && (
+                        <img 
+                          src={iconUrl} 
+                          alt=""
+                          style={{
+                            width: '28px',
+                            height: '28px',
+                            objectFit: 'contain',
+                            flexShrink: 0,
+                            opacity: isIncluded ? 1 : 0.5
+                          }}
+                          onError={(e) => {
+                            e.target.style.display = 'none';
+                          }}
+                        />
+                      )}
                       <div style={{ flex: 1, minWidth: 0 }}>
                         <div style={{
                           color: isIncluded ? 'white' : COLORS.TEXT_MUTED,
