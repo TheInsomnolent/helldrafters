@@ -525,6 +525,12 @@ function HelldiversRogueliteApp() {
     const updatedPlayers = [...players];
     const player = updatedPlayers[currentPlayerIdx];
     const item = draftState.pendingStratagem;
+    
+    // Guard: ensure we have a pending stratagem
+    if (!item) {
+      console.error('handleStratagemReplacement: No pending stratagem', { currentPlayerIdx, slotIndex });
+      return;
+    }
 
     // Add to inventory
     player.inventory.push(item.id);
@@ -602,7 +608,13 @@ function HelldiversRogueliteApp() {
       const player = updatedPlayers[playerIndex];
       
       if (!player || !player.loadout || !draftState.pendingStratagem) {
-        console.error('STRATAGEM_REPLACEMENT: Invalid state', { playerIndex, slotIndex });
+        console.error('STRATAGEM_REPLACEMENT: Invalid state', { 
+          playerIndex, 
+          slotIndex, 
+          hasPlayer: !!player, 
+          hasLoadout: !!player?.loadout,
+          hasPendingStratagem: !!draftState.pendingStratagem
+        });
         return true;
       }
       
