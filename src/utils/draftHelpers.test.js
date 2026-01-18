@@ -1,8 +1,49 @@
 /* eslint-disable jest/no-conditional-expect */
-import { getDraftHandSize, getWeightedPool, generateDraftHand } from './draftHelpers';
+import { getDraftHandSize, getWeightedPool, generateDraftHand, generateRandomDraftOrder } from './draftHelpers';
 import { TYPE, FACTION, TAGS } from '../constants/types';
 
 describe('Utils - Draft Helpers', () => {
+  describe('generateRandomDraftOrder', () => {
+    it('should return array with correct length for single player', () => {
+      const order = generateRandomDraftOrder(1);
+      expect(order).toHaveLength(1);
+      expect(order).toEqual([0]);
+    });
+
+    it('should return array with correct length for multiple players', () => {
+      const order = generateRandomDraftOrder(4);
+      expect(order).toHaveLength(4);
+    });
+
+    it('should contain all player indices exactly once', () => {
+      const playerCount = 4;
+      const order = generateRandomDraftOrder(playerCount);
+      
+      // Check all indices are present
+      for (let i = 0; i < playerCount; i++) {
+        expect(order).toContain(i);
+      }
+      
+      // Check no duplicates (length should match unique count)
+      const uniqueIndices = new Set(order);
+      expect(uniqueIndices.size).toBe(playerCount);
+    });
+
+    it('should produce different orders on multiple calls (probabilistic)', () => {
+      const playerCount = 4;
+      const orders = [];
+      
+      // Generate 10 orders
+      for (let i = 0; i < 10; i++) {
+        orders.push(generateRandomDraftOrder(playerCount).join(','));
+      }
+      
+      // At least one should be different (very high probability)
+      const uniqueOrders = new Set(orders);
+      expect(uniqueOrders.size).toBeGreaterThan(1);
+    });
+  });
+
   describe('getDraftHandSize', () => {
     it('should return 2 cards for 1-2 star missions', () => {
       expect(getDraftHandSize(1)).toBe(2);

@@ -6,7 +6,7 @@ import { MASTER_DB } from './data/itemsByWarbond';
 import { STARTING_LOADOUT, DIFFICULTY_CONFIG } from './constants/gameConfig';
 import { ARMOR_PASSIVE_DESCRIPTIONS } from './constants/armorPassives';
 import { getItemById } from './utils/itemHelpers';
-import { getDraftHandSize, getWeightedPool, generateDraftHand } from './utils/draftHelpers';
+import { getDraftHandSize, getWeightedPool, generateDraftHand, generateRandomDraftOrder } from './utils/draftHelpers';
 import { areStratagemSlotsFull, getFirstEmptyStratagemSlot } from './utils/loadoutHelpers';
 import { getArmorComboDisplayName } from './utils/itemHelpers';
 import { processAllOutcomes, canAffordChoice, formatOutcome, formatOutcomes, needsPlayerChoice, applyGainBoosterWithSelection } from './systems/events/eventProcessor';
@@ -295,12 +295,17 @@ function HelldiversRogueliteApp() {
       dispatch(actions.setPlayers(updatedPlayers));
     }
     
+    // Generate randomized draft order for this round
+    const draftOrder = generateRandomDraftOrder(gameConfig.playerCount);
+    const firstPlayerIdx = draftOrder[0];
+    
     dispatch(actions.setDraftState({
-      activePlayerIndex: 0,
-      roundCards: generateDraftHandForPlayer(0),
+      activePlayerIndex: firstPlayerIdx,
+      roundCards: generateDraftHandForPlayer(firstPlayerIdx),
       isRerolling: false,
       pendingStratagem: null,
-      extraDraftRound: 0
+      extraDraftRound: 0,
+      draftOrder: draftOrder
     }));
     dispatch(actions.setPhase('DRAFT'));
   };
@@ -324,7 +329,8 @@ function HelldiversRogueliteApp() {
         isRerolling: false,
         pendingStratagem: null,
         extraDraftRound: 0,
-        isRedrafting: true
+        isRedrafting: true,
+        draftOrder: draftState.draftOrder
       }));
       return;
     }
@@ -348,7 +354,8 @@ function HelldiversRogueliteApp() {
         roundCards: generateDraftHandForPlayer(currentPlayerIdx),
         isRerolling: false,
         pendingStratagem: null,
-        extraDraftRound: currentExtraRound + 1
+        extraDraftRound: currentExtraRound + 1,
+        draftOrder: draftState.draftOrder
       }));
       return;
     }
@@ -360,15 +367,20 @@ function HelldiversRogueliteApp() {
       dispatch(actions.setPlayers(clearedPlayers));
     }
     
-    // Move to next player or complete
-    if (currentPlayerIdx < gameConfig.playerCount - 1) {
-      const nextIdx = currentPlayerIdx + 1;
+    // Move to next player in draft order or complete
+    const draftOrder = draftState.draftOrder || [];
+    const currentPositionInOrder = draftOrder.indexOf(currentPlayerIdx);
+    
+    if (currentPositionInOrder >= 0 && currentPositionInOrder < draftOrder.length - 1) {
+      // Move to next player in the draft order
+      const nextIdx = draftOrder[currentPositionInOrder + 1];
       dispatch(actions.setDraftState({
         activePlayerIndex: nextIdx,
         roundCards: generateDraftHandForPlayer(nextIdx),
         isRerolling: false,
         pendingStratagem: null,
-        extraDraftRound: 0
+        extraDraftRound: 0,
+        draftOrder: draftOrder
       }));
     } else {
       // Draft complete - check for event
@@ -1829,7 +1841,8 @@ function HelldiversRogueliteApp() {
           isRerolling: false,
           pendingStratagem: null,
           extraDraftRound: 0,
-          isRedrafting: true  // Flag to indicate this is a redraft
+          isRedrafting: true,  // Flag to indicate this is a redraft
+          draftOrder: [updates.redraftPlayerIndex] // Single player redraft
         }));
         dispatch(actions.setPhase('DRAFT'));
         return;

@@ -117,7 +117,8 @@ export const normalizeLoadedState = (loadedState) => {
       activePlayerIndex: 0,
       roundCards: [],
       isRerolling: false,
-      pendingStratagem: null
+      pendingStratagem: null,
+      draftOrder: []
     },
     eventsEnabled: loadedState.eventsEnabled !== undefined ? loadedState.eventsEnabled : true,
     currentEvent: loadedState.currentEvent || null,

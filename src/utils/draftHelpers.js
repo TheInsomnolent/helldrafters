@@ -4,6 +4,24 @@ import { getRareWeightMultiplier } from '../constants/balancingConfig';
 import { MASTER_DB } from '../data/itemsByWarbond';
 
 /**
+ * Generate a randomized order for draft picks
+ * @param {number} playerCount - Number of players in the game
+ * @returns {number[]} Array of player indices in randomized order
+ */
+export const generateRandomDraftOrder = (playerCount) => {
+  // Create array of indices [0, 1, 2, ...]
+  const order = Array.from({ length: playerCount }, (_, i) => i);
+  
+  // Fisher-Yates shuffle algorithm
+  for (let i = order.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [order[i], order[j]] = [order[j], order[i]];
+  }
+  
+  return order;
+};
+
+/**
  * Calculate draft hand size based on mission star rating
  * @param {number} starRating - Mission star rating (1-6)
  * @returns {number} Number of cards to show (2-4)
