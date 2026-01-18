@@ -190,18 +190,7 @@ export default function GameConfiguration({
               <div style={{ color: '#94a3b8', fontSize: '11px', marginTop: '4px' }}>Continue running D10 missions indefinitely. Otherwise, win after completing D10</div>
             </div>
           </label>
-          <label style={{ display: 'flex', alignItems: 'center', gap: '12px', cursor: 'pointer', padding: '12px', backgroundColor: gameConfig.debugEventsMode ? `${factionColors.PRIMARY}1A` : 'transparent', borderRadius: '4px', border: '1px solid rgba(100, 116, 139, 0.5)' }}>
-            <input 
-              type="checkbox" 
-              checked={gameConfig.debugEventsMode}
-              onChange={(e) => onUpdateGameConfig({ debugEventsMode: e.target.checked })}
-              style={{ width: '20px', height: '20px', cursor: 'pointer' }}
-            />
-            <div>
-              <div style={{ color: factionColors.PRIMARY, fontWeight: 'bold', fontSize: '14px' }}>Debug Events Mode</div>
-              <div style={{ color: '#94a3b8', fontSize: '11px', marginTop: '4px' }}>Manually trigger events from dashboard for testing</div>
-            </div>
-          </label>
+
           <label style={{ display: 'flex', alignItems: 'center', gap: '12px', cursor: 'pointer', padding: '12px', backgroundColor: gameConfig.brutalityMode ? `${factionColors.PRIMARY}1A` : 'transparent', borderRadius: '4px', border: '1px solid rgba(100, 116, 139, 0.5)' }}>
             <input 
               type="checkbox" 
