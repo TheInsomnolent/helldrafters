@@ -2556,7 +2556,7 @@ function HelldiversRogueliteApp() {
               {player.name} <span style={{ color: '#64748b' }}>{'//'}</span> Select Upgrade
             </h1>
             <p style={{ color: '#94a3b8', margin: '0' }}>
-              Choose wisely. This equipment is vital for Difficulty {currentDiff + 1}.
+              Choose wisely. This equipment is vital for Difficulty {currentDiff}.
             </p>
           </div>
 
