@@ -133,8 +133,13 @@ export const joinLobby = async (lobbyId, playerInfo, requestedSlot) => {
       return { success: false, error: 'Game has already completed' };
     }
     
-    // Check if slot is available
+    // Check if player already exists in lobby (avoid overwriting) before slot validation
     const players = lobby.players || {};
+    if (players[playerInfo.id]) {
+      return { success: false, error: 'Player is already in this lobby', errorCode: 'PLAYER_ID_CONFLICT' };
+    }
+    
+    // Check if slot is available
     const slotTaken = Object.values(players).some(p => p.slot === requestedSlot);
     if (slotTaken) {
       return { success: false, error: 'Slot is already taken' };
