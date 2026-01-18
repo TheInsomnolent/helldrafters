@@ -2,7 +2,7 @@
  * MultiplayerLobby - Component for hosting/joining multiplayer games
  */
 
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Copy, Check, Users, Crown, Wifi, WifiOff, RefreshCw } from 'lucide-react';
 import { COLORS, SHADOWS, GRADIENTS, getFactionColors } from '../constants/theme';
 import { useMultiplayer } from '../systems/multiplayer';
@@ -195,11 +195,63 @@ export function JoinGameScreen({ gameConfig, onJoinLobby, onBack }) {
   const factionColors = getFactionColors(gameConfig.faction);
   const { checkLobbyExists, error, clearError } = useMultiplayer();
   
+  // Load saved player name from localStorage
   const [lobbyCode, setLobbyCode] = useState('');
-  const [playerName, setPlayerName] = useState('');
+  const [playerName, setPlayerName] = useState(() => {
+    try {
+      return localStorage.getItem('helldrafters_mp_name') || '';
+    } catch {
+      return '';
+    }
+  });
   const [checking, setChecking] = useState(false);
   const [lobbyInfo, setLobbyInfo] = useState(null);
   const [selectedSlot, setSelectedSlot] = useState(null);
+  
+  // Track if we've already checked this code to avoid duplicate checks
+  const lastCheckedCode = useRef('');
+
+  // UUID v4 pattern
+  const isValidUUID = (str) => {
+    const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+    return uuidRegex.test(str);
+  };
+
+  // Auto-check lobby when a valid UUID is entered/pasted
+  useEffect(() => {
+    const trimmedCode = lobbyCode.trim();
+    
+    // Only auto-check if it looks like a valid UUID and we haven't checked it yet
+    if (isValidUUID(trimmedCode) && trimmedCode !== lastCheckedCode.current && !checking) {
+      lastCheckedCode.current = trimmedCode;
+      
+      // Run the check
+      const autoCheck = async () => {
+        setChecking(true);
+        clearError();
+        
+        const info = await checkLobbyExists(trimmedCode);
+        setLobbyInfo(info);
+        setChecking(false);
+        
+        // For new games, auto-select the next sequential slot
+        if (info && !info.isLoadedGame) {
+          const players = info.players || {};
+          const takenSlots = Object.values(players).map(p => p.slot);
+          for (let i = 0; i < 4; i++) {
+            if (!takenSlots.includes(i)) {
+              setSelectedSlot(i);
+              break;
+            }
+          }
+        } else {
+          setSelectedSlot(null);
+        }
+      };
+      
+      autoCheck();
+    }
+  }, [lobbyCode, checking, checkLobbyExists, clearError]);
 
   const handleCheckLobby = async () => {
     if (!lobbyCode.trim()) return;
@@ -211,8 +263,19 @@ export function JoinGameScreen({ gameConfig, onJoinLobby, onBack }) {
     setLobbyInfo(info);
     setChecking(false);
     
-    if (!info) {
-      // Error handled by context
+    // For new games, auto-select the next sequential slot
+    if (info && !info.isLoadedGame) {
+      const players = info.players || {};
+      const takenSlots = Object.values(players).map(p => p.slot);
+      // Find the first available slot sequentially
+      for (let i = 0; i < 4; i++) {
+        if (!takenSlots.includes(i)) {
+          setSelectedSlot(i);
+          break;
+        }
+      }
+    } else {
+      setSelectedSlot(null);
     }
   };
 
@@ -231,8 +294,17 @@ export function JoinGameScreen({ gameConfig, onJoinLobby, onBack }) {
     return available;
   };
 
+  // Check if slot selection should be shown (only for loaded games)
+  const showSlotSelection = lobbyInfo?.isLoadedGame;
+
   const handleJoin = () => {
     if (playerName.trim() && selectedSlot !== null) {
+      // Save player name to localStorage for next time
+      try {
+        localStorage.setItem('helldrafters_mp_name', playerName.trim());
+      } catch (e) {
+        // Ignore localStorage errors
+      }
       onJoinLobby(lobbyCode.trim(), playerName.trim(), selectedSlot);
     }
   };
@@ -372,36 +444,57 @@ export function JoinGameScreen({ gameConfig, onJoinLobby, onBack }) {
               />
             </div>
 
-            {/* Slot Selection */}
-            <div style={{ marginBottom: '24px' }}>
-              <label style={{ display: 'block', fontSize: '12px', fontWeight: 'bold', color: COLORS.TEXT_MUTED, textTransform: 'uppercase', marginBottom: '8px' }}>
-                SELECT YOUR SLOT
-              </label>
-              {availableSlots.length === 0 ? (
-                <p style={{ color: '#ef4444' }}>No slots available - lobby is full</p>
-              ) : (
-                <div style={{ display: 'flex', gap: '12px' }}>
-                  {availableSlots.map(slot => (
-                    <button
-                      key={slot}
-                      onClick={() => setSelectedSlot(slot)}
-                      style={{
-                        padding: '16px 24px',
-                        backgroundColor: selectedSlot === slot ? factionColors.PRIMARY : COLORS.BG_MAIN,
-                        color: selectedSlot === slot ? 'black' : 'white',
-                        border: `2px solid ${selectedSlot === slot ? factionColors.PRIMARY : COLORS.CARD_BORDER}`,
-                        borderRadius: '4px',
-                        fontWeight: 'bold',
-                        cursor: 'pointer',
-                        transition: 'all 0.2s'
-                      }}
-                    >
-                      Slot {slot + 1}
-                    </button>
-                  ))}
+            {/* Slot Selection - only show for loaded/saved games */}
+            {showSlotSelection && (
+              <div style={{ marginBottom: '24px' }}>
+                <label style={{ display: 'block', fontSize: '12px', fontWeight: 'bold', color: COLORS.TEXT_MUTED, textTransform: 'uppercase', marginBottom: '8px' }}>
+                  SELECT YOUR SLOT
+                </label>
+                <p style={{ fontSize: '12px', color: COLORS.TEXT_SECONDARY, marginBottom: '12px' }}>
+                  This is a saved game. Select which helldiver slot you want to play as.
+                </p>
+                {availableSlots.length === 0 ? (
+                  <p style={{ color: '#ef4444' }}>No slots available - lobby is full</p>
+                ) : (
+                  <div style={{ display: 'flex', gap: '12px' }}>
+                    {availableSlots.map(slot => (
+                      <button
+                        key={slot}
+                        onClick={() => setSelectedSlot(slot)}
+                        style={{
+                          padding: '16px 24px',
+                          backgroundColor: selectedSlot === slot ? factionColors.PRIMARY : COLORS.BG_MAIN,
+                          color: selectedSlot === slot ? 'black' : 'white',
+                          border: `2px solid ${selectedSlot === slot ? factionColors.PRIMARY : COLORS.CARD_BORDER}`,
+                          borderRadius: '4px',
+                          fontWeight: 'bold',
+                          cursor: 'pointer',
+                          transition: 'all 0.2s'
+                        }}
+                      >
+                        Slot {slot + 1}
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
+            
+            {/* Auto-assigned slot message for new games */}
+            {!showSlotSelection && selectedSlot !== null && (
+              <div style={{ marginBottom: '24px' }}>
+                <div style={{ 
+                  padding: '12px 16px', 
+                  backgroundColor: `${factionColors.PRIMARY}20`, 
+                  border: `1px solid ${factionColors.PRIMARY}40`,
+                  borderRadius: '4px'
+                }}>
+                  <span style={{ color: factionColors.PRIMARY, fontWeight: 'bold' }}>
+                    You will join as Helldiver {selectedSlot + 1}
+                  </span>
                 </div>
-              )}
-            </div>
+              </div>
+            )}
 
             {/* Join Button */}
             <button
@@ -480,9 +573,10 @@ export function MultiplayerWaitingRoom({
   isConfiguring = false 
 }) {
   const factionColors = getFactionColors(gameConfig.faction);
-  const { isHost, lobbyId, lobbyData, playerSlot, disconnect, changeSlot } = useMultiplayer();
+  const { isHost, lobbyId, lobbyData, playerSlot, disconnect, changeSlot, kickPlayerFromLobby } = useMultiplayer();
   const [copied, setCopied] = useState(false);
   const [changingSlot, setChangingSlot] = useState(false);
+  const [lobbyCodeVisible, setLobbyCodeVisible] = useState(false);
 
   const copyLobbyCode = () => {
     navigator.clipboard.writeText(lobbyId);
@@ -507,6 +601,12 @@ export function MultiplayerWaitingRoom({
     setChangingSlot(true);
     await changeSlot(newSlot);
     setChangingSlot(false);
+  };
+
+  const handleKickPlayer = async (playerIdToKick) => {
+    if (window.confirm('Are you sure you want to kick this player? They can rejoin with the lobby code.')) {
+      await kickPlayerFromLobby(playerIdToKick);
+    }
   };
 
   const handleLeave = async () => {
@@ -537,7 +637,7 @@ export function MultiplayerWaitingRoom({
           </p>
         </div>
 
-        {/* Lobby Code */}
+        {/* Lobby Code - Hidden until hover for streaming mode */}
         <div style={{ 
           backgroundColor: COLORS.CARD_BG, 
           borderRadius: '8px', 
@@ -547,23 +647,32 @@ export function MultiplayerWaitingRoom({
           border: `1px solid ${COLORS.CARD_BORDER}`
         }}>
           <div style={{ fontSize: '12px', color: COLORS.TEXT_MUTED, marginBottom: '8px', textTransform: 'uppercase' }}>
-            LOBBY CODE
+            LOBBY CODE {!lobbyCodeVisible && '(hover to reveal)'}
           </div>
-          <div style={{ 
-            display: 'flex', 
-            alignItems: 'center', 
-            justifyContent: 'center', 
-            gap: '16px',
-            backgroundColor: COLORS.BG_MAIN,
-            padding: '16px 24px',
-            borderRadius: '4px',
-            border: `1px solid ${COLORS.CARD_BORDER}`
-          }}>
+          <div 
+            style={{ 
+              display: 'flex', 
+              alignItems: 'center', 
+              justifyContent: 'center', 
+              gap: '16px',
+              backgroundColor: COLORS.BG_MAIN,
+              padding: '16px 24px',
+              borderRadius: '4px',
+              border: `1px solid ${COLORS.CARD_BORDER}`,
+              cursor: 'pointer',
+              transition: 'all 0.2s'
+            }}
+            onMouseEnter={() => setLobbyCodeVisible(true)}
+            onMouseLeave={() => setLobbyCodeVisible(false)}
+          >
             <code style={{ 
               fontSize: '18px', 
               fontFamily: 'monospace', 
-              color: factionColors.PRIMARY,
-              letterSpacing: '0.05em'
+              color: lobbyCodeVisible ? factionColors.PRIMARY : COLORS.TEXT_DISABLED,
+              letterSpacing: '0.05em',
+              filter: lobbyCodeVisible ? 'none' : 'blur(8px)',
+              transition: 'all 0.2s',
+              userSelect: lobbyCodeVisible ? 'text' : 'none'
             }}>
               {lobbyId}
             </code>
@@ -586,6 +695,9 @@ export function MultiplayerWaitingRoom({
               {copied ? 'Copied!' : 'Copy'}
             </button>
           </div>
+          <p style={{ fontSize: '11px', color: COLORS.TEXT_DISABLED, marginTop: '8px', margin: '8px 0 0 0' }}>
+            Hidden for streaming - hover to reveal
+          </p>
         </div>
 
         {/* Players List */}
@@ -662,6 +774,33 @@ export function MultiplayerWaitingRoom({
                       ) : (
                         <WifiOff size={16} style={{ color: '#ef4444' }} />
                       )
+                    )}
+                    {/* Host can kick disconnected players to free up their slot */}
+                    {isHost && player && !player.isHost && !player.connected && (
+                      <button
+                        onClick={() => handleKickPlayer(player.id)}
+                        style={{
+                          padding: '4px 12px',
+                          backgroundColor: 'transparent',
+                          color: '#ef4444',
+                          border: `1px solid #7f1d1d`,
+                          borderRadius: '4px',
+                          fontSize: '12px',
+                          cursor: 'pointer',
+                          transition: 'all 0.2s'
+                        }}
+                        onMouseEnter={(e) => {
+                          e.currentTarget.style.backgroundColor = 'rgba(239, 68, 68, 0.1)';
+                          e.currentTarget.style.borderColor = '#ef4444';
+                        }}
+                        onMouseLeave={(e) => {
+                          e.currentTarget.style.backgroundColor = 'transparent';
+                          e.currentTarget.style.borderColor = '#7f1d1d';
+                        }}
+                        title="Kick this player to free up their slot for rejoining"
+                      >
+                        Kick
+                      </button>
                     )}
                     {!player && !isHost && (
                       <button
@@ -762,6 +901,7 @@ export function MultiplayerWaitingRoom({
 export function MultiplayerStatusBar({ gameConfig, onDisconnect }) {
   const { isHost, lobbyId, connectedPlayers, playerSlot } = useMultiplayer();
   const [copied, setCopied] = useState(false);
+  const [lobbyCodeVisible, setLobbyCodeVisible] = useState(false);
   const factionColors = getFactionColors(gameConfig?.faction || 'terminid');
 
   const copyLobbyCode = () => {
@@ -804,8 +944,12 @@ export function MultiplayerStatusBar({ gameConfig, onDisconnect }) {
           </span>
         </div>
 
-        {/* Lobby Code */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+        {/* Lobby Code - Hidden until hover for streaming mode */}
+        <div 
+          style={{ display: 'flex', alignItems: 'center', gap: '8px' }}
+          onMouseEnter={() => setLobbyCodeVisible(true)}
+          onMouseLeave={() => setLobbyCodeVisible(false)}
+        >
           <span style={{ fontSize: '11px', color: COLORS.TEXT_DISABLED, textTransform: 'uppercase' }}>
             Lobby:
           </span>
@@ -822,9 +966,16 @@ export function MultiplayerStatusBar({ gameConfig, onDisconnect }) {
               cursor: 'pointer',
               transition: 'all 0.2s'
             }}
-            title={`Copy full lobby code: ${lobbyId}`}
+            title={lobbyCodeVisible ? `Copy full lobby code: ${lobbyId}` : 'Hover to reveal lobby code'}
           >
-            <code style={{ fontSize: '11px', color: COLORS.TEXT_SECONDARY, fontFamily: 'monospace' }}>
+            <code style={{ 
+              fontSize: '11px', 
+              color: lobbyCodeVisible ? COLORS.TEXT_SECONDARY : COLORS.TEXT_DISABLED, 
+              fontFamily: 'monospace',
+              filter: lobbyCodeVisible ? 'none' : 'blur(4px)',
+              transition: 'filter 0.2s',
+              userSelect: lobbyCodeVisible ? 'text' : 'none'
+            }}>
               {displayLobbyId}
             </code>
             {copied ? (

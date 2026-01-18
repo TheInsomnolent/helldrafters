@@ -79,7 +79,8 @@ export const SHADOWS = {
   CARD: '0 8px 32px rgba(0, 0, 0, 0.4)',
   GLOW_PRIMARY: '0 4px 20px rgba(245, 198, 66, 0.3)',
   GLOW_BLUE: '0 4px 20px rgba(59, 130, 246, 0.3)',
-  GLOW_PURPLE: '0 4px 20px rgba(168, 85, 247, 0.3)'
+  GLOW_PURPLE: '0 4px 20px rgba(168, 85, 247, 0.3)',
+  GLOW_GREEN: '0 4px 20px rgba(34, 197, 94, 0.3)'
 };
 
 export const GRADIENTS = {

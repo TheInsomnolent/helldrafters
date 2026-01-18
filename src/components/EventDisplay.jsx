@@ -13,6 +13,7 @@ export default function EventDisplay({
   players,
   currentDiff,
   requisition,
+  isHost = true,
   needsPlayerChoice,
   canAffordChoice,
   formatOutcome,
@@ -269,17 +270,18 @@ export default function EventDisplay({
             {currentEvent.description}
           </p>
 
-          {/* Player Selection (if needed) */}
+          {/* Player Selection (if needed) - Shows choices below for context */}
           {needsPlayerChoice(currentEvent) && eventPlayerChoice === null && (
             <div style={{ marginBottom: '24px' }}>
               <div style={{ fontSize: '16px', marginBottom: '12px', color: '#F5C642' }}>
-                Choose a Helldiver:
+                {isHost ? 'Choose a Helldiver:' : 'Waiting for host to choose a Helldiver...'}
               </div>
               <div style={{ display: 'flex', gap: '12px', justifyContent: 'center', flexWrap: 'wrap' }}>
                 {players.map((player, idx) => (
                   <button
                     key={idx}
-                    onClick={() => onPlayerChoice(idx)}
+                    onClick={() => isHost && onPlayerChoice(idx)}
+                    disabled={!isHost}
                     style={{
                       padding: '12px 24px',
                       fontSize: '16px',
@@ -288,16 +290,62 @@ export default function EventDisplay({
                       color: '#F5C642',
                       border: '2px solid #F5C642',
                       borderRadius: '4px',
-                      cursor: 'pointer',
+                      cursor: isHost ? 'pointer' : 'not-allowed',
+                      opacity: isHost ? 1 : 0.6,
                       transition: 'all 0.2s'
                     }}
-                    onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#283548'}
-                    onMouseLeave={(e) => e.currentTarget.style.backgroundColor = '#1a2332'}
+                    onMouseEnter={(e) => isHost && (e.currentTarget.style.backgroundColor = '#283548')}
+                    onMouseLeave={(e) => isHost && (e.currentTarget.style.backgroundColor = '#1a2332')}
                   >
                     HELLDIVER {idx + 1}
                   </button>
                 ))}
               </div>
+              
+              {/* Show preview of choices below player selection */}
+              {currentEvent.type === EVENT_TYPES.CHOICE && currentEvent.choices && currentEvent.choices.length > 0 && (
+                <div style={{ marginTop: '24px', opacity: 0.5 }}>
+                  <div style={{ fontSize: '14px', color: '#64748b', marginBottom: '12px', textAlign: 'center' }}>
+                    Available choices (select a Helldiver first):
+                  </div>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                    {currentEvent.choices.map((choice, idx) => {
+                      const outcomeText = formatOutcomes(choice.outcomes);
+                      const reqCost = choice.requiresRequisition;
+                      return (
+                        <div
+                          key={idx}
+                          style={{
+                            padding: '12px 16px',
+                            backgroundColor: '#283548',
+                            border: '1px solid #555',
+                            borderRadius: '4px',
+                            textAlign: 'left'
+                          }}
+                        >
+                          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '14px', color: '#b0b0b0' }}>
+                            <span>{choice.text}</span>
+                            {reqCost && (
+                              <span style={{ fontSize: '12px', fontWeight: 'bold' }}>
+                                Costs {reqCost} requisition
+                              </span>
+                            )}
+                          </div>
+                          <div style={{ 
+                            fontSize: '12px', 
+                            opacity: 0.7,
+                            fontStyle: 'italic',
+                            marginTop: '4px',
+                            color: '#94a3b8'
+                          }}>
+                            {outcomeText}
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
             </div>
           )}
 
@@ -800,36 +848,60 @@ export default function EventDisplay({
             <>
               {needsPlayerChoice(currentEvent) && eventPlayerChoice !== null && (
                 <div style={{ marginBottom: '16px', textAlign: 'center' }}>
-                  <button
-                    onClick={() => onPlayerChoice(null)}
-                    style={{
-                      padding: '8px 16px',
-                      fontSize: '13px',
-                      fontWeight: 'bold',
-                      backgroundColor: '#6b7280',
-                      color: '#fff',
-                      border: 'none',
-                      borderRadius: '4px',
-                      cursor: 'pointer',
-                      transition: 'all 0.2s'
-                    }}
-                    onMouseEnter={(e) => e.target.style.backgroundColor = '#4b5563'}
-                    onMouseLeave={(e) => e.target.style.backgroundColor = '#6b7280'}
-                  >
-                    ← Change Selected Helldiver
-                  </button>
+                  {isHost ? (
+                    <button
+                      onClick={() => onPlayerChoice(null)}
+                      style={{
+                        padding: '8px 16px',
+                        fontSize: '13px',
+                        fontWeight: 'bold',
+                        backgroundColor: '#6b7280',
+                        color: '#fff',
+                        border: 'none',
+                        borderRadius: '4px',
+                        cursor: 'pointer',
+                        transition: 'all 0.2s'
+                      }}
+                      onMouseEnter={(e) => e.target.style.backgroundColor = '#4b5563'}
+                      onMouseLeave={(e) => e.target.style.backgroundColor = '#6b7280'}
+                    >
+                      ← Change Selected Helldiver
+                    </button>
+                  ) : (
+                    <div style={{ fontSize: '13px', color: '#64748b', fontStyle: 'italic' }}>
+                      Host selected Helldiver {eventPlayerChoice + 1}
+                    </div>
+                  )}
                 </div>
               )}
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+              
+              {/* Client waiting message */}
+              {!isHost && (
+                <div style={{ 
+                  textAlign: 'center', 
+                  marginBottom: '16px',
+                  padding: '12px 24px',
+                  backgroundColor: 'rgba(100, 116, 139, 0.2)',
+                  border: '1px solid rgba(100, 116, 139, 0.4)',
+                  borderRadius: '4px'
+                }}>
+                  <div style={{ color: '#94a3b8', fontSize: '14px' }}>
+                    Waiting for host to make a choice...
+                  </div>
+                </div>
+              )}
+              
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', opacity: isHost ? 1 : 0.6 }}>
                 {currentEvent.choices.map((choice, idx) => {
                 const affordable = canAffordChoice(choice, requisition, players, eventPlayerChoice);
+                const canSelect = isHost && affordable;
                 const outcomeText = formatOutcomes(choice.outcomes);
                 const reqCost = choice.requiresRequisition;
                 return (
                   <button
                     key={idx}
-                    onClick={() => handleChoiceClick(choice)}
-                    disabled={!affordable}
+                    onClick={() => canSelect && handleChoiceClick(choice)}
+                    disabled={!canSelect}
                     style={{
                       padding: '16px',
                       fontSize: '16px',
@@ -838,15 +910,15 @@ export default function EventDisplay({
                       color: affordable ? '#0f1419' : '#888',
                       border: 'none',
                       borderRadius: '4px',
-                      cursor: affordable ? 'pointer' : 'not-allowed',
+                      cursor: canSelect ? 'pointer' : 'not-allowed',
                       transition: 'all 0.2s',
                       textAlign: 'left',
                       display: 'flex',
                       flexDirection: 'column',
                       gap: '8px'
                     }}
-                    onMouseEnter={(e) => affordable && (e.target.style.backgroundColor = '#ffd95a')}
-                    onMouseLeave={(e) => affordable && (e.target.style.backgroundColor = '#F5C642')}
+                    onMouseEnter={(e) => canSelect && (e.target.style.backgroundColor = '#ffd95a')}
+                    onMouseLeave={(e) => canSelect && (e.target.style.backgroundColor = '#F5C642')}
                   >
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '16px' }}>
                       <span>{choice.text}</span>
@@ -900,24 +972,37 @@ export default function EventDisplay({
                   </div>
                 </div>
               )}
-              <button
-                onClick={onAutoContinue}
-                style={{
-                  padding: '16px 32px',
-                  fontSize: '16px',
-                  fontWeight: 'bold',
-                  backgroundColor: '#F5C642',
-                  color: '#0f1419',
-                  border: 'none',
+              {isHost ? (
+                <button
+                  onClick={onAutoContinue}
+                  style={{
+                    padding: '16px 32px',
+                    fontSize: '16px',
+                    fontWeight: 'bold',
+                    backgroundColor: '#F5C642',
+                    color: '#0f1419',
+                    border: 'none',
+                    borderRadius: '4px',
+                    cursor: 'pointer',
+                    transition: 'all 0.2s'
+                  }}
+                  onMouseEnter={(e) => e.target.style.backgroundColor = '#ffd95a'}
+                  onMouseLeave={(e) => e.target.style.backgroundColor = '#F5C642'}
+                >
+                  Continue
+                </button>
+              ) : (
+                <div style={{ 
+                  padding: '12px 24px',
+                  backgroundColor: 'rgba(100, 116, 139, 0.2)',
+                  border: '1px solid rgba(100, 116, 139, 0.4)',
                   borderRadius: '4px',
-                  cursor: 'pointer',
-                  transition: 'all 0.2s'
-                }}
-                onMouseEnter={(e) => e.target.style.backgroundColor = '#ffd95a'}
-                onMouseLeave={(e) => e.target.style.backgroundColor = '#F5C642'}
-              >
-                Continue
-              </button>
+                  color: '#94a3b8',
+                  fontSize: '14px'
+                }}>
+                  Waiting for host to continue...
+                </div>
+              )}
             </div>
           )}
         </div>

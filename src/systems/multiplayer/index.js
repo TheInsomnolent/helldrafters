@@ -14,11 +14,14 @@ export {
   checkLobby,
   joinLobby,
   leaveLobby,
+  kickPlayer,
   closeLobby,
   updateLobbyStatus,
   changePlayerSlot,
   subscribeLobby,
-  getAvailableSlots
+  getAvailableSlots,
+  updatePlayerConfig,
+  setPlayerReady
 } from './lobbyManager';
 
 export {

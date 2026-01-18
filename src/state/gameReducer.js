@@ -432,7 +432,29 @@ export function gameReducer(state, action) {
       return { ...state, burnedCards: action.payload };
 
     // Full state operations
-    case types.LOAD_GAME_STATE:
+    case types.LOAD_GAME_STATE: {
+      // Normalize stratagems arrays - Firebase may strip nulls or convert to objects
+      const normalizeStratagems = (stratagems) => {
+        if (!stratagems) return [null, null, null, null];
+        if (Array.isArray(stratagems)) {
+          // Ensure exactly 4 slots, converting undefined to null
+          const result = [null, null, null, null];
+          for (let i = 0; i < 4; i++) {
+            result[i] = stratagems[i] || null;
+          }
+          return result;
+        }
+        // Firebase may convert sparse arrays to objects with numeric keys
+        if (typeof stratagems === 'object') {
+          const result = [null, null, null, null];
+          for (let i = 0; i < 4; i++) {
+            result[i] = stratagems[i] || stratagems[String(i)] || null;
+          }
+          return result;
+        }
+        return [null, null, null, null];
+      };
+      
       return { 
         ...state, 
         ...action.payload,
@@ -441,9 +463,14 @@ export function gameReducer(state, action) {
         seenEvents: action.payload.seenEvents || [],
         players: (action.payload.players || []).map(p => ({
           ...p,
-          weaponRestricted: p.weaponRestricted || false
+          weaponRestricted: p.weaponRestricted || false,
+          loadout: p.loadout ? {
+            ...p.loadout,
+            stratagems: normalizeStratagems(p.loadout.stratagems)
+          } : p.loadout
         }))
       };
+    }
 
     case types.RESET_GAME:
       return { ...initialState };

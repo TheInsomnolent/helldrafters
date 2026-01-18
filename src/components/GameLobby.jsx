@@ -1,7 +1,37 @@
-import React, { useState } from 'react';
-import { CheckCircle, ChevronRight } from 'lucide-react';
+import React, { useState, useEffect, useCallback } from 'react';
+import { CheckCircle, LogOut, Users, Crown } from 'lucide-react';
 import { WARBONDS, WARBOND_TYPE, DEFAULT_WARBONDS } from '../constants/warbonds';
 import { COLORS, SHADOWS, GRADIENTS, BUTTON_STYLES, getFactionColors } from '../constants/theme';
+import { useMultiplayer } from '../systems/multiplayer';
+
+// Local storage key for saving player configuration
+const STORAGE_KEY = 'helldrafters_player_config';
+
+/**
+ * Load saved player configuration from local storage
+ */
+const loadSavedConfig = () => {
+  try {
+    const saved = localStorage.getItem(STORAGE_KEY);
+    if (saved) {
+      return JSON.parse(saved);
+    }
+  } catch (e) {
+    console.warn('Failed to load saved config:', e);
+  }
+  return null;
+};
+
+/**
+ * Save player configuration to local storage
+ */
+const saveConfig = (config) => {
+  try {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(config));
+  } catch (e) {
+    console.warn('Failed to save config:', e);
+  }
+};
 
 /**
  * GameLobby component for configuring players before starting a run
@@ -12,106 +42,203 @@ export default function GameLobby({
   onCancel
 }) {
   const factionColors = getFactionColors(gameConfig.faction);
-  const [players, setPlayers] = useState(
-    Array.from({ length: gameConfig.playerCount }, (_, i) => ({
-      name: `Helldiver ${i + 1}`,
-      warbonds: [...DEFAULT_WARBONDS],
-      includeSuperstore: false
-    }))
-  );
-  const [currentPlayerIndex, setCurrentPlayerIndex] = useState(0);
+  const { 
+    isMultiplayer, 
+    isHost, 
+    lobbyData, 
+    playerSlot, 
+    playerName: mpPlayerName,
+    disconnect,
+    updatePlayerConfig,
+    setPlayerReady
+  } = useMultiplayer();
+
+  // Load saved config or use defaults
+  const savedConfig = loadSavedConfig();
+  
+  // For solo mode, initialize with 1 player
+  // For multiplayer, each player only configures their own slot
+  const [myConfig, setMyConfig] = useState({
+    name: mpPlayerName || savedConfig?.name || 'Helldiver',
+    warbonds: savedConfig?.warbonds || [...DEFAULT_WARBONDS],
+    includeSuperstore: savedConfig?.includeSuperstore || false
+  });
+  
+  const [isReady, setIsReady] = useState(false);
   const [editingName, setEditingName] = useState(false);
+  
+  // Track if we've done initial name sync to avoid loops
+  const initialNameSyncDone = React.useRef(false);
+  
+  // Check if all players are ready (in multiplayer)
+  const allPlayersReady = useCallback(() => {
+    if (!isMultiplayer) return isReady;
+    if (!lobbyData?.players) return false;
+    
+    const players = Object.values(lobbyData.players);
+    return players.length > 0 && players.every(p => p.ready);
+  }, [isMultiplayer, lobbyData, isReady]);
 
-  const currentPlayer = players[currentPlayerIndex];
+  // Update player name from multiplayer context on initial load only
+  useEffect(() => {
+    if (isMultiplayer && mpPlayerName && !initialNameSyncDone.current) {
+      initialNameSyncDone.current = true;
+      setMyConfig(prev => ({ ...prev, name: mpPlayerName }));
+    }
+  }, [isMultiplayer, mpPlayerName]);
 
-  const updatePlayer = (index, updates) => {
-    setPlayers(prev => prev.map((p, i) => i === index ? { ...p, ...updates } : p));
+  // Save config to local storage whenever it changes
+  useEffect(() => {
+    saveConfig(myConfig);
+  }, [myConfig]);
+
+  // Sync ready state and config to multiplayer lobby
+  useEffect(() => {
+    if (isMultiplayer && updatePlayerConfig) {
+      updatePlayerConfig({
+        name: myConfig.name,
+        warbonds: myConfig.warbonds,
+        includeSuperstore: myConfig.includeSuperstore,
+        ready: isReady
+      });
+    }
+  }, [isMultiplayer, updatePlayerConfig, myConfig, isReady]);
+
+  // Auto-start when all players are ready (host initiates)
+  useEffect(() => {
+    if (isMultiplayer && isHost && allPlayersReady() && lobbyData?.players) {
+      // Build players array from lobby data
+      const players = Object.values(lobbyData.players)
+        .sort((a, b) => a.slot - b.slot)
+        .map(p => ({
+          name: p.name,
+          warbonds: p.warbonds || [...DEFAULT_WARBONDS],
+          includeSuperstore: p.includeSuperstore || false
+        }));
+      
+      // Small delay to ensure UI shows all ready
+      setTimeout(() => {
+        onStartRun(players);
+      }, 500);
+    }
+  }, [isMultiplayer, isHost, allPlayersReady, lobbyData, onStartRun]);
+
+  const updateMyConfig = (updates) => {
+    setMyConfig(prev => ({ ...prev, ...updates }));
+    // When config changes, unready the player
+    if (isReady) {
+      setIsReady(false);
+    }
   };
 
   const toggleWarbond = (warbondId) => {
-    const newWarbonds = currentPlayer.warbonds.includes(warbondId)
-      ? currentPlayer.warbonds.filter(id => id !== warbondId)
-      : [...currentPlayer.warbonds, warbondId];
+    const newWarbonds = myConfig.warbonds.includes(warbondId)
+      ? myConfig.warbonds.filter(id => id !== warbondId)
+      : [...myConfig.warbonds, warbondId];
     
-    updatePlayer(currentPlayerIndex, { warbonds: newWarbonds });
+    updateMyConfig({ warbonds: newWarbonds });
   };
 
-  const goToNextPlayer = () => {
-    if (currentPlayerIndex < players.length - 1) {
-      setCurrentPlayerIndex(prev => prev + 1);
-      setEditingName(false);
-    } else {
-      // All players configured, start the run
-      onStartRun(players);
+  const handleReadyToggle = () => {
+    const newReady = !isReady;
+    setIsReady(newReady);
+    
+    if (isMultiplayer && setPlayerReady) {
+      setPlayerReady(newReady);
     }
   };
 
-  const goToPreviousPlayer = () => {
-    if (currentPlayerIndex > 0) {
-      setCurrentPlayerIndex(prev => prev - 1);
-      setEditingName(false);
+  const handleSoloStart = () => {
+    // Solo mode - just start with current config
+    onStartRun([myConfig]);
+  };
+
+  const handleExitLobby = async () => {
+    if (isMultiplayer && disconnect) {
+      await disconnect();
     }
+    onCancel();
   };
 
   const standardWarbonds = Object.values(WARBONDS).filter(wb => wb.type === WARBOND_TYPE.STANDARD);
   const premiumWarbonds = Object.values(WARBONDS).filter(wb => wb.type === WARBOND_TYPE.PREMIUM);
   const legendaryWarbonds = Object.values(WARBONDS).filter(wb => wb.type === WARBOND_TYPE.LEGENDARY);
 
+  // Get all players' configs for display in multiplayer (sorted by slot)
+  const allPlayers = isMultiplayer && lobbyData?.players
+    ? Object.values(lobbyData.players).sort((a, b) => a.slot - b.slot)
+    : [];
+
   return (
     <div style={{ minHeight: '100vh', background: GRADIENTS.BACKGROUND, color: 'white', padding: '80px 24px' }}>
-      <div style={{ maxWidth: '1400px', margin: '0 auto' }}>
+      <div style={{ maxWidth: '1200px', margin: '0 auto' }}>
         {/* Header */}
         <div style={{ textAlign: 'center', marginBottom: '48px' }}>
           <h1 style={{ fontSize: '72px', fontWeight: '900', color: factionColors.PRIMARY, margin: '0 0 8px 0', letterSpacing: '0.05em', textTransform: 'uppercase', textShadow: factionColors.GLOW }}>
-            GAME LOBBY
+            {isMultiplayer ? 'SQUAD LOADOUT' : 'LOADOUT SETUP'}
           </h1>
           <div style={{ background: GRADIENTS.HEADER_BAR, padding: '12px', margin: '0 auto 24px auto', maxWidth: '500px' }}>
             <p style={{ fontSize: '18px', fontWeight: 'bold', color: 'white', textTransform: 'uppercase', letterSpacing: '0.3em', margin: 0 }}>
-              Configure Your Squad
+              {isMultiplayer ? 'Configure Your Warbonds' : 'Select Your Equipment'}
             </p>
           </div>
         </div>
 
-        {/* Player Navigation */}
-        <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '16px', marginBottom: '40px', flexWrap: 'wrap' }}>
-          {players.map((p, i) => (
-            <button
-              key={i}
-              onClick={() => { setCurrentPlayerIndex(i); setEditingName(false); }}
-              style={{
-                padding: '16px 32px',
-                borderRadius: '4px',
-                fontWeight: '900',
-                fontSize: '16px',
-                textTransform: 'uppercase',
-                letterSpacing: '0.1em',
-                transition: 'all 0.2s',
-                backgroundColor: i === currentPlayerIndex ? factionColors.PRIMARY : 'transparent',
-                color: i === currentPlayerIndex ? 'black' : COLORS.TEXT_MUTED,
-                border: i === currentPlayerIndex ? `2px solid ${factionColors.PRIMARY}` : `2px solid ${COLORS.CARD_BORDER}`,
-                cursor: 'pointer',
-                transform: i === currentPlayerIndex ? 'scale(1.05)' : 'scale(1)',
-                boxShadow: i === currentPlayerIndex ? factionColors.SHADOW : 'none'
-              }}
-              onMouseEnter={(e) => {
-                if (i !== currentPlayerIndex) {
-                  e.currentTarget.style.borderColor = COLORS.TEXT_DISABLED;
-                  e.currentTarget.style.color = COLORS.TEXT_SECONDARY;
-                }
-              }}
-              onMouseLeave={(e) => {
-                if (i !== currentPlayerIndex) {
-                  e.currentTarget.style.borderColor = COLORS.CARD_BORDER;
-                  e.currentTarget.style.color = COLORS.TEXT_MUTED;
-                }
-              }}
-            >
-              {p.name}
-            </button>
-          ))}
-        </div>
+        {/* Multiplayer: Show all players' status in slot order */}
+        {isMultiplayer && allPlayers.length > 0 && (
+          <div style={{ 
+            backgroundColor: COLORS.CARD_BG, 
+            borderRadius: '8px', 
+            padding: '24px', 
+            marginBottom: '32px',
+            border: `1px solid ${COLORS.CARD_BORDER}`
+          }}>
+            <h3 style={{ 
+              fontSize: '14px', 
+              fontWeight: 'bold', 
+              color: COLORS.TEXT_MUTED, 
+              marginBottom: '16px', 
+              textTransform: 'uppercase', 
+              letterSpacing: '0.15em' 
+            }}>
+              <Users size={16} style={{ marginRight: '8px', verticalAlign: 'middle' }} />
+              SQUAD STATUS
+            </h3>
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '12px' }}>
+              {allPlayers.map(player => {
+                const isCurrentPlayer = player.slot === playerSlot;
+                const playerReady = isCurrentPlayer ? isReady : player.ready;
+                const playerName = isCurrentPlayer ? myConfig.name : player.name;
+                
+                return (
+                  <div 
+                    key={player.slot}
+                    style={{
+                      padding: '12px 20px',
+                      backgroundColor: playerReady ? 'rgba(34, 197, 94, 0.2)' : COLORS.BG_MAIN,
+                      borderRadius: '4px',
+                      border: `2px solid ${playerReady ? '#22c55e' : (isCurrentPlayer ? factionColors.PRIMARY : COLORS.CARD_BORDER)}`,
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '12px',
+                      opacity: player.connected ? 1 : 0.5
+                    }}
+                  >
+                    {player.isHost && <Crown size={16} style={{ color: factionColors.PRIMARY }} />}
+                    <span style={{ fontWeight: 'bold', color: isCurrentPlayer ? factionColors.PRIMARY : (playerReady ? '#22c55e' : 'white') }}>
+                      {playerName}
+                    </span>
+                    {isCurrentPlayer && <span style={{ fontSize: '11px', color: COLORS.TEXT_MUTED }}>(YOU)</span>}
+                    {playerReady && <CheckCircle size={16} style={{ color: '#22c55e' }} />}
+                    {!player.connected && <span style={{ fontSize: '11px', color: '#ef4444' }}>(DISCONNECTED)</span>}
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        )}
 
-        {/* Current Player Configuration */}
+        {/* Player Configuration */}
         <div style={{ backgroundColor: COLORS.CARD_BG, padding: '48px', borderRadius: '8px', border: '1px solid rgba(100, 116, 139, 0.5)', marginBottom: '32px', boxShadow: SHADOWS.CARD }}>
           {/* Player Name */}
           <div style={{ marginBottom: '48px' }}>
@@ -121,8 +248,8 @@ export default function GameLobby({
             {editingName ? (
               <input
                 type="text"
-                value={currentPlayer.name}
-                onChange={(e) => updatePlayer(currentPlayerIndex, { name: e.target.value })}
+                value={myConfig.name}
+                onChange={(e) => updateMyConfig({ name: e.target.value })}
                 onBlur={() => setEditingName(false)}
                 onKeyDown={(e) => e.key === 'Enter' && setEditingName(false)}
                 style={{
@@ -145,6 +272,7 @@ export default function GameLobby({
             ) : (
               <button
                 onClick={() => setEditingName(true)}
+                disabled={isReady}
                 style={{
                   width: '100%',
                   padding: '20px 24px',
@@ -157,25 +285,30 @@ export default function GameLobby({
                   textAlign: 'left',
                   textTransform: 'uppercase',
                   letterSpacing: '0.05em',
-                  cursor: 'pointer',
-                  transition: 'all 0.2s'
+                  cursor: isReady ? 'not-allowed' : 'pointer',
+                  transition: 'all 0.2s',
+                  opacity: isReady ? 0.7 : 1
                 }}
                 onMouseEnter={(e) => {
-                  e.currentTarget.style.borderColor = factionColors.PRIMARY;
-                  e.currentTarget.style.color = factionColors.PRIMARY;
+                  if (!isReady) {
+                    e.currentTarget.style.borderColor = factionColors.PRIMARY;
+                    e.currentTarget.style.color = factionColors.PRIMARY;
+                  }
                 }}
                 onMouseLeave={(e) => {
-                  e.currentTarget.style.borderColor = COLORS.CARD_BORDER;
-                  e.currentTarget.style.color = 'white';
+                  if (!isReady) {
+                    e.currentTarget.style.borderColor = COLORS.CARD_BORDER;
+                    e.currentTarget.style.color = 'white';
+                  }
                 }}
               >
-                {currentPlayer.name}
+                {myConfig.name}
               </button>
             )}
           </div>
 
           {/* Warbond Selection */}
-          <div>
+          <div style={{ opacity: isReady ? 0.7 : 1, pointerEvents: isReady ? 'none' : 'auto' }}>
             <h2 style={{ fontSize: '32px', fontWeight: '900', color: factionColors.PRIMARY, marginBottom: '32px', textTransform: 'uppercase', letterSpacing: '0.1em', textShadow: factionColors.GLOW }}>
               ▸ SELECT WARBONDS
             </h2>
@@ -190,7 +323,7 @@ export default function GameLobby({
                   <WarbondCard
                     key={wb.id}
                     warbond={wb}
-                    selected={currentPlayer.warbonds.includes(wb.id)}
+                    selected={myConfig.warbonds.includes(wb.id)}
                     onToggle={() => toggleWarbond(wb.id)}
                     disabled={wb.id === 'helldivers_mobilize'} // Always include
                     factionColors={factionColors}
@@ -209,7 +342,7 @@ export default function GameLobby({
                   <WarbondCard
                     key={wb.id}
                     warbond={wb}
-                    selected={currentPlayer.warbonds.includes(wb.id)}
+                    selected={myConfig.warbonds.includes(wb.id)}
                     onToggle={() => toggleWarbond(wb.id)}
                     factionColors={factionColors}
                   />
@@ -227,7 +360,7 @@ export default function GameLobby({
                   <WarbondCard
                     key={wb.id}
                     warbond={wb}
-                    selected={currentPlayer.warbonds.includes(wb.id)}
+                    selected={myConfig.warbonds.includes(wb.id)}
                     onToggle={() => toggleWarbond(wb.id)}
                     factionColors={factionColors}
                   />
@@ -248,8 +381,8 @@ export default function GameLobby({
                 </div>
                 <input
                   type="checkbox"
-                  checked={currentPlayer.includeSuperstore}
-                  onChange={(e) => updatePlayer(currentPlayerIndex, { includeSuperstore: e.target.checked })}
+                  checked={myConfig.includeSuperstore}
+                  onChange={(e) => updateMyConfig({ includeSuperstore: e.target.checked })}
                   style={{ width: '24px', height: '24px', cursor: 'pointer', accentColor: COLORS.ACCENT_PURPLE }}
                 />
               </label>
@@ -257,75 +390,83 @@ export default function GameLobby({
           </div>
         </div>
 
-        {/* Navigation Buttons */}
-        <div style={{ display: 'flex', justifyContent: 'space-between', gap: '16px', marginBottom: '32px' }}>
+        {/* Action Buttons */}
+        <div style={{ display: 'flex', justifyContent: 'space-between', gap: '16px' }}>
+          {/* Exit/Back Button */}
           <button
-            onClick={onCancel}
+            onClick={handleExitLobby}
             style={{
               padding: '16px 32px',
-              backgroundColor: 'transparent',
-              color: COLORS.TEXT_MUTED,
-              border: `2px solid ${COLORS.CARD_BORDER}`,
+              backgroundColor: 'rgba(239, 68, 68, 0.1)',
+              color: '#ef4444',
+              border: '2px solid #7f1d1d',
               borderRadius: '4px',
               fontWeight: '900',
               fontSize: '14px',
               textTransform: 'uppercase',
               letterSpacing: '0.1em',
               cursor: 'pointer',
-              transition: 'all 0.2s'
+              transition: 'all 0.2s',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '8px'
             }}
             onMouseEnter={(e) => {
-              e.currentTarget.style.backgroundColor = 'rgba(100, 116, 139, 0.1)';
-              e.currentTarget.style.borderColor = COLORS.TEXT_DISABLED;
-              e.currentTarget.style.color = COLORS.TEXT_SECONDARY;
+              e.currentTarget.style.backgroundColor = 'rgba(239, 68, 68, 0.2)';
+              e.currentTarget.style.borderColor = '#ef4444';
             }}
             onMouseLeave={(e) => {
-              e.currentTarget.style.backgroundColor = 'transparent';
-              e.currentTarget.style.borderColor = COLORS.CARD_BORDER;
-              e.currentTarget.style.color = COLORS.TEXT_MUTED;
+              e.currentTarget.style.backgroundColor = 'rgba(239, 68, 68, 0.1)';
+              e.currentTarget.style.borderColor = '#7f1d1d';
             }}
           >
-            ← BACK TO MENU
+            <LogOut size={18} />
+            {isMultiplayer ? 'EXIT LOBBY' : 'BACK TO MENU'}
           </button>
 
-          <div style={{ display: 'flex', gap: '16px' }}>
-            {currentPlayerIndex > 0 && (
-              <button
-                onClick={goToPreviousPlayer}
-                style={{
-                  padding: '16px 32px',
-                  backgroundColor: 'transparent',
-                  color: COLORS.TEXT_MUTED,
-                  border: `2px solid ${COLORS.CARD_BORDER}`,
-                  borderRadius: '4px',
-                  fontWeight: '900',
-                  fontSize: '14px',
-                  textTransform: 'uppercase',
-                  letterSpacing: '0.1em',
-                  cursor: 'pointer',
-                  transition: 'all 0.2s'
-                }}
-                onMouseEnter={(e) => {
-                  e.currentTarget.style.backgroundColor = 'rgba(100, 116, 139, 0.1)';
-                  e.currentTarget.style.borderColor = COLORS.TEXT_DISABLED;
-                  e.currentTarget.style.color = COLORS.TEXT_SECONDARY;
-                }}
-                onMouseLeave={(e) => {
-                  e.currentTarget.style.backgroundColor = 'transparent';
-                  e.currentTarget.style.borderColor = COLORS.CARD_BORDER;
-                  e.currentTarget.style.color = COLORS.TEXT_MUTED;
-                }}
-              >
-                ← PREVIOUS HELLDIVER
-              </button>
-            )}
+          {/* Ready / Start Button */}
+          {isMultiplayer ? (
             <button
-              onClick={goToNextPlayer}
+              onClick={handleReadyToggle}
               style={{
                 ...BUTTON_STYLES.PRIMARY,
-                padding: '16px 32px',
+                padding: '16px 48px',
                 borderRadius: '4px',
-                fontSize: '14px',
+                fontSize: '16px',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '12px',
+                backgroundColor: isReady ? '#22c55e' : factionColors.PRIMARY,
+                color: isReady ? 'white' : 'black'
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.transform = 'translateY(-2px)';
+                e.currentTarget.style.boxShadow = isReady ? SHADOWS.GLOW_GREEN : factionColors.SHADOW_HOVER;
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.transform = 'translateY(0)';
+                e.currentTarget.style.boxShadow = 'none';
+              }}
+            >
+              {isReady ? (
+                <>
+                  <CheckCircle size={20} />
+                  READY! (CLICK TO UNREADY)
+                </>
+              ) : (
+                <>
+                  READY UP <CheckCircle size={20} />
+                </>
+              )}
+            </button>
+          ) : (
+            <button
+              onClick={handleSoloStart}
+              style={{
+                ...BUTTON_STYLES.PRIMARY,
+                padding: '16px 48px',
+                borderRadius: '4px',
+                fontSize: '16px',
                 display: 'flex',
                 alignItems: 'center',
                 gap: '12px'
@@ -341,48 +482,26 @@ export default function GameLobby({
                 e.currentTarget.style.boxShadow = factionColors.SHADOW;
               }}
             >
-              {currentPlayerIndex < players.length - 1 ? (
-                <>
-                  NEXT HELLDIVER <ChevronRight size={20} />
-                </>
-              ) : (
-                <>
-                  START RUN <CheckCircle size={20} />
-                </>
-              )}
+              START RUN <CheckCircle size={20} />
             </button>
-          </div>
+          )}
         </div>
 
-        {/* Player Summary */}
-        <div style={{ backgroundColor: COLORS.CARD_BG, borderRadius: '8px', padding: '32px', border: '1px solid rgba(100, 116, 139, 0.5)', boxShadow: SHADOWS.CARD }}>
-          <h3 style={{ fontSize: '24px', fontWeight: '900', color: factionColors.PRIMARY, marginBottom: '24px', textTransform: 'uppercase', letterSpacing: '0.1em' }}>
-            ▸ SQUAD SUMMARY
-          </h3>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))', gap: '16px' }}>
-            {players.map((p, i) => (
-              <div 
-                key={i} 
-                style={{
-                  backgroundColor: COLORS.BG_MAIN,
-                  borderRadius: '4px',
-                  padding: '20px',
-                  border: i === currentPlayerIndex ? `2px solid ${factionColors.PRIMARY}` : `1px solid ${COLORS.CARD_BORDER}`,
-                  boxShadow: i === currentPlayerIndex ? factionColors.GLOW : 'none',
-                  transition: 'all 0.2s'
-                }}
-              >
-                <div style={{ fontWeight: '900', fontSize: '18px', marginBottom: '8px', color: i === currentPlayerIndex ? factionColors.PRIMARY : 'white', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-                  {p.name}
-                </div>
-                <div style={{ fontSize: '13px', color: COLORS.TEXT_MUTED, fontWeight: 'bold' }}>
-                  {p.warbonds.length} WARBOND{p.warbonds.length !== 1 ? 'S' : ''}
-                  {p.includeSuperstore && ' + SUPERSTORE'}
-                </div>
-              </div>
-            ))}
+        {/* Multiplayer waiting message */}
+        {isMultiplayer && isReady && !allPlayersReady() && (
+          <div style={{ 
+            textAlign: 'center', 
+            marginTop: '24px', 
+            padding: '16px', 
+            backgroundColor: 'rgba(34, 197, 94, 0.1)', 
+            borderRadius: '4px',
+            border: '1px solid rgba(34, 197, 94, 0.3)'
+          }}>
+            <p style={{ color: '#22c55e', margin: 0, fontWeight: 'bold' }}>
+              Waiting for all players to ready up...
+            </p>
           </div>
-        </div>
+        )}
       </div>
     </div>
   );

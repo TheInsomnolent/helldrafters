@@ -207,6 +207,12 @@ export const setPendingStratagem = (stratagem) => ({
   payload: stratagem
 });
 
+// Multiplayer draft pick action
+export const draftPick = (playerIndex, item) => ({
+  type: types.DRAFT_PICK,
+  payload: { playerIndex, item }
+});
+
 // Events
 export const setCurrentEvent = (event) => ({
   type: types.SET_CURRENT_EVENT,

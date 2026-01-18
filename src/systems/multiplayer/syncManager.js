@@ -29,6 +29,7 @@ export const CLIENT_ALLOWED_ACTIONS = [
   'DRAFT_PICK',           // Pick a card during draft (only during their turn)
   'DRAFT_REROLL',         // Reroll draft hand
   'DRAFT_BURN',           // Burn a card
+  'SKIP_DRAFT',           // Skip the current draft turn
   
   // Slot locking
   'LOCK_PLAYER_DRAFT_SLOT',
@@ -47,6 +48,9 @@ export const CLIENT_ALLOWED_ACTIONS = [
   
   // Sacrifice phase
   'SACRIFICE_ITEM',       // Sacrifice an item during sacrifice phase
+  
+  // Mission phase
+  'SET_PLAYER_EXTRACTED', // Toggle extraction status (own player only)
   
   // Player ready state
   'PLAYER_READY',         // Mark player as ready
@@ -82,6 +86,28 @@ export const isActionAllowedForClient = (action, playerSlot) => {
 };
 
 /**
+ * Recursively sanitize state for Firebase - convert undefined to null and ensure arrays stay arrays
+ * Firebase strips undefined values and converts sparse arrays to objects
+ */
+const sanitizeForFirebase = (obj) => {
+  if (obj === undefined) return null;
+  if (obj === null) return null;
+  if (Array.isArray(obj)) {
+    return obj.map(item => sanitizeForFirebase(item));
+  }
+  if (typeof obj === 'object') {
+    const result = {};
+    for (const key of Object.keys(obj)) {
+      const value = obj[key];
+      // Convert undefined to null, otherwise recurse
+      result[key] = value === undefined ? null : sanitizeForFirebase(value);
+    }
+    return result;
+  }
+  return obj;
+};
+
+/**
  * Host: Sync game state to Firebase for clients to receive
  * @param {string} lobbyId - The lobby ID
  * @param {Object} gameState - The current game state
@@ -91,9 +117,12 @@ export const syncGameState = async (lobbyId, gameState) => {
   const stateRef = ref(db, `lobbies/${lobbyId}/gameState`);
   
   try {
+    // Sanitize state to prevent Firebase from stripping undefined values or mangling arrays
+    const sanitizedState = sanitizeForFirebase(gameState);
+    
     // Add timestamp to state for ordering
     const stateWithTimestamp = {
-      ...gameState,
+      ...sanitizedState,
       _syncedAt: serverTimestamp(),
       _version: (gameState._version || 0) + 1
     };

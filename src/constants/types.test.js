@@ -35,9 +35,9 @@ describe('Constants - Types', () => {
     });
 
     it('should have correct faction values', () => {
-      expect(FACTION.BUGS).toBe('Terminids');
-      expect(FACTION.BOTS).toBe('Automatons');
-      expect(FACTION.SQUIDS).toBe('Illuminate');
+      expect(FACTION.BUGS).toBe('terminid');
+      expect(FACTION.BOTS).toBe('automaton');
+      expect(FACTION.SQUIDS).toBe('illuminate');
     });
   });
 

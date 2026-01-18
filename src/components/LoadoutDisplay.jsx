@@ -19,6 +19,20 @@ export default function LoadoutDisplay({
 }) {
   const factionColors = getFactionColors(faction);
   
+  // Guard against undefined player or loadout
+  if (!player || !player.loadout) {
+    return (
+      <div style={{ backgroundColor: '#283548', borderRadius: '8px', border: '1px solid rgba(100, 116, 139, 0.5)', overflow: 'hidden' }}>
+        <div style={{ backgroundColor: '#1f2937', padding: '12px', borderBottom: '1px solid rgba(100, 116, 139, 0.5)' }}>
+          <h3 style={{ fontWeight: 'bold', color: '#64748b', margin: 0 }}>Loading...</h3>
+        </div>
+        <div style={{ padding: '16px', textAlign: 'center', color: '#64748b' }}>
+          Waiting for player data...
+        </div>
+      </div>
+    );
+  }
+  
   // Get the equipped armor
   const equippedArmor = getItemById(player.loadout.armor);
   
@@ -140,7 +154,7 @@ export default function LoadoutDisplay({
         <div style={{ gridColumn: 'span 4', marginTop: '8px' }}>
           <div style={{ fontSize: '10px', color: '#64748b', textTransform: 'uppercase', marginBottom: '4px' }}>Stratagems</div>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '8px' }}>
-            {player.loadout.stratagems.map((sid, i) => (
+            {(player.loadout.stratagems || [null, null, null, null]).map((sid, i) => (
               <div key={i} style={{ backgroundColor: '#1f2937', height: '64px', borderRadius: '4px', border: '1px solid rgba(71, 85, 105, 0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '4px', textAlign: 'center', position: 'relative' }}>
                 {sid ? (
                    <span style={{ fontSize: '9px', lineHeight: '1.2', color: 'white', fontWeight: '600' }}>{getItemById(sid)?.name}</span>

@@ -681,7 +681,7 @@ export const EVENTS = [
 ];
 
 // Helper function to get available events for current difficulty
-export function getAvailableEvents(difficulty, isMultiplayer, seenEvents = []) {
+export function getAvailableEvents(difficulty, isMultiplayer, seenEvents = [], players = []) {
   return EVENTS.filter(event => {
     if (event.minDifficulty > difficulty || event.maxDifficulty < difficulty) {
       return false;
@@ -692,13 +692,24 @@ export function getAvailableEvents(difficulty, isMultiplayer, seenEvents = []) {
     if (seenEvents.includes(event.id)) {
       return false;
     }
+    
+    // Check if event requires stratagems (teamwork_training) - need at least one player with a stratagem
+    if (event.id === 'teamwork_training') {
+      const anyPlayerHasStratagem = players.some(player => 
+        player.loadout?.stratagems?.some(s => s !== null)
+      );
+      if (!anyPlayerHasStratagem) {
+        return false;
+      }
+    }
+    
     return true;
   });
 }
 
 // Helper function to select a random event weighted by difficulty
-export function selectRandomEvent(difficulty, isMultiplayer, seenEvents = []) {
-  const available = getAvailableEvents(difficulty, isMultiplayer, seenEvents);
+export function selectRandomEvent(difficulty, isMultiplayer, seenEvents = [], players = []) {
+  const available = getAvailableEvents(difficulty, isMultiplayer, seenEvents, players);
   if (available.length === 0) return null;
 
   const totalWeight = available.reduce((sum, event) => sum + event.weight, 0);

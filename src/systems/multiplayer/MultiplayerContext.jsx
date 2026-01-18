@@ -11,11 +11,14 @@ import {
   checkLobby,
   joinLobby,
   leaveLobby,
+  kickPlayer,
   closeLobby,
   updateLobbyStatus,
   changePlayerSlot,
   subscribeLobby,
-  getAvailableSlots
+  getAvailableSlots,
+  updatePlayerConfig as updatePlayerConfigInLobby,
+  setPlayerReady as setPlayerReadyInLobby
 } from './lobbyManager';
 import {
   syncGameState,
@@ -54,9 +57,13 @@ export function MultiplayerProvider({ children }) {
   const [connectionStatus, setConnectionStatus] = useState('disconnected'); // disconnected, connecting, connected
   const [error, setError] = useState(null);
   const [firebaseReady, setFirebaseReady] = useState(false);
+  const [hostDisconnected, setHostDisconnected] = useState(false); // Track if host closed the lobby
   
   // Dispatch ref - set by the game component
   const dispatchRef = useRef(null);
+  
+  // Handler for special actions (like DRAFT_PICK) that need app-level processing
+  const actionHandlerRef = useRef(null);
   
   // Refs for cleanup
   const lobbyUnsubscribeRef = useRef(null);;
@@ -158,8 +165,9 @@ export function MultiplayerProvider({ children }) {
         if (lobby) {
           setLobbyData(lobby);
         } else {
-          // Lobby was deleted/closed
+          // Lobby was deleted/closed by host
           setError('Lobby was closed by host');
+          setHostDisconnected(true); // Signal that host disconnected
           if (disconnectRef.current) disconnectRef.current();
         }
       });
@@ -213,6 +221,19 @@ export function MultiplayerProvider({ children }) {
   }, [lobbyId, playerId]);
   
   /**
+   * Host: Kick a player from the lobby (frees their slot for rejoining)
+   */
+  const kickPlayerFromLobby = useCallback(async (playerIdToKick) => {
+    if (!isHost || !lobbyId) return false;
+    
+    const result = await kickPlayer(lobbyId, playerIdToKick);
+    if (!result.success) {
+      setError(result.error);
+    }
+    return result.success;
+  }, [isHost, lobbyId]);
+  
+  /**
    * Host: Start the game
    */
   const startMultiplayerGame = useCallback(async () => {
@@ -236,6 +257,13 @@ export function MultiplayerProvider({ children }) {
       // Validate action is allowed for this player
       if (!isActionAllowedForClient(action, player.slot)) {
         console.warn('Unauthorized action from player:', action.type);
+        await removeClientAction(lobbyId, actionId);
+        return;
+      }
+      
+      // Check if there's a special handler for this action type
+      if (actionHandlerRef.current && actionHandlerRef.current(action)) {
+        // Handler processed the action
         await removeClientAction(lobbyId, actionId);
         return;
       }
@@ -326,10 +354,61 @@ export function MultiplayerProvider({ children }) {
   }, [disconnect]);
   
   /**
+   * Update player's configuration (name, warbonds, ready state)
+   */
+  const updatePlayerConfig = useCallback(async (config) => {
+    if (!lobbyId || !playerId) return;
+    
+    try {
+      await updatePlayerConfigInLobby(lobbyId, playerId, config);
+      
+      // Update local player name if changed
+      if (config.name !== undefined) {
+        setPlayerName(config.name);
+      }
+    } catch (err) {
+      console.error('Failed to update player config:', err);
+      setError('Failed to update configuration');
+    }
+  }, [lobbyId, playerId]);
+  
+  /**
+   * Set player's ready state
+   */
+  const setPlayerReady = useCallback(async (ready) => {
+    if (!lobbyId || !playerId) return;
+    
+    try {
+      await setPlayerReadyInLobby(lobbyId, playerId, ready);
+    } catch (err) {
+      console.error('Failed to set ready state:', err);
+      setError('Failed to update ready state');
+    }
+  }, [lobbyId, playerId]);
+  
+  /**
+   * Get list of connected players from lobby data
+   */
+  const getConnectedPlayers = useCallback(() => {
+    if (!lobbyData?.players) return [];
+    return Object.values(lobbyData.players)
+      .filter(p => p.connected)
+      .sort((a, b) => a.slot - b.slot);
+  }, [lobbyData]);
+  
+  /**
    * Register dispatch function from game component
    */
   const setDispatch = useCallback((dispatch) => {
     dispatchRef.current = dispatch;
+  }, []);
+  
+  /**
+   * Register action handler for special actions (like DRAFT_PICK)
+   * Handler should return true if it processed the action
+   */
+  const setActionHandler = useCallback((handler) => {
+    actionHandlerRef.current = handler;
   }, []);
   
   // Context value
@@ -345,6 +424,7 @@ export function MultiplayerProvider({ children }) {
     connectionStatus,
     error,
     firebaseReady,
+    hostDisconnected,
     
     // Computed
     connectedPlayers: lobbyData?.players ? Object.values(lobbyData.players) : [],
@@ -355,12 +435,18 @@ export function MultiplayerProvider({ children }) {
     checkLobbyExists,
     getSlots,
     changeSlot,
+    kickPlayerFromLobby,
     startMultiplayerGame,
     syncState,
     sendAction,
     disconnect,
     setDispatch,
-    clearError: () => setError(null)
+    setActionHandler,
+    updatePlayerConfig,
+    setPlayerReady,
+    getConnectedPlayers,
+    clearError: () => setError(null),
+    clearHostDisconnected: () => setHostDisconnected(false)
   };
   
   return (

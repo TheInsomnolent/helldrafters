@@ -171,22 +171,40 @@ export const generateDraftHand = (
   lockedSlots = []
 ) => {
   if (!player) {
-    console.warn('Player not found for draft generation');
+    console.warn('[Draft] Player not found for draft generation');
     return [];
   }
+
+  console.log(`[Draft] Generating hand for player ${player.id || player.name}`, {
+    difficulty,
+    burnCards: gameConfig.burnCards,
+    burnedCardsCount: burnedCards.length,
+    lockedSlots,
+    playerInventoryCount: player.inventory?.length || 0
+  });
 
   const pool = getWeightedPool(player, difficulty, gameConfig, burnedCards, allPlayers, lockedSlots);
   const handSize = customHandSize !== null ? customHandSize : getDraftHandSize(gameConfig.starRating);
 
+  console.log(`[Draft] Pool size: ${pool.length}, Hand size: ${handSize}`);
+  
+  // Log pool composition
+  const armorCombos = pool.filter(p => p.isArmorCombo);
+  const regularItems = pool.filter(p => !p.isArmorCombo);
+  console.log(`[Draft] Pool composition: ${armorCombos.length} armor combos, ${regularItems.length} regular items`);
+
   const hand = [];
   for (let i = 0; i < handSize; i++) {
-    if (pool.length === 0) break;
+    if (pool.length === 0) {
+      console.warn(`[Draft] Pool exhausted after ${i} cards`);
+      break;
+    }
 
     const totalWeight = pool.reduce((sum, c) => sum + c.weight, 0);
 
     // Safety check: if total weight is 0, we can't select anything
     if (totalWeight === 0) {
-      console.warn('Pool has no valid weighted items');
+      console.warn('[Draft] Pool has no valid weighted items');
       break;
     }
 
@@ -197,7 +215,7 @@ export const generateDraftHand = (
       
       // Safety check: ensure pool item exists and has valid structure
       if (!poolItem) {
-        console.warn('Invalid pool item at index', j);
+        console.warn('[Draft] Invalid pool item at index', j);
         continue;
       }
 
@@ -205,8 +223,17 @@ export const generateDraftHand = (
       if (randomNum <= 0) {
         // Add either item or armor combo to hand
         if (poolItem.isArmorCombo) {
+          console.log(`[Draft] Selected armor combo: ${poolItem.armorCombo.passive} (${poolItem.armorCombo.armorClass})`, {
+            itemCount: poolItem.armorCombo.items?.length,
+            weight: poolItem.weight
+          });
           hand.push(poolItem.armorCombo);
         } else {
+          console.log(`[Draft] Selected item: ${poolItem.item?.name || 'Unknown'}`, {
+            id: poolItem.item?.id,
+            type: poolItem.item?.type,
+            weight: poolItem.weight
+          });
           hand.push(poolItem.item);
         }
         
@@ -225,6 +252,8 @@ export const generateDraftHand = (
       }
     }
   }
+  
+  console.log(`[Draft] Final hand size: ${hand.length}`, hand.map(h => h.name || `${h.passive} (${h.armorClass})`));
   
   return hand;
 };

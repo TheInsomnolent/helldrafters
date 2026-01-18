@@ -51,10 +51,11 @@ describe('Systems - Event Processor', () => {
       const outcome = { type: OUTCOME_TYPES.CHANGE_FACTION };
       const updates = processEventOutcome(outcome, {}, mockState);
       
-      // Should change to a different faction than BUGS
-      expect(updates.faction).toBeDefined();
-      expect(updates.faction).not.toBe(FACTION.BUGS);
-      expect(Object.values(FACTION)).toContain(updates.faction);
+      // Should trigger subfaction selection with a different faction than BUGS
+      expect(updates.needsSubfactionSelection).toBe(true);
+      expect(updates.pendingFaction).toBeDefined();
+      expect(updates.pendingFaction).not.toBe(FACTION.BUGS);
+      expect(Object.values(FACTION)).toContain(updates.pendingFaction);
     });
 
     it('should skip difficulty', () => {

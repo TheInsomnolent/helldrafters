@@ -87,13 +87,19 @@ export const checkLobby = async (lobbyId) => {
     
     const lobby = snapshot.val();
     
+    // Check if this is a loaded/saved game (has gameState with phase other than MENU/LOBBY)
+    const isLoadedGame = lobby.gameState && 
+      lobby.gameState.phase && 
+      !['MENU', 'LOBBY'].includes(lobby.gameState.phase);
+    
     // Return basic info without full game state (for join screen)
     return {
       id: lobby.id,
       status: lobby.status,
       config: lobby.config,
       players: lobby.players,
-      hostId: lobby.hostId
+      hostId: lobby.hostId,
+      isLoadedGame: isLoadedGame
     };
   } catch (error) {
     console.error('Error checking lobby:', error);
@@ -121,9 +127,10 @@ export const joinLobby = async (lobbyId, playerInfo, requestedSlot) => {
     
     const lobby = snapshot.val();
     
-    // Check if lobby is still in waiting state
-    if (lobby.status !== 'waiting') {
-      return { success: false, error: 'Game has already started' };
+    // Allow joining in both 'waiting' and 'in-game' states (hot-join support)
+    // Only reject if lobby is 'completed'
+    if (lobby.status === 'completed') {
+      return { success: false, error: 'Game has already completed' };
     }
     
     // Check if slot is available
@@ -189,6 +196,27 @@ export const leaveLobby = async (lobbyId, playerId) => {
     await remove(playerRef);
   } catch (error) {
     console.error('Error leaving lobby:', error);
+  }
+};
+
+/**
+ * Kick a player from the lobby (host only)
+ * This removes the player from the lobby but preserves their loadout in the game state
+ * so they can rejoin and resume their progress
+ * @param {string} lobbyId - The lobby ID
+ * @param {string} playerId - The player ID to kick
+ * @returns {Promise<Object>} Result with success status
+ */
+export const kickPlayer = async (lobbyId, playerId) => {
+  const db = getFirebaseDatabase();
+  const playerRef = ref(db, `lobbies/${lobbyId}/players/${playerId}`);
+  
+  try {
+    await remove(playerRef);
+    return { success: true };
+  } catch (error) {
+    console.error('Error kicking player:', error);
+    return { success: false, error: error.message };
   }
 };
 
@@ -320,5 +348,67 @@ export const updatePlayerConnection = async (lobbyId, playerId, connected) => {
     await set(connectedRef, connected);
   } catch (error) {
     console.error('Error updating connection status:', error);
+  }
+};
+
+/**
+ * Update player's configuration (name, warbonds, ready state, etc.)
+ * @param {string} lobbyId - The lobby ID
+ * @param {string} playerId - The player ID
+ * @param {Object} config - Configuration to update
+ * @returns {Promise<Object>} Result with success status
+ */
+export const updatePlayerConfig = async (lobbyId, playerId, config) => {
+  const db = getFirebaseDatabase();
+  
+  try {
+    // Update each config field individually to avoid overwriting other fields
+    const updates = [];
+    
+    if (config.name !== undefined) {
+      const nameRef = ref(db, `lobbies/${lobbyId}/players/${playerId}/name`);
+      updates.push(set(nameRef, config.name));
+    }
+    
+    if (config.warbonds !== undefined) {
+      const warbondsRef = ref(db, `lobbies/${lobbyId}/players/${playerId}/warbonds`);
+      updates.push(set(warbondsRef, config.warbonds));
+    }
+    
+    if (config.includeSuperstore !== undefined) {
+      const superstoreRef = ref(db, `lobbies/${lobbyId}/players/${playerId}/includeSuperstore`);
+      updates.push(set(superstoreRef, config.includeSuperstore));
+    }
+    
+    if (config.ready !== undefined) {
+      const readyRef = ref(db, `lobbies/${lobbyId}/players/${playerId}/ready`);
+      updates.push(set(readyRef, config.ready));
+    }
+    
+    await Promise.all(updates);
+    return { success: true };
+  } catch (error) {
+    console.error('Error updating player config:', error);
+    return { success: false, error: error.message };
+  }
+};
+
+/**
+ * Set player's ready state
+ * @param {string} lobbyId - The lobby ID
+ * @param {string} playerId - The player ID
+ * @param {boolean} ready - Ready state
+ * @returns {Promise<Object>} Result with success status
+ */
+export const setPlayerReady = async (lobbyId, playerId, ready) => {
+  const db = getFirebaseDatabase();
+  const readyRef = ref(db, `lobbies/${lobbyId}/players/${playerId}/ready`);
+  
+  try {
+    await set(readyRef, ready);
+    return { success: true };
+  } catch (error) {
+    console.error('Error setting ready state:', error);
+    return { success: false, error: error.message };
   }
 };

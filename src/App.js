@@ -52,13 +52,33 @@ function HelldiversRogueliteApp() {
     startMultiplayerGame,
     syncState, 
     disconnect,
-    setDispatch 
+    setDispatch,
+    hostDisconnected,
+    clearHostDisconnected,
+    playerSlot,
+    sendAction,
+    setActionHandler
   } = multiplayer;
   
   // Register dispatch with multiplayer context
   useEffect(() => {
     setDispatch(dispatch);
   }, [dispatch, setDispatch]);
+  
+  // Handle host disconnect - show game over for clients
+  useEffect(() => {
+    const currentPhase = state.phase;
+    if (hostDisconnected && !isHost && currentPhase !== 'MENU' && currentPhase !== 'GAMEOVER') {
+      // Host disconnected during an active game - show game over
+      dispatch(actions.setPhase('GAMEOVER'));
+      setMultiplayerMode(null);
+      clearHostDisconnected();
+    } else if (hostDisconnected) {
+      // Host disconnected during lobby/menu - just clear and return to menu
+      setMultiplayerMode(null);
+      clearHostDisconnected();
+    }
+  }, [hostDisconnected, isHost, state.phase, clearHostDisconnected]);
   
   // Destructure commonly used state values for easier access
   const {
@@ -93,29 +113,17 @@ function HelldiversRogueliteApp() {
   const [selectedPlayer, setSelectedPlayer] = React.useState(0); // For custom setup phase
   const [multiplayerMode, setMultiplayerMode] = React.useState(null); // null, 'select', 'host', 'join', 'waiting'
   
+  // Ref for the hidden file input
+  const fileInputRef = React.useRef(null);
+  
   // Sync state to clients when host and in multiplayer mode
   useEffect(() => {
     if (isMultiplayer && isHost && phase !== 'MENU') {
       syncState(state);
     }
   }, [isMultiplayer, isHost, state, phase, syncState]);
-  
-  // Load game state from localStorage on mount
-  useEffect(() => {
-    try {
-      const savedState = localStorage.getItem('helldraftersGameState');
-      if (savedState) {
-        const loadedState = JSON.parse(savedState);
-        if (loadedState.phase && loadedState.phase !== 'MENU') {
-          dispatch(actions.loadGameState(loadedState));
-        }
-      }
-    } catch (error) {
-      console.error('Failed to load game state:', error);
-    }
-  }, []);
 
-  // Save game state to localStorage whenever it changes
+  // Save game state to localStorage whenever it changes (for crash recovery)
   useEffect(() => {
     if (phase !== 'MENU') {
       try {
@@ -135,9 +143,7 @@ function HelldiversRogueliteApp() {
     exportGameStateToFile(state);
   };
 
-  // Import functionality removed from main menu for cleaner UI
-  // Can be re-enabled via debug menu or settings if needed
-  // eslint-disable-next-line no-unused-vars
+  // Import functionality for loading JSON save files
   const importGameState = async (event) => {
     const file = event.target.files?.[0];
     if (!file) return;
@@ -376,7 +382,7 @@ function HelldiversRogueliteApp() {
         const totalChance = Math.min(1.0, baseChance + sampleBonus);
 
         if (Math.random() < totalChance) {
-          const event = selectRandomEvent(currentDiff, players.length > 1, seenEvents);
+          const event = selectRandomEvent(currentDiff, players.length > 1, seenEvents, players);
           if (event) {
             dispatch(actions.resetSamples());
             dispatch(actions.addSeenEvent(event.id));
@@ -392,13 +398,48 @@ function HelldiversRogueliteApp() {
   };
 
   const handleSkipDraft = () => {
+    // In multiplayer as client, send action to host instead of processing locally
+    if (isMultiplayer && !isHost) {
+      sendAction({
+        type: 'SKIP_DRAFT',
+        payload: {
+          playerIndex: draftState.activePlayerIndex
+        }
+      });
+      return;
+    }
     proceedToNextDraft(players);
   };
 
   const handleDraftPick = (item) => {
     const currentPlayerIdx = draftState.activePlayerIndex;
+    
+    // In multiplayer, only the player whose turn it is can draft
+    if (isMultiplayer && playerSlot !== currentPlayerIdx) {
+      console.log('Not your turn to draft', { playerSlot, currentPlayerIdx });
+      return;
+    }
+    
+    // In multiplayer as client, send action to host instead of processing locally
+    if (isMultiplayer && !isHost) {
+      sendAction({
+        type: 'DRAFT_PICK',
+        payload: {
+          playerIndex: currentPlayerIdx,
+          item: item
+        }
+      });
+      return;
+    }
+    
     const updatedPlayers = [...players];
     const player = updatedPlayers[currentPlayerIdx];
+
+    // Guard: ensure player exists and has loadout
+    if (!player || !player.loadout) {
+      console.error('handleDraftPick: Invalid player or loadout', { currentPlayerIdx, player });
+      return;
+    }
 
     // Check if this is an armor combo
     const isArmorCombo = item && item.items && item.passive && item.armorClass;
@@ -462,6 +503,98 @@ function HelldiversRogueliteApp() {
     // Next player, extra draft, or finish
     proceedToNextDraft(updatedPlayers);
   };
+
+  // Ref to hold the draft pick handler for multiplayer (avoids stale closure issues)
+  const draftPickHandlerRef = React.useRef(null);
+  
+  // Update the ref whenever dependencies change
+  draftPickHandlerRef.current = (action) => {
+    if (action.type === 'DRAFT_PICK') {
+      const { playerIndex, item } = action.payload;
+      
+      // Process the draft pick for this player
+      const updatedPlayers = [...players];
+      const player = updatedPlayers[playerIndex];
+      
+      if (!player || !player.loadout) {
+        console.error('DRAFT_PICK: Invalid player', { playerIndex });
+        return true; // Consumed the action
+      }
+      
+      // Check if this is an armor combo
+      const isArmorCombo = item && item.items && item.passive && item.armorClass;
+
+      if (isArmorCombo) {
+        item.items.forEach(armor => {
+          player.inventory.push(armor.id);
+        });
+        player.loadout.armor = item.items[0].id;
+      } else {
+        // Special handling for stratagems when slots are full
+        if (item.type === TYPE.STRATAGEM) {
+          if (areStratagemSlotsFull(player.loadout)) {
+            // For now, just add to first slot as replacement (could be enhanced)
+            player.loadout.stratagems[0] = item.id;
+            player.inventory.push(item.id);
+            dispatch(actions.setPlayers(updatedPlayers));
+            proceedToNextDraft(updatedPlayers);
+            return true;
+          }
+        }
+
+        player.inventory.push(item.id);
+
+        // Auto-Equip Logic
+        if (item.type === TYPE.PRIMARY) player.loadout.primary = item.id;
+        if (item.type === TYPE.SECONDARY) player.loadout.secondary = item.id;
+        if (item.type === TYPE.GRENADE) player.loadout.grenade = item.id;
+        if (item.type === TYPE.ARMOR) player.loadout.armor = item.id;
+        if (item.type === TYPE.BOOSTER) player.loadout.booster = item.id;
+        if (item.type === TYPE.STRATAGEM) {
+          const emptySlot = getFirstEmptyStratagemSlot(player.loadout);
+          player.loadout.stratagems[emptySlot] = item.id;
+        }
+      }
+
+      dispatch(actions.setPlayers(updatedPlayers));
+      proceedToNextDraft(updatedPlayers);
+      return true; // Action was handled
+    }
+    
+    // Handle extraction status toggle from clients
+    if (action.type === 'SET_PLAYER_EXTRACTED') {
+      const { playerIndex, extracted } = action.payload;
+      dispatch(actions.setPlayerExtracted(playerIndex, extracted));
+      return true;
+    }
+    
+    // Handle skip draft from clients
+    if (action.type === 'SKIP_DRAFT') {
+      proceedToNextDraft(players);
+      return true;
+    }
+    
+    return false; // Action not handled
+  };
+
+  // Register action handler for multiplayer client actions (host only)
+  useEffect(() => {
+    if (isMultiplayer && isHost) {
+      setActionHandler((action) => {
+        // Use the ref to get the latest handler
+        if (draftPickHandlerRef.current) {
+          return draftPickHandlerRef.current(action);
+        }
+        return false;
+      });
+    }
+    
+    return () => {
+      if (isMultiplayer && isHost) {
+        setActionHandler(null);
+      }
+    };
+  }, [isMultiplayer, isHost, setActionHandler]);
 
   const rerollDraft = (cost) => {
     if (requisition < cost) return;
@@ -616,15 +749,42 @@ function HelldiversRogueliteApp() {
   };
 
   const ItemCard = ({ item, onSelect, onRemove }) => {
+    // Guard: if item is undefined, don't render
+    if (!item) {
+      console.log('[ItemCard] Skipping null item');
+      return null;
+    }
+    
     // Check if this is an armor combo (has 'items' array and 'passive' property)
-    const isArmorCombo = item && item.items && item.passive && item.armorClass;
+    const isArmorCombo = item.items && Array.isArray(item.items) && item.items.length > 0 && item.passive && item.armorClass;
+    
+    console.log('[ItemCard] Rendering item:', { 
+      name: item.name, 
+      id: item.id, 
+      passive: item.passive, 
+      isArmorCombo,
+      itemsLength: item.items?.length,
+      items: item.items
+    });
+    
+    // Guard: for regular items, require name; for armor combos, require items with names
+    if (!isArmorCombo && !item.name) {
+      console.log('[ItemCard] Skipping - not armor combo and no name');
+      return null;
+    }
     
     // For armor combos, use the first item as representative for display
     const displayItem = isArmorCombo ? item.items[0] : item;
     
+    // Guard: if displayItem is invalid, don't render
+    if (!displayItem || !displayItem.name) {
+      console.log('[ItemCard] Skipping - displayItem invalid:', displayItem);
+      return null;
+    }
+    
     // For armor combos, create a slash-delimited name
     const displayName = isArmorCombo 
-      ? item.items.map(armor => armor.name).join(' / ')
+      ? item.items.map(armor => armor?.name || 'Unknown').join(' / ')
       : item.name;
 
     let armorPassiveDescription = null;
@@ -717,7 +877,7 @@ function HelldiversRogueliteApp() {
           
           <div style={{ flexGrow: 1 }}>
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px', marginTop: '8px' }}>
-              {displayItem.tags.map(tag => (
+              {(displayItem.tags || []).map(tag => (
                 <span key={tag} style={{
                   fontSize: '10px',
                   backgroundColor: 'rgba(51, 65, 85, 0.5)',
@@ -1019,6 +1179,15 @@ function HelldiversRogueliteApp() {
           
           <div style={{ backgroundColor: '#283548', padding: '40px', borderRadius: '8px', border: '1px solid rgba(100, 116, 139, 0.5)' }}>
             
+            {/* Hidden file input for loading saves */}
+            <input
+              type="file"
+              ref={fileInputRef}
+              accept=".json"
+              onChange={importGameState}
+              style={{ display: 'none' }}
+            />
+            
             {/* Start Buttons */}
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
               <button 
@@ -1075,6 +1244,39 @@ function HelldiversRogueliteApp() {
               >
                 <Users size={18} />
                 Multiplayer
+              </button>
+            </div>
+            
+            {/* Load Game Button */}
+            <div style={{ marginTop: '12px' }}>
+              <button 
+                onClick={() => fileInputRef.current?.click()}
+                style={{
+                  width: '100%',
+                  padding: '12px',
+                  fontSize: '14px',
+                  letterSpacing: '0.1em',
+                  borderRadius: '4px',
+                  border: `1px solid ${COLORS.CARD_BORDER}`,
+                  backgroundColor: 'transparent',
+                  color: COLORS.TEXT_MUTED,
+                  fontWeight: '700',
+                  textTransform: 'uppercase',
+                  cursor: 'pointer',
+                  transition: 'all 0.2s'
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.borderColor = COLORS.TEXT_SECONDARY;
+                  e.currentTarget.style.color = COLORS.TEXT_SECONDARY;
+                  e.currentTarget.style.backgroundColor = 'rgba(100, 116, 139, 0.1)';
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.borderColor = COLORS.CARD_BORDER;
+                  e.currentTarget.style.color = COLORS.TEXT_MUTED;
+                  e.currentTarget.style.backgroundColor = 'transparent';
+                }}
+              >
+                Load Game
               </button>
             </div>
 
@@ -1803,6 +2005,7 @@ function HelldiversRogueliteApp() {
         players={players}
         currentDiff={currentDiff}
         requisition={requisition}
+        isHost={!isMultiplayer || isHost}
         needsPlayerChoice={needsPlayerChoice}
         canAffordChoice={canAffordChoice}
         formatOutcome={formatOutcome}
@@ -2133,6 +2336,9 @@ function HelldiversRogueliteApp() {
   if (phase === 'DRAFT') {
     const player = players[draftState.activePlayerIndex];
     
+    // In multiplayer, check if it's this player's turn to draft
+    const isMyTurn = !isMultiplayer || (playerSlot === draftState.activePlayerIndex);
+    
     return (
       <div style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column' }}>
         {/* MULTIPLAYER STATUS BAR */}
@@ -2173,33 +2379,36 @@ function HelldiversRogueliteApp() {
           >
             💾 Export
           </button>
-          <button
-            onClick={() => {
-              if (window.confirm('Are you sure you want to cancel this run? All progress will be lost.')) {
-                dispatch(actions.setPhase('MENU'));
-              }
-            }}
-            style={{
-              display: 'flex',
-              alignItems: 'center',
-              gap: '8px',
-              padding: '8px 16px',
-              backgroundColor: 'rgba(127, 29, 29, 0.3)',
-              color: '#ef4444',
-              border: '1px solid #7f1d1d',
-              borderRadius: '4px',
-              fontWeight: 'bold',
-              textTransform: 'uppercase',
-              fontSize: '12px',
-              cursor: 'pointer',
-              transition: 'all 0.2s'
-            }}
-            onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'rgba(127, 29, 29, 0.5)'}
-            onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'rgba(127, 29, 29, 0.3)'}
-          >
-            <XCircle size={16} />
-            Cancel Run
-          </button>
+          {/* Hide Cancel Run in multiplayer - use Disconnect instead */}
+          {!isMultiplayer && (
+            <button
+              onClick={() => {
+                if (window.confirm('Are you sure you want to cancel this run? All progress will be lost.')) {
+                  dispatch(actions.setPhase('MENU'));
+                }
+              }}
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '8px',
+                padding: '8px 16px',
+                backgroundColor: 'rgba(127, 29, 29, 0.3)',
+                color: '#ef4444',
+                border: '1px solid #7f1d1d',
+                borderRadius: '4px',
+                fontWeight: 'bold',
+                textTransform: 'uppercase',
+                fontSize: '12px',
+                cursor: 'pointer',
+                transition: 'all 0.2s'
+              }}
+              onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'rgba(127, 29, 29, 0.5)'}
+              onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'rgba(127, 29, 29, 0.3)'}
+            >
+              <XCircle size={16} />
+              Cancel Run
+            </button>
+          )}
         </div>
         
         {/* Stratagem Replacement Modal */}
@@ -2351,18 +2560,156 @@ function HelldiversRogueliteApp() {
             </p>
           </div>
 
+          {/* Current Loadout Overview */}
           <div style={{ 
-            display: 'grid', 
-            gridTemplateColumns: `repeat(${Math.min(draftState.roundCards.length, 4)}, 1fr)`, 
-            gap: '24px', 
-            marginBottom: '48px' 
+            backgroundColor: 'rgba(40, 53, 72, 0.5)', 
+            borderRadius: '8px', 
+            padding: '16px 24px', 
+            marginBottom: '32px',
+            border: '1px solid rgba(100, 116, 139, 0.3)'
           }}>
-            {draftState.roundCards.map((item, idx) => (
-              <ItemCard key={`${item.id}-${idx}`} item={item} onSelect={handleDraftPick} onRemove={removeCardFromDraft} />
-            ))}
+            <div style={{ 
+              fontSize: '12px', 
+              color: '#64748b', 
+              textTransform: 'uppercase', 
+              letterSpacing: '1px',
+              marginBottom: '12px'
+            }}>
+              {player.name}'s Current Loadout
+            </div>
+            <div style={{ display: 'flex', gap: '24px', flexWrap: 'wrap', justifyContent: 'center' }}>
+              {/* Stratagems */}
+              <div style={{ textAlign: 'center' }}>
+                <div style={{ fontSize: '10px', color: '#94a3b8', marginBottom: '4px' }}>Stratagems</div>
+                <div style={{ display: 'flex', gap: '6px' }}>
+                  {player.loadout.stratagems.map((sid, i) => {
+                    const strat = sid ? getItemById(sid) : null;
+                    return (
+                      <div key={i} style={{ 
+                        padding: '4px 8px', 
+                        backgroundColor: strat ? 'rgba(100, 116, 139, 0.3)' : 'rgba(100, 116, 139, 0.1)',
+                        borderRadius: '4px',
+                        fontSize: '10px',
+                        color: strat ? '#cbd5e1' : '#64748b',
+                        maxWidth: '80px',
+                        overflow: 'hidden',
+                        textOverflow: 'ellipsis',
+                        whiteSpace: 'nowrap'
+                      }} title={strat?.name || 'Empty'}>
+                        {strat?.name || '—'}
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+              
+              {/* Secondary */}
+              <div style={{ textAlign: 'center' }}>
+                <div style={{ fontSize: '10px', color: '#94a3b8', marginBottom: '4px' }}>Secondary</div>
+                <div style={{ 
+                  padding: '4px 8px', 
+                  backgroundColor: player.loadout.secondary ? 'rgba(100, 116, 139, 0.3)' : 'rgba(100, 116, 139, 0.1)',
+                  borderRadius: '4px',
+                  fontSize: '10px',
+                  color: player.loadout.secondary ? '#cbd5e1' : '#64748b'
+                }}>
+                  {player.loadout.secondary ? getItemById(player.loadout.secondary)?.name || '—' : '—'}
+                </div>
+              </div>
+              
+              {/* Throwable */}
+              <div style={{ textAlign: 'center' }}>
+                <div style={{ fontSize: '10px', color: '#94a3b8', marginBottom: '4px' }}>Throwable</div>
+                <div style={{ 
+                  padding: '4px 8px', 
+                  backgroundColor: player.loadout.throwable ? 'rgba(100, 116, 139, 0.3)' : 'rgba(100, 116, 139, 0.1)',
+                  borderRadius: '4px',
+                  fontSize: '10px',
+                  color: player.loadout.throwable ? '#cbd5e1' : '#64748b'
+                }}>
+                  {player.loadout.throwable ? getItemById(player.loadout.throwable)?.name || '—' : '—'}
+                </div>
+              </div>
+              
+              {/* Armor */}
+              <div style={{ textAlign: 'center' }}>
+                <div style={{ fontSize: '10px', color: '#94a3b8', marginBottom: '4px' }}>Armor</div>
+                <div style={{ 
+                  padding: '4px 8px', 
+                  backgroundColor: player.loadout.armor ? 'rgba(100, 116, 139, 0.3)' : 'rgba(100, 116, 139, 0.1)',
+                  borderRadius: '4px',
+                  fontSize: '10px',
+                  color: player.loadout.armor ? '#cbd5e1' : '#64748b'
+                }}>
+                  {player.loadout.armor ? getItemById(player.loadout.armor)?.name || '—' : '—'}
+                </div>
+              </div>
+              
+              {/* Booster */}
+              {player.loadout.booster && (
+                <div style={{ textAlign: 'center' }}>
+                  <div style={{ fontSize: '10px', color: '#94a3b8', marginBottom: '4px' }}>Booster</div>
+                  <div style={{ 
+                    padding: '4px 8px', 
+                    backgroundColor: 'rgba(34, 197, 94, 0.2)',
+                    borderRadius: '4px',
+                    fontSize: '10px',
+                    color: '#22c55e'
+                  }}>
+                    {getItemById(player.loadout.booster)?.name || '—'}
+                  </div>
+                </div>
+              )}
+            </div>
           </div>
 
-          <div style={{ display: 'flex', justifyContent: 'center', gap: '24px' }}>
+          {/* Filter out any null/undefined items that may have been stripped during sync */}
+          {(() => {
+            const validCards = (draftState.roundCards || []).filter(item => item && (item.id || item.name || item.passive));
+            console.log('[Draft Render] Round cards:', draftState.roundCards);
+            console.log('[Draft Render] Valid cards:', validCards);
+            return (
+              <div style={{ 
+                display: 'grid', 
+                gridTemplateColumns: `repeat(${Math.min(validCards.length, 4)}, 1fr)`, 
+                gap: '24px', 
+                marginBottom: '48px',
+                opacity: isMyTurn ? 1 : 0.6,
+                pointerEvents: isMyTurn ? 'auto' : 'none'
+              }}>
+                {validCards.map((item, idx) => (
+                  <ItemCard 
+                    key={`${item.id || item.name || item.passive}-${idx}`} 
+                    item={item} 
+                    onSelect={isMyTurn ? handleDraftPick : null} 
+                    onRemove={isMyTurn ? removeCardFromDraft : null} 
+                  />
+                ))}
+              </div>
+            );
+          })()}
+
+          {/* Not your turn message */}
+          {!isMyTurn && (
+            <div style={{ 
+              textAlign: 'center', 
+              marginBottom: '32px',
+              padding: '16px 32px',
+              backgroundColor: 'rgba(100, 116, 139, 0.2)',
+              border: '2px solid rgba(100, 116, 139, 0.4)',
+              borderRadius: '8px',
+              display: 'inline-block',
+              margin: '0 auto 32px auto'
+            }}>
+              <div style={{ color: '#94a3b8', fontSize: '16px', fontWeight: 'bold', textTransform: 'uppercase' }}>
+                Waiting for {player.name} to draft...
+              </div>
+            </div>
+          )}
+
+          {/* Only show draft controls if it's your turn */}
+          {isMyTurn && (<>
+            <div style={{ display: 'flex', justifyContent: 'center', gap: '24px' }}>
             <button 
               onClick={() => rerollDraft(1)}
               disabled={requisition < 1}
@@ -2415,12 +2762,13 @@ function HelldiversRogueliteApp() {
             </button>
           </div>
           
-          <div style={{ marginTop: '16px', textAlign: 'center' }}>
-            <p style={{ color: '#64748b', fontSize: '12px', margin: '0' }}>
-              Click the × on a card to remove just that card (free)<br/>
-              Or use "Reroll All Cards" to reroll the entire hand
-            </p>
-          </div>
+            <div style={{ marginTop: '16px', textAlign: 'center' }}>
+              <p style={{ color: '#64748b', fontSize: '12px', margin: '0' }}>
+                Click the × on a card to remove just that card (free)<br/>
+                Or use "Reroll All Cards" to reroll the entire hand
+              </p>
+            </div>
+          </>)}
           
           <div style={{ marginTop: '32px', textAlign: 'center' }}>
             <span style={{ color: factionColors.PRIMARY, fontFamily: 'monospace' }}>Current Requisition: {requisition} R</span>
@@ -2483,15 +2831,16 @@ function HelldiversRogueliteApp() {
             <h2 style={{ fontSize: '20px', fontWeight: 'bold', color: 'white', textTransform: 'uppercase', marginBottom: '24px' }}>Mission Status Report</h2>
             
             {/* Star Rating Selection */}
-            <div style={{ marginBottom: '32px' }}>
+            <div style={{ marginBottom: '32px', opacity: (!isMultiplayer || isHost) ? 1 : 0.6 }}>
               <label style={{ display: 'block', fontSize: '12px', fontWeight: 'bold', color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.15em', marginBottom: '16px' }}>
                 Mission Performance Rating
               </label>
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(6, 1fr)', gap: '12px', marginBottom: '12px' }}>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(6, 1fr)', gap: '12px', marginBottom: '12px', pointerEvents: (!isMultiplayer || isHost) ? 'auto' : 'none' }}>
                 {[1, 2, 3, 4, 5, 6].map(n => (
                   <button 
                     key={n}
                     onClick={() => dispatch(actions.updateGameConfig({ starRating: n }))}
+                    disabled={isMultiplayer && !isHost}
                     style={{
                       padding: '16px 8px',
                       borderRadius: '4px',
@@ -2505,15 +2854,15 @@ function HelldiversRogueliteApp() {
                       backgroundColor: gameConfig.starRating === n ? factionColors.PRIMARY : 'transparent',
                       color: gameConfig.starRating === n ? 'black' : '#64748b',
                       border: gameConfig.starRating === n ? `2px solid ${factionColors.PRIMARY}` : '1px solid rgba(100, 116, 139, 0.5)',
-                      cursor: 'pointer'
+                      cursor: (!isMultiplayer || isHost) ? 'pointer' : 'not-allowed'
                     }}
                     onMouseEnter={(e) => {
-                      if (gameConfig.starRating !== n) {
+                      if (gameConfig.starRating !== n && (!isMultiplayer || isHost)) {
                         e.currentTarget.style.borderColor = '#64748b';
                       }
                     }}
                     onMouseLeave={(e) => {
-                      if (gameConfig.starRating !== n) {
+                      if (gameConfig.starRating !== n && (!isMultiplayer || isHost)) {
                         e.currentTarget.style.borderColor = 'rgba(100, 116, 139, 0.5)';
                       }
                     }}
@@ -2529,9 +2878,9 @@ function HelldiversRogueliteApp() {
             </div>
             
             {/* Samples Collected */}
-            <div style={{ marginBottom: '32px' }}>
+            <div style={{ marginBottom: '32px', opacity: (!isMultiplayer || isHost) ? 1 : 0.6 }}>
               <label style={{ display: 'block', fontSize: '12px', fontWeight: 'bold', color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.15em', marginBottom: '12px' }}>
-                Samples Collected This Mission
+                Samples Collected This Mission {isMultiplayer && !isHost && <span style={{ fontSize: '10px', color: '#64748b', fontWeight: 'normal' }}>(Host only)</span>}
               </label>
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '16px', marginBottom: '8px' }}>
                 {/* Common Samples */}
@@ -2552,6 +2901,7 @@ function HelldiversRogueliteApp() {
                     max="999"
                     defaultValue="0"
                     id="commonSamples"
+                    disabled={isMultiplayer && !isHost}
                     style={{
                       width: '100%',
                       padding: '12px',
@@ -2562,7 +2912,8 @@ function HelldiversRogueliteApp() {
                       fontSize: '16px',
                       fontWeight: 'bold',
                       textAlign: 'center',
-                      fontFamily: 'monospace'
+                      fontFamily: 'monospace',
+                      cursor: (!isMultiplayer || isHost) ? 'text' : 'not-allowed'
                     }}
                   />
                   <div style={{ fontSize: '10px', color: '#64748b', marginTop: '4px', fontStyle: 'italic' }}>
@@ -2588,6 +2939,7 @@ function HelldiversRogueliteApp() {
                     max="999"
                     defaultValue="0"
                     id="rareSamples"
+                    disabled={isMultiplayer && !isHost}
                     style={{
                       width: '100%',
                       padding: '12px',
@@ -2598,7 +2950,8 @@ function HelldiversRogueliteApp() {
                       fontSize: '16px',
                       fontWeight: 'bold',
                       textAlign: 'center',
-                      fontFamily: 'monospace'
+                      fontFamily: 'monospace',
+                      cursor: (!isMultiplayer || isHost) ? 'text' : 'not-allowed'
                     }}
                   />
                   <div style={{ fontSize: '10px', color: '#64748b', marginTop: '4px', fontStyle: 'italic' }}>
@@ -2624,6 +2977,7 @@ function HelldiversRogueliteApp() {
                     max="999"
                     defaultValue="0"
                     id="superRareSamples"
+                    disabled={isMultiplayer && !isHost}
                     style={{
                       width: '100%',
                       padding: '12px',
@@ -2634,7 +2988,8 @@ function HelldiversRogueliteApp() {
                       fontSize: '16px',
                       fontWeight: 'bold',
                       textAlign: 'center',
-                      fontFamily: 'monospace'
+                      fontFamily: 'monospace',
+                      cursor: (!isMultiplayer || isHost) ? 'text' : 'not-allowed'
                     }}
                   />
                   <div style={{ fontSize: '10px', color: '#64748b', marginTop: '4px', fontStyle: 'italic' }}>
@@ -2653,44 +3008,65 @@ function HelldiversRogueliteApp() {
                 Extraction Status
               </label>
               <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                {players.map((player, idx) => (
-                  <label 
-                    key={player.id} 
-                    style={{ 
-                      display: 'flex', 
-                      alignItems: 'center', 
-                      gap: '12px', 
-                      cursor: 'pointer', 
-                      padding: '10px 16px', 
-                      backgroundColor: player.extracted ? 'rgba(34, 197, 94, 0.1)' : 'rgba(239, 68, 68, 0.1)', 
-                      borderRadius: '4px', 
-                      border: `1px solid ${player.extracted ? '#22c55e' : '#ef4444'}`,
-                      transition: 'all 0.2s'
-                    }}
-                  >
-                    <input 
-                      type="checkbox" 
-                      checked={player.extracted !== false}
-                      onChange={(e) => dispatch(actions.setPlayerExtracted(idx, e.target.checked))}
-                      style={{ width: '18px', height: '18px', cursor: 'pointer' }}
-                    />
-                    <div style={{ flex: 1, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                      <span style={{ color: player.extracted ? '#22c55e' : '#ef4444', fontWeight: 'bold', fontSize: '14px' }}>
-                        {player.name} extracted
-                      </span>
-                      {!player.extracted && gameConfig.brutalityMode && (
-                        <span style={{ fontSize: '11px', color: '#ef4444', fontStyle: 'italic' }}>
-                          Must sacrifice item
+                {players.map((player, idx) => {
+                  // In multiplayer, clients can only toggle their own extraction status
+                  const canToggle = !isMultiplayer || isHost || idx === playerSlot;
+                  
+                  const handleExtractionChange = (checked) => {
+                    if (!canToggle) return;
+                    
+                    // In multiplayer as client, send action to host
+                    if (isMultiplayer && !isHost) {
+                      sendAction({
+                        type: 'SET_PLAYER_EXTRACTED',
+                        payload: { playerIndex: idx, extracted: checked }
+                      });
+                    } else {
+                      dispatch(actions.setPlayerExtracted(idx, checked));
+                    }
+                  };
+                  
+                  return (
+                    <label 
+                      key={player.id} 
+                      style={{ 
+                        display: 'flex', 
+                        alignItems: 'center', 
+                        gap: '12px', 
+                        cursor: canToggle ? 'pointer' : 'not-allowed', 
+                        padding: '10px 16px', 
+                        backgroundColor: player.extracted ? 'rgba(34, 197, 94, 0.1)' : 'rgba(239, 68, 68, 0.1)', 
+                        borderRadius: '4px', 
+                        border: `1px solid ${player.extracted ? '#22c55e' : '#ef4444'}`,
+                        transition: 'all 0.2s',
+                        opacity: canToggle ? 1 : 0.7
+                      }}
+                    >
+                      <input 
+                        type="checkbox" 
+                        checked={player.extracted !== false}
+                        onChange={(e) => handleExtractionChange(e.target.checked)}
+                        disabled={!canToggle}
+                        style={{ width: '18px', height: '18px', cursor: canToggle ? 'pointer' : 'not-allowed' }}
+                      />
+                      <div style={{ flex: 1, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                        <span style={{ color: player.extracted ? '#22c55e' : '#ef4444', fontWeight: 'bold', fontSize: '14px' }}>
+                          {player.name} extracted
                         </span>
-                      )}
-                      {!player.extracted && !gameConfig.brutalityMode && players.every(p => !p.extracted) && (
-                        <span style={{ fontSize: '11px', color: '#ef4444', fontStyle: 'italic' }}>
-                          TPK - Must sacrifice item
-                        </span>
-                      )}
-                    </div>
-                  </label>
-                ))}
+                        {!player.extracted && gameConfig.brutalityMode && (
+                          <span style={{ fontSize: '11px', color: '#ef4444', fontStyle: 'italic' }}>
+                            Must sacrifice item
+                          </span>
+                        )}
+                        {!player.extracted && !gameConfig.brutalityMode && players.every(p => !p.extracted) && (
+                          <span style={{ fontSize: '11px', color: '#ef4444', fontStyle: 'italic' }}>
+                            TPK - Must sacrifice item
+                          </span>
+                        )}
+                      </div>
+                    </label>
+                  );
+                })}
               </div>
               <p style={{ fontSize: '11px', color: '#94a3b8', fontStyle: 'italic', margin: '8px 0 0 0', textAlign: 'center' }}>
                 {gameConfig.brutalityMode 
@@ -2699,36 +3075,39 @@ function HelldiversRogueliteApp() {
               </p>
             </div>
             
-            <div style={{ display: 'flex', gap: '16px', justifyContent: 'center' }}>
-              <button 
-                onClick={() => {
-                   if (window.confirm('Mission Failed? This will end your run permanently. Are you sure?')) {
-                     dispatch(actions.setPhase('GAMEOVER'));
-                   }
-                }}
-                style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '8px',
-                  padding: '16px 24px',
-                  backgroundColor: 'rgba(127, 29, 29, 0.3)',
-                  color: '#ef4444',
-                  border: '1px solid #7f1d1d',
-                  borderRadius: '4px',
-                  fontWeight: 'bold',
-                  textTransform: 'uppercase',
-                  cursor: 'pointer',
-                  transition: 'all 0.2s'
-                }}
-                onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'rgba(127, 29, 29, 0.5)'}
-                onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'rgba(127, 29, 29, 0.3)'}
-              >
-                <XCircle />
-                Mission Failed
-              </button>
+            {/* Mission outcome buttons - only host can control in multiplayer */}
+            {(!isMultiplayer || isHost) ? (
+              <>
+                <div style={{ display: 'flex', gap: '16px', justifyContent: 'center' }}>
+                  <button 
+                    onClick={() => {
+                       if (window.confirm('Mission Failed? This will end your run permanently. Are you sure?')) {
+                         dispatch(actions.setPhase('GAMEOVER'));
+                       }
+                    }}
+                    style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '8px',
+                      padding: '16px 24px',
+                      backgroundColor: 'rgba(127, 29, 29, 0.3)',
+                      color: '#ef4444',
+                      border: '1px solid #7f1d1d',
+                      borderRadius: '4px',
+                      fontWeight: 'bold',
+                      textTransform: 'uppercase',
+                      cursor: 'pointer',
+                      transition: 'all 0.2s'
+                    }}
+                    onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'rgba(127, 29, 29, 0.5)'}
+                    onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'rgba(127, 29, 29, 0.3)'}
+                  >
+                    <XCircle />
+                    Mission Failed
+                  </button>
 
-              <button 
-                onClick={() => {
+                  <button 
+                    onClick={() => {
                   // Collect samples from input fields
                   const commonSamples = parseInt(document.getElementById('commonSamples')?.value || '0', 10);
                   const rareSamples = parseInt(document.getElementById('rareSamples')?.value || '0', 10);
@@ -2820,12 +3199,23 @@ function HelldiversRogueliteApp() {
                 <CheckCircle />
                 Mission Success
               </button>
-            </div>
+                </div>
             
-            <p style={{ marginTop: '16px', fontSize: '12px', color: '#64748b', fontFamily: 'monospace', margin: '16px 0 0 0' }}>
-              Report success to earn Requisition & proceed to draft.
-              <br/>Reporting failure consumes 1 Life.
-            </p>
+                <p style={{ marginTop: '16px', fontSize: '12px', color: '#64748b', fontFamily: 'monospace', margin: '16px 0 0 0' }}>
+                  Report success to earn Requisition & proceed to draft.
+                  <br/>Reporting failure consumes 1 Life.
+                </p>
+              </>
+            ) : (
+              <div style={{ textAlign: 'center', padding: '24px', backgroundColor: 'rgba(100, 116, 139, 0.1)', borderRadius: '8px', border: '1px solid rgba(100, 116, 139, 0.3)' }}>
+                <p style={{ color: '#94a3b8', margin: 0 }}>
+                  ⏳ Waiting for host to report mission outcome...
+                </p>
+                <p style={{ color: '#64748b', fontSize: '12px', marginTop: '8px' }}>
+                  Toggle your extraction status above while waiting.
+                </p>
+              </div>
+            )}
           </div>
 
           {/* Debug Events Mode UI */}

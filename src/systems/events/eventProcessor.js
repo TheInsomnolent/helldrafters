@@ -980,9 +980,22 @@ export const formatOutcomes = (outcomes) => {
  * @returns {boolean} True if player choice is needed
  */
 export const needsPlayerChoice = (event) => {
-  return event.targetPlayer === 'single' && 
-    event.choices && 
-    event.choices.some(c => c.outcomes.some(o => o.targetPlayer === 'choose'));
+  if (!event || event.targetPlayer !== 'single' || !event.choices) {
+    return false;
+  }
+  
+  return event.choices.some(c => {
+    if (!c.outcomes || !Array.isArray(c.outcomes)) return false;
+    return c.outcomes.some(o => {
+      // Direct targetPlayer: 'choose'
+      if (o.targetPlayer === 'choose') return true;
+      // Check nested possibleOutcomes for RANDOM_OUTCOME
+      if (o.possibleOutcomes && Array.isArray(o.possibleOutcomes)) {
+        return o.possibleOutcomes.some(po => po.targetPlayer === 'choose');
+      }
+      return false;
+    });
+  });
 };
 
 /**

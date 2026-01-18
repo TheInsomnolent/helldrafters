@@ -44,6 +44,7 @@ export const UPDATE_DRAFT_STATE = 'UPDATE_DRAFT_STATE';
 export const SET_DRAFT_CARDS = 'SET_DRAFT_CARDS';
 export const SET_ACTIVE_PLAYER_INDEX = 'SET_ACTIVE_PLAYER_INDEX';
 export const SET_PENDING_STRATAGEM = 'SET_PENDING_STRATAGEM';
+export const DRAFT_PICK = 'DRAFT_PICK'; // Multiplayer action for client draft picks
 
 // Sacrifice state
 export const SET_SACRIFICE_STATE = 'SET_SACRIFICE_STATE';

@@ -57,6 +57,9 @@ export const validateLoadoutForDifficulty = (loadout, inventory, difficultyConfi
  * @returns {number} Index of first empty slot, or -1 if all full
  */
 export const getFirstEmptyStratagemSlot = (loadout) => {
+  if (!loadout || !loadout.stratagems || !Array.isArray(loadout.stratagems)) {
+    return -1;
+  }
   return loadout.stratagems.indexOf(null);
 };
 
@@ -66,6 +69,9 @@ export const getFirstEmptyStratagemSlot = (loadout) => {
  * @returns {boolean} True if all stratagem slots are occupied
  */
 export const areStratagemSlotsFull = (loadout) => {
+  if (!loadout || !loadout.stratagems || !Array.isArray(loadout.stratagems)) {
+    return true; // Treat invalid loadout as full to prevent errors
+  }
   return getFirstEmptyStratagemSlot(loadout) === -1;
 };
 
@@ -75,6 +81,9 @@ export const areStratagemSlotsFull = (loadout) => {
  * @returns {number} Number of occupied stratagem slots
  */
 export const countOccupiedStratagemSlots = (loadout) => {
+  if (!loadout || !loadout.stratagems || !Array.isArray(loadout.stratagems)) {
+    return 0;
+  }
   return loadout.stratagems.filter(s => s !== null).length;
 };
 
