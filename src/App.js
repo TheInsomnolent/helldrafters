@@ -24,6 +24,7 @@ import { MultiplayerModeSelect, JoinGameScreen, MultiplayerWaitingRoom, Multipla
 import { MultiplayerProvider, useMultiplayer } from './systems/multiplayer';
 import { gameReducer, initialState } from './state/gameReducer';
 import * as actions from './state/actions';
+import * as types from './state/actionTypes';
 import { COLORS, SHADOWS, BUTTON_STYLES, GRADIENTS, getFactionColors } from './constants/theme';
 import { getWarbondById } from './constants/warbonds';
 
@@ -442,7 +443,7 @@ function HelldiversRogueliteApp() {
     // In multiplayer as client, send action to host instead of processing locally
     if (isMultiplayer && !isHost) {
       sendAction({
-        type: 'DRAFT_PICK',
+        type: types.DRAFT_PICK,
         payload: {
           playerIndex: currentPlayerIdx,
           item: item
@@ -507,9 +508,34 @@ function HelldiversRogueliteApp() {
 
   const handleStratagemReplacement = (slotIndex) => {
     const currentPlayerIdx = draftState.activePlayerIndex;
+    
+    // In multiplayer, only the player whose turn it is can select replacement
+    if (isMultiplayer && playerSlot !== currentPlayerIdx) {
+      console.warn('Not your turn to select replacement', { playerSlot, currentPlayerIdx });
+      return;
+    }
+    
+    // In multiplayer as client, send action to host instead of processing locally
+    if (isMultiplayer && !isHost) {
+      sendAction({
+        type: types.STRATAGEM_REPLACEMENT,
+        payload: {
+          playerIndex: currentPlayerIdx,
+          slotIndex: slotIndex
+        }
+      });
+      return;
+    }
+    
     const updatedPlayers = [...players];
     const player = updatedPlayers[currentPlayerIdx];
     const item = draftState.pendingStratagem;
+    
+    // Guard: ensure we have a pending stratagem
+    if (!item) {
+      console.error('handleStratagemReplacement: No pending stratagem', { currentPlayerIdx, slotIndex });
+      return;
+    }
 
     // Add to inventory
     player.inventory.push(item.id);
@@ -518,6 +544,7 @@ function HelldiversRogueliteApp() {
     player.loadout.stratagems[slotIndex] = item.id;
     
     dispatch(actions.setPlayers(updatedPlayers));
+    dispatch(actions.updateDraftState({ pendingStratagem: null }));
 
     // Next player, extra draft, or finish
     proceedToNextDraft(updatedPlayers);
@@ -528,7 +555,7 @@ function HelldiversRogueliteApp() {
   
   // Update the ref whenever dependencies change
   draftPickHandlerRef.current = (action) => {
-    if (action.type === 'DRAFT_PICK') {
+    if (action.type === types.DRAFT_PICK) {
       const { playerIndex, item } = action.payload;
       
       // Process the draft pick for this player
@@ -552,12 +579,11 @@ function HelldiversRogueliteApp() {
         // Special handling for stratagems when slots are full
         if (item.type === TYPE.STRATAGEM) {
           if (areStratagemSlotsFull(player.loadout)) {
-            // For now, just add to first slot as replacement (could be enhanced)
-            player.loadout.stratagems[0] = item.id;
-            player.inventory.push(item.id);
-            dispatch(actions.setPlayers(updatedPlayers));
-            proceedToNextDraft(updatedPlayers);
-            return true;
+            // Set pending stratagem to trigger modal for player to choose which slot to replace
+            dispatch(actions.updateDraftState({
+              pendingStratagem: item
+            }));
+            return true; // Action was handled, wait for STRATAGEM_REPLACEMENT action
           }
         }
 
@@ -580,8 +606,39 @@ function HelldiversRogueliteApp() {
       return true; // Action was handled
     }
     
+    // Handle stratagem replacement from clients
+    if (action.type === types.STRATAGEM_REPLACEMENT) {
+      const { playerIndex, slotIndex } = action.payload;
+      const updatedPlayers = [...players];
+      const player = updatedPlayers[playerIndex];
+      
+      if (!player || !player?.loadout || !draftState.pendingStratagem) {
+        console.error('STRATAGEM_REPLACEMENT: Invalid state', { 
+          playerIndex, 
+          slotIndex, 
+          hasPlayer: !!player, 
+          hasLoadout: !!player?.loadout,
+          hasPendingStratagem: !!draftState.pendingStratagem
+        });
+        return true;
+      }
+      
+      const item = draftState.pendingStratagem;
+      
+      // Add to inventory
+      player.inventory.push(item.id);
+      
+      // Replace the selected slot
+      player.loadout.stratagems[slotIndex] = item.id;
+      
+      dispatch(actions.setPlayers(updatedPlayers));
+      dispatch(actions.updateDraftState({ pendingStratagem: null }));
+      proceedToNextDraft(updatedPlayers);
+      return true;
+    }
+    
     // Handle extraction status toggle from clients
-    if (action.type === 'SET_PLAYER_EXTRACTED') {
+    if (action.type === types.SET_PLAYER_EXTRACTED) {
       const { playerIndex, extracted } = action.payload;
       dispatch(actions.setPlayerExtracted(playerIndex, extracted));
       return true;
