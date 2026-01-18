@@ -101,6 +101,7 @@ function HelldiversRogueliteApp() {
     eventBoosterSelection,
     eventSpecialDraft,
     eventSpecialDraftType,
+    eventSpecialDraftSelections,
     pendingFaction,
     pendingSubfactionSelection,
     seenEvents
@@ -565,6 +566,13 @@ function HelldiversRogueliteApp() {
     if (action.type === 'SET_PLAYER_EXTRACTED') {
       const { playerIndex, extracted } = action.payload;
       dispatch(actions.setPlayerExtracted(playerIndex, extracted));
+      return true;
+    }
+    
+    // Handle special draft selection from clients (e.g., Mobility Training Initiative)
+    if (action.type === 'EVENT_SPECIAL_DRAFT_SELECTION') {
+      const { playerIndex, itemId } = action.payload;
+      dispatch(actions.setEventSpecialDraftSelection(playerIndex, itemId));
       return true;
     }
     
@@ -1893,16 +1901,16 @@ function HelldiversRogueliteApp() {
       
       // Handle special draft completion (all players have selected)
       if (eventSpecialDraft && eventSpecialDraftType) {
-        // Check if all players have their selections stored
-        const allPlayersSelected = window.__specialDraftSelections && 
-                                   window.__specialDraftSelections.length === players.length;
+        // Check if all players have their selections stored in redux state
+        const allPlayersSelected = eventSpecialDraftSelections && 
+                                   Object.keys(eventSpecialDraftSelections).length === players.length;
         
         if (allPlayersSelected) {
           const newPlayers = [...players];
-          const selections = window.__specialDraftSelections;
           
           // Apply selections and burn cards
-          selections.forEach((itemId, playerIndex) => {
+          Object.entries(eventSpecialDraftSelections).forEach(([playerIndexStr, itemId]) => {
+            const playerIndex = parseInt(playerIndexStr, 10);
             if (eventSpecialDraftType === 'throwable') {
               newPlayers[playerIndex].loadout.grenade = itemId;
             } else if (eventSpecialDraftType === 'secondary') {
@@ -1918,7 +1926,6 @@ function HelldiversRogueliteApp() {
           dispatch(actions.setPlayers(newPlayers));
           
           // Clean up
-          window.__specialDraftSelections = null;
           dispatch(actions.setCurrentEvent(null));
           dispatch(actions.setEventPlayerChoice(null));
           dispatch(actions.resetEventSelections());
@@ -2000,12 +2007,15 @@ function HelldiversRogueliteApp() {
         eventBoosterSelection={eventBoosterSelection}
         eventSpecialDraft={eventSpecialDraft}
         eventSpecialDraftType={eventSpecialDraftType}
+        eventSpecialDraftSelections={eventSpecialDraftSelections || {}}
         pendingFaction={pendingFaction}
         pendingSubfactionSelection={pendingSubfactionSelection}
         players={players}
         currentDiff={currentDiff}
         requisition={requisition}
         isHost={!isMultiplayer || isHost}
+        isMultiplayer={isMultiplayer}
+        playerSlot={playerSlot}
         needsPlayerChoice={needsPlayerChoice}
         canAffordChoice={canAffordChoice}
         formatOutcome={formatOutcome}
@@ -2031,11 +2041,16 @@ function HelldiversRogueliteApp() {
           dispatch(actions.setPhase('DASHBOARD'));
         }}
         onSpecialDraftSelection={(playerIndex, itemId) => {
-          // Store selection for this player
-          if (!window.__specialDraftSelections) {
-            window.__specialDraftSelections = new Array(players.length).fill(null);
+          // In multiplayer as client, send action to host
+          if (isMultiplayer && !isHost) {
+            sendAction({
+              type: 'EVENT_SPECIAL_DRAFT_SELECTION',
+              payload: { playerIndex, itemId }
+            });
+          } else {
+            // Host or solo: update redux state directly
+            dispatch(actions.setEventSpecialDraftSelection(playerIndex, itemId));
           }
-          window.__specialDraftSelections[playerIndex] = itemId;
         }}
         onConfirmSelections={handleEventChoice}
       />

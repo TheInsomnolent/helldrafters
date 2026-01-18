@@ -14,6 +14,8 @@ export default function EventDisplay({
   currentDiff,
   requisition,
   isHost = true,
+  isMultiplayer = false,
+  playerSlot = null,
   needsPlayerChoice,
   canAffordChoice,
   formatOutcome,
@@ -28,6 +30,7 @@ export default function EventDisplay({
   eventBoosterSelection,
   eventSpecialDraft,
   eventSpecialDraftType,
+  eventSpecialDraftSelections = {},
   pendingFaction,
   pendingSubfactionSelection,
   onStratagemSelection,
@@ -72,9 +75,6 @@ export default function EventDisplay({
 
   // Track which choice was selected and needs selections
   const [selectedChoice, setSelectedChoice] = useState(null);
-  
-  // Track player selections for special draft
-  const [playerSelections, setPlayerSelections] = useState({});
 
   const handleChoiceClick = (choice) => {
     if (needsSelectionDialogue(choice)) {
@@ -756,89 +756,174 @@ export default function EventDisplay({
                   marginBottom: '16px'
                 }}>
                   <div style={{ fontSize: '18px', marginBottom: '24px', color: '#F5C642', textAlign: 'center' }}>
-                    All Helldivers Select: {eventSpecialDraftType === 'throwable' ? 'Throwable' : 'Secondary Weapon'}
+                    {isMultiplayer 
+                      ? `Select Your ${eventSpecialDraftType === 'throwable' ? 'Grenade' : 'Secondary Weapon'}`
+                      : `All Helldivers Select: ${eventSpecialDraftType === 'throwable' ? 'Throwable' : 'Secondary Weapon'}`
+                    }
                   </div>
 
                   {/* Selection for each player */}
-                  {players.map((player, playerIndex) => (
-                    <div key={playerIndex} style={{ marginBottom: '24px', padding: '16px', backgroundColor: '#283548', borderRadius: '8px' }}>
-                      <div style={{ fontSize: '16px', marginBottom: '12px', color: '#F5C642', fontWeight: 'bold' }}>
-                        Helldiver {playerIndex + 1}
+                  {players.map((player, playerIndex) => {
+                    // In multiplayer, players can only select for themselves
+                    const canSelect = !isMultiplayer || playerSlot === playerIndex;
+                    const isMySelection = playerSlot === playerIndex;
+                    const hasSelected = eventSpecialDraftSelections[playerIndex] !== undefined;
+                    
+                    return (
+                      <div 
+                        key={playerIndex} 
+                        style={{ 
+                          marginBottom: '24px', 
+                          padding: '16px', 
+                          backgroundColor: isMultiplayer && isMySelection ? '#2d3f54' : '#283548', 
+                          borderRadius: '8px',
+                          border: isMultiplayer && isMySelection ? '2px solid #F5C642' : '2px solid transparent',
+                          opacity: canSelect || hasSelected ? 1 : 0.7
+                        }}
+                      >
+                        <div style={{ 
+                          fontSize: '16px', 
+                          marginBottom: '12px', 
+                          color: '#F5C642', 
+                          fontWeight: 'bold',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'space-between'
+                        }}>
+                          <span>
+                            {player.name}
+                            {isMultiplayer && isMySelection && <span style={{ fontSize: '12px', marginLeft: '8px', color: '#4ade80' }}>(You)</span>}
+                          </span>
+                          {hasSelected && (
+                            <span style={{ fontSize: '12px', color: '#4ade80', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                              ✓ Selected
+                            </span>
+                          )}
+                        </div>
+                        
+                        {/* Show buttons only if player can select (not multiplayer, or is own slot) */}
+                        {canSelect ? (
+                          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '8px' }}>
+                            {eventSpecialDraft.map((item) => {
+                              const isSelected = eventSpecialDraftSelections[playerIndex] === item.id;
+                              return (
+                                <button
+                                  key={item.id}
+                                  onClick={() => {
+                                    onSpecialDraftSelection(playerIndex, item.id);
+                                  }}
+                                  style={{
+                                    padding: '12px',
+                                    fontSize: '14px',
+                                    backgroundColor: isSelected ? '#F5C642' : '#1f2937',
+                                    color: isSelected ? '#0f1419' : '#e0e0e0',
+                                    border: '2px solid ' + (isSelected ? '#F5C642' : '#555'),
+                                    borderRadius: '4px',
+                                    cursor: 'pointer',
+                                    fontWeight: isSelected ? 'bold' : 'normal',
+                                    transition: 'all 0.2s',
+                                    textAlign: 'center'
+                                  }}
+                                  onMouseEnter={(e) => {
+                                    if (!isSelected) {
+                                      e.target.style.backgroundColor = '#374151';
+                                      e.target.style.borderColor = '#F5C642';
+                                    }
+                                  }}
+                                  onMouseLeave={(e) => {
+                                    if (!isSelected) {
+                                      e.target.style.backgroundColor = '#1f2937';
+                                      e.target.style.borderColor = '#555';
+                                    }
+                                  }}
+                                >
+                                  {item.name}
+                                </button>
+                              );
+                            })}
+                          </div>
+                        ) : (
+                          // Show what the player selected, or waiting message
+                          <div style={{ 
+                            padding: '12px', 
+                            backgroundColor: '#1f2937', 
+                            borderRadius: '4px',
+                            textAlign: 'center',
+                            color: hasSelected ? '#4ade80' : '#94a3b8'
+                          }}>
+                            {hasSelected 
+                              ? `Selected: ${eventSpecialDraft.find(i => i.id === eventSpecialDraftSelections[playerIndex])?.name || 'Unknown'}`
+                              : 'Waiting for selection...'
+                            }
+                          </div>
+                        )}
                       </div>
-                      
-                      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '8px' }}>
-                        {eventSpecialDraft.map((item) => {
-                          const isSelected = playerSelections[playerIndex] === item.id;
-                          return (
+                    );
+                  })}
+
+                  {/* Selection Progress & Confirm Button */}
+                  {(() => {
+                    const selectedCount = Object.keys(eventSpecialDraftSelections).length;
+                    const allSelected = selectedCount >= players.length;
+                    
+                    return (
+                      <>
+                        {/* Progress indicator */}
+                        {isMultiplayer && (
+                          <div style={{ textAlign: 'center', marginBottom: '16px', color: '#94a3b8', fontSize: '14px' }}>
+                            {selectedCount} of {players.length} Helldivers have selected
+                          </div>
+                        )}
+                        
+                        {/* Confirm Button - only host can confirm, and only when all selected */}
+                        <div style={{ display: 'flex', gap: '12px', justifyContent: 'center', marginTop: '24px' }}>
+                          {isHost ? (
                             <button
-                              key={item.id}
-                              onClick={() => {
-                                setPlayerSelections(prev => ({ ...prev, [playerIndex]: item.id }));
-                                onSpecialDraftSelection(playerIndex, item.id);
-                              }}
+                              onClick={onAutoContinue}
+                              disabled={!allSelected}
                               style={{
-                                padding: '12px',
-                                fontSize: '14px',
-                                backgroundColor: isSelected ? '#F5C642' : '#1f2937',
-                                color: isSelected ? '#0f1419' : '#e0e0e0',
-                                border: '2px solid ' + (isSelected ? '#F5C642' : '#555'),
+                                padding: '12px 32px',
+                                fontSize: '16px',
+                                fontWeight: 'bold',
+                                backgroundColor: !allSelected ? '#555' : '#4ade80',
+                                color: !allSelected ? '#888' : '#0f1419',
+                                border: 'none',
                                 borderRadius: '4px',
-                                cursor: 'pointer',
-                                fontWeight: isSelected ? 'bold' : 'normal',
-                                transition: 'all 0.2s',
-                                textAlign: 'center'
+                                cursor: !allSelected ? 'not-allowed' : 'pointer',
+                                transition: 'all 0.2s'
                               }}
                               onMouseEnter={(e) => {
-                                if (!isSelected) {
-                                  e.target.style.backgroundColor = '#374151';
-                                  e.target.style.borderColor = '#F5C642';
+                                if (allSelected) {
+                                  e.target.style.backgroundColor = '#22c55e';
                                 }
                               }}
                               onMouseLeave={(e) => {
-                                if (!isSelected) {
-                                  e.target.style.backgroundColor = '#1f2937';
-                                  e.target.style.borderColor = '#555';
+                                if (allSelected) {
+                                  e.target.style.backgroundColor = '#4ade80';
                                 }
                               }}
                             >
-                              {item.name}
+                              {allSelected ? 'CONFIRM ALL SELECTIONS' : `WAITING FOR ${players.length - selectedCount} MORE`}
                             </button>
-                          );
-                        })}
-                      </div>
-                    </div>
-                  ))}
-
-                  {/* Confirm Button */}
-                  <div style={{ display: 'flex', gap: '12px', justifyContent: 'center', marginTop: '24px' }}>
-                    <button
-                      onClick={onAutoContinue}
-                      disabled={Object.keys(playerSelections).length < players.length}
-                      style={{
-                        padding: '12px 32px',
-                        fontSize: '16px',
-                        fontWeight: 'bold',
-                        backgroundColor: Object.keys(playerSelections).length < players.length ? '#555' : '#4ade80',
-                        color: Object.keys(playerSelections).length < players.length ? '#888' : '#0f1419',
-                        border: 'none',
-                        borderRadius: '4px',
-                        cursor: Object.keys(playerSelections).length < players.length ? 'not-allowed' : 'pointer',
-                        transition: 'all 0.2s'
-                      }}
-                      onMouseEnter={(e) => {
-                        if (Object.keys(playerSelections).length >= players.length) {
-                          e.target.style.backgroundColor = '#22c55e';
-                        }
-                      }}
-                      onMouseLeave={(e) => {
-                        if (Object.keys(playerSelections).length >= players.length) {
-                          e.target.style.backgroundColor = '#4ade80';
-                        }
-                      }}
-                    >
-                      CONFIRM ALL SELECTIONS
-                    </button>
-                  </div>
+                          ) : (
+                            <div style={{ 
+                              padding: '12px 32px',
+                              backgroundColor: 'rgba(100, 116, 139, 0.2)',
+                              border: '1px solid rgba(100, 116, 139, 0.4)',
+                              borderRadius: '4px',
+                              color: '#94a3b8',
+                              fontSize: '14px'
+                            }}>
+                              {allSelected 
+                                ? 'Waiting for host to confirm...'
+                                : `Waiting for all Helldivers to select (${selectedCount}/${players.length})`
+                              }
+                            </div>
+                          )}
+                        </div>
+                      </>
+                    );
+                  })()}
                 </div>
               </div>
           )}

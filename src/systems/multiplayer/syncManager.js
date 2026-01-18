@@ -41,6 +41,7 @@ export const CLIENT_ALLOWED_ACTIONS = [
   'EVENT_SELECT_BOOSTER',
   'EVENT_SELECT_TARGET_PLAYER',
   'EVENT_SELECT_TARGET_STRATAGEM',
+  'EVENT_SPECIAL_DRAFT_SELECTION', // Select throwable/secondary during special draft events
   
   // Loadout modifications
   'EQUIP_ITEM',           // Equip an item from inventory

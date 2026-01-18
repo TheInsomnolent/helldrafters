@@ -67,6 +67,7 @@ export const initialState = {
   eventBoosterSelection: null, // Selected booster ID
   eventSpecialDraft: null, // Array of item objects for special draft selection
   eventSpecialDraftType: null, // 'throwable' or 'secondary'
+  eventSpecialDraftSelections: {}, // { playerIndex: itemId } - tracks each player's selection for special draft
   pendingFaction: null, // Faction to switch to (awaiting subfaction selection)
   pendingSubfactionSelection: null, // Selected subfaction for pending faction change
   seenEvents: [],
@@ -400,6 +401,15 @@ export function gameReducer(state, action) {
     case types.SET_EVENT_SPECIAL_DRAFT_TYPE:
       return { ...state, eventSpecialDraftType: action.payload };
 
+    case types.SET_EVENT_SPECIAL_DRAFT_SELECTION:
+      return { 
+        ...state, 
+        eventSpecialDraftSelections: {
+          ...state.eventSpecialDraftSelections,
+          [action.payload.playerIndex]: action.payload.itemId
+        }
+      };
+
     case types.SET_PENDING_FACTION:
       return { ...state, pendingFaction: action.payload };
 
@@ -416,6 +426,7 @@ export function gameReducer(state, action) {
         eventBoosterSelection: null,
         eventSpecialDraft: null,
         eventSpecialDraftType: null,
+        eventSpecialDraftSelections: {},
         pendingFaction: null,
         pendingSubfactionSelection: null
       };
