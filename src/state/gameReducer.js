@@ -45,7 +45,8 @@ export const initialState = {
     roundCards: [],
     isRerolling: false,
     pendingStratagem: null,
-    extraDraftRound: 0 // Tracks which extra draft round we're on (0 = normal draft)
+    extraDraftRound: 0, // Tracks which extra draft round we're on (0 = normal draft)
+    draftOrder: [] // Array of player indices in randomized order for this draft round
   },
   sacrificeState: {
     activePlayerIndex: 0,
