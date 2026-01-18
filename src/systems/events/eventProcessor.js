@@ -118,7 +118,7 @@ export const processEventOutcome = (outcome, choice, state, selections = {}) => 
         
         // Get available throwables (not burned, not starting item)
         const availableThrowables = MASTER_DB.filter(item => 
-          item.type === TYPE.THROWABLE && 
+          item.type === TYPE.GRENADE && 
           !burnedCards.includes(item.id) &&
           item.id !== 'g_he'
         );
