@@ -1,5 +1,6 @@
 import React from 'react';
 import { DIFFICULTY_CONFIG, getMissionsForDifficulty } from '../constants/gameConfig';
+import { HelpCircle } from 'lucide-react';
 import { getFactionColors } from '../constants/theme';
 import { SUBFACTION_CONFIG } from '../constants/balancingConfig';
 
@@ -57,7 +58,8 @@ export default function GameHeader({
   faction,
   subfaction,
   samples,
-  onExport 
+  onExport,
+  onHelp 
 }) {
   const factionColors = getFactionColors(faction);
   const subfactionName = SUBFACTION_CONFIG[subfaction]?.name || 'Unknown';
@@ -199,6 +201,35 @@ export default function GameHeader({
           </div>
           
           {/* Action Buttons */}
+          <button
+            onClick={onHelp}
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: '8px',
+              padding: '8px 16px',
+              backgroundColor: 'rgba(100, 116, 139, 0.3)',
+              color: '#94a3b8',
+              border: '1px solid rgba(100, 116, 139, 0.5)',
+              borderRadius: '4px',
+              fontWeight: 'bold',
+              textTransform: 'uppercase',
+              fontSize: '12px',
+              cursor: 'pointer',
+              transition: 'all 0.2s'
+            }}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.backgroundColor = 'rgba(100, 116, 139, 0.5)';
+              e.currentTarget.style.color = factionColors.PRIMARY;
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.backgroundColor = 'rgba(100, 116, 139, 0.3)';
+              e.currentTarget.style.color = '#94a3b8';
+            }}
+          >
+            <HelpCircle size={16} />
+            Help
+          </button>
           <button
             onClick={onExport}
             style={{

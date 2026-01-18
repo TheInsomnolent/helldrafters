@@ -31,7 +31,8 @@ export const OUTCOME_TYPES = {
   RANDOM_OUTCOME: 'random_outcome',
   GAIN_RANDOM_LIGHT_ARMOR_AND_DRAFT_THROWABLE: 'gain_random_light_armor_and_draft_throwable',
   GAIN_RANDOM_HEAVY_ARMOR_AND_DRAFT_SECONDARY: 'gain_random_heavy_armor_and_draft_secondary',
-  DUPLICATE_LOADOUT_TO_ALL: 'duplicate_loadout_to_all'
+  DUPLICATE_LOADOUT_TO_ALL: 'duplicate_loadout_to_all',
+  SET_CEREMONIAL_LOADOUT: 'set_ceremonial_loadout'
 };
 
 // Event structure:
@@ -481,7 +482,7 @@ export const EVENTS = [
   {
     id: 'training_accident',
     name: 'Training Exercise Gone Wrong',
-    description: 'A live-fire training exercise has gone catastrophically wrong. The instructor barks: "This is what happens when you don\'t follow protocol! Medical treatment is available, or you can tough it out and prove you\'re Helldiver material!"',
+    description: 'A live-fire training exercise has gone catastrophically wrong. The instructor barks: "This is what happens when you don\'t follow protocol! You can pay for medical treatment, or you can prove your worth by accepting additional training with a randomly assigned booster."',
     type: EVENT_TYPES.CHOICE,
     minDifficulty: 1,
     maxDifficulty: 6,
@@ -489,14 +490,14 @@ export const EVENTS = [
     targetPlayer: 'all',
     choices: [
       {
-        text: 'Seek Medical Treatment',
+        text: 'Pay for Medical Treatment',
         requiresRequisition: 2,
         outcomes: []
       },
       {
-        text: 'Tough It Out',
+        text: 'Accept Additional Training',
         outcomes: [
-          { type: OUTCOME_TYPES.LOSE_REQUISITION, value: 1 }
+          { type: OUTCOME_TYPES.GAIN_BOOSTER, targetPlayer: 'random' }
         ]
       }
     ]
@@ -675,6 +676,33 @@ export const EVENTS = [
       {
         text: 'Reject Synchronization',
         outcomes: []
+      }
+    ]
+  },
+
+  // 36. Ceremonial Parade
+  {
+    id: 'ceremonial_parade',
+    name: 'Ceremonial Parade',
+    description: 'High Command has selected your squad for a prestigious ceremonial parade. All participants will be issued formal parade equipment and given command privileges. This is a great honor... and refusal would be an act of treason against Super Earth.',
+    type: EVENT_TYPES.CHOICE,
+    minDifficulty: 1,
+    maxDifficulty: 10,
+    weight: 1,
+    targetPlayer: 'all',
+    choices: [
+      {
+        text: 'Join the black parade',
+        outcomes: [
+          { type: OUTCOME_TYPES.SET_CEREMONIAL_LOADOUT },
+          { type: OUTCOME_TYPES.ADD_REQUISITION, value: 6 }
+        ]
+      },
+      {
+        text: 'Refusal is treason',
+        outcomes: [
+          { type: OUTCOME_TYPES.LOSE_REQUISITION, value: 1 }
+        ]
       }
     ]
   },

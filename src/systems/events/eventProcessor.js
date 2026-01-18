@@ -429,6 +429,95 @@ export const processEventOutcome = (outcome, choice, state, selections = {}) => 
       }
       break;
 
+    case OUTCOME_TYPES.SET_CEREMONIAL_LOADOUT:
+      // Set all players to ceremonial parade loadout
+      if (players && players.length > 0) {
+        const newPlayers = [...players];
+        
+        newPlayers.forEach((player, index) => {
+          // Helper function to check if player has access to an item
+          const hasAccess = (itemId) => {
+            const item = MASTER_DB.find(i => i.id === itemId);
+            if (!item) return false;
+            
+            // Check if item is from a warbond the player has access to
+            if (item.warbond && player.warbonds && player.warbonds.includes(item.warbond)) {
+              return true;
+            }
+            
+            // Check if item is from superstore and player has access
+            if (item.superstore && player.includeSuperstore) {
+              return true;
+            }
+            
+            return false;
+          };
+          
+          // Always set primary to constitution (available to everyone from helldivers_mobilize)
+          player.loadout.primary = 'p_constitution';
+          if (!player.inventory.includes('p_constitution')) {
+            player.inventory.push('p_constitution');
+          }
+          
+          // Set secondary based on player position
+          if (index === 0) {
+            // Player 1: P-4 Senator (if available)
+            if (hasAccess('s_senator')) {
+              player.loadout.secondary = 's_senator';
+              if (!player.inventory.includes('s_senator')) {
+                player.inventory.push('s_senator');
+              }
+            }
+          } else {
+            // Players 2, 3, 4: CQC-2 Saber (if available)
+            if (hasAccess('s_saber')) {
+              player.loadout.secondary = 's_saber';
+              if (!player.inventory.includes('s_saber')) {
+                player.inventory.push('s_saber');
+              }
+            }
+          }
+          
+          // Set armor based on player position
+          if (index === 0) {
+            // Player 1: RE-1861 Parade Commander (if available)
+            if (hasAccess('a_re1861')) {
+              player.loadout.armor = 'a_re1861';
+              if (!player.inventory.includes('a_re1861')) {
+                player.inventory.push('a_re1861');
+              }
+            }
+          } else {
+            // Players 2, 3, 4: RE-2310 Honorary Guard (if available)
+            if (hasAccess('a_re2310')) {
+              player.loadout.armor = 'a_re2310';
+              if (!player.inventory.includes('a_re2310')) {
+                player.inventory.push('a_re2310');
+              }
+            }
+          }
+          
+          // Clear all stratagems first
+          player.loadout.stratagems = [null, null, null, null];
+          
+          // Add specific stratagem for player 1
+          if (index === 0) {
+            // Player 1: CQC-1 One True Flag (if available)
+            if (hasAccess('st_flag')) {
+              player.loadout.stratagems[0] = 'st_flag';
+              if (!player.inventory.includes('st_flag')) {
+                player.inventory.push('st_flag');
+              }
+            }
+          }
+          // Players 2, 3, 4 get no stratagems (already cleared above)
+        });
+        
+        updates.players = newPlayers;
+        updates.ceremonialLoadoutApplied = true;
+      }
+      break;
+
     default:
       break;
   }
@@ -1030,6 +1119,8 @@ export const formatOutcome = (outcome) => {
       return `All Helldivers: Random Heavy Armor + Choose Secondary`;
     case OUTCOME_TYPES.DUPLICATE_LOADOUT_TO_ALL:
       return `Duplicate chosen Helldiver's loadout to all`;
+    case OUTCOME_TYPES.SET_CEREMONIAL_LOADOUT:
+      return `Equip full ceremonial parade loadout`;
     default:
       return '';
   }

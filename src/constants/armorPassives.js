@@ -46,32 +46,32 @@ export const ARMOR_PASSIVE = {
   FEET_FIRST: 'feet_first',
 };
 
-// Passive descriptions for reference
+// Passive descriptions for reference - flavour text from Helldivers wiki
 export const ARMOR_PASSIVE_DESCRIPTIONS = {
-  [ARMOR_PASSIVE.SERVO_ASSISTED]: 'Increases movement speed while moving with heavy or support weapons',
-  [ARMOR_PASSIVE.SCOUT]: 'Increases movement speed',
-  [ARMOR_PASSIVE.PEAK_PHYSIQUE]: 'Increases movement speed when crouching',
-  [ARMOR_PASSIVE.EXTRA_PADDING]: 'Increases armor rating',
+  [ARMOR_PASSIVE.SERVO_ASSISTED]: '+30% throwing range, +50% limb health',
+  [ARMOR_PASSIVE.SCOUT]: 'Markers ping radar every 2 seconds, -30% enemy detection range',
+  [ARMOR_PASSIVE.PEAK_PHYSIQUE]: '+100% melee damage, reduced weapon sway when moving',
+  [ARMOR_PASSIVE.EXTRA_PADDING]: '+50 armor rating',
   
-  [ARMOR_PASSIVE.FORTIFIED]: 'Reduces damage from explosions',
-  [ARMOR_PASSIVE.DEMOCRACY_PROTECTS]: 'Increased chance to survive a lethal hit',
-  [ARMOR_PASSIVE.UNFLINCHING]: 'Reduces flinching when taking damage',
-  [ARMOR_PASSIVE.BALLISTIC_PADDING]: 'Reduces limb damage',
-  [ARMOR_PASSIVE.ROCK_SOLID]: 'Reduces recoil when crouching or prone',
+  [ARMOR_PASSIVE.FORTIFIED]: '50% explosive resistance, -30% recoil when crouching or prone',
+  [ARMOR_PASSIVE.DEMOCRACY_PROTECTS]: '50% chance to survive lethal damage, prevents chest bleed damage',
+  [ARMOR_PASSIVE.UNFLINCHING]: 'Reduced flinch when damaged, +25 armor, pings enemies on minimap',
+  [ARMOR_PASSIVE.BALLISTIC_PADDING]: '+25% chest and explosive resistance, prevents chest bleed damage',
+  [ARMOR_PASSIVE.ROCK_SOLID]: '-30% recoil when crouching or prone, +2 grenade capacity',
   
-  [ARMOR_PASSIVE.ENGINEERING_KIT]: 'Call-in time for Sentries, Emplacements & Hellbombs reduced by 50%',
-  [ARMOR_PASSIVE.MED_KIT]: 'Increases Stim capacity by 2',
-  [ARMOR_PASSIVE.ELECTRICAL_CONDUIT]: 'Reduces arc damage taken by 95%',
+  [ARMOR_PASSIVE.ENGINEERING_KIT]: '-30% recoil when crouching or prone, +2 grenade capacity',
+  [ARMOR_PASSIVE.MED_KIT]: '+2 stim capacity, +2 seconds stim duration',
+  [ARMOR_PASSIVE.ELECTRICAL_CONDUIT]: '95% arc damage resistance, reduced stun buildup',
   
-  [ARMOR_PASSIVE.INFLAMMABLE]: 'Reduces fire damage taken by 75%',
-  [ARMOR_PASSIVE.ADVANCED_FILTRATION]: 'Reduces gas damage taken by 95%',
-  [ARMOR_PASSIVE.DESERT_STORMER]: 'Reduces acid damage taken by 95%',
-  [ARMOR_PASSIVE.ACCLIMATED]: 'Reduces extreme temperature damage by 95%',
+  [ARMOR_PASSIVE.INFLAMMABLE]: '75% fire damage resistance',
+  [ARMOR_PASSIVE.ADVANCED_FILTRATION]: '80% gas damage resistance',
+  [ARMOR_PASSIVE.DESERT_STORMER]: '95% acid damage resistance',
+  [ARMOR_PASSIVE.ACCLIMATED]: '50% resistance to fire, gas, acid, and electrical damage',
   
-  [ARMOR_PASSIVE.INTEGRATED_EXPLOSIVES]: 'Grenades inflict 50% more damage',
-  [ARMOR_PASSIVE.GUNSLINGER]: 'Increases reload speed and draw speed for pistols',
-  [ARMOR_PASSIVE.SIEGE_READY]: 'Reduces damage taken when stationary',
-  [ARMOR_PASSIVE.REINFORCED_EPAULETTES]: 'Reduces melee damage taken by 50%',
-  [ARMOR_PASSIVE.ADRENO_DEFIBRILLATOR]: 'Increases health regeneration rate',
-  [ARMOR_PASSIVE.FEET_FIRST]: 'Reduces Hellpod scatter distance and landing impact radius',
+  [ARMOR_PASSIVE.INTEGRATED_EXPLOSIVES]: 'Explodes on death, +2 grenade capacity',
+  [ARMOR_PASSIVE.GUNSLINGER]: '+40% sidearm reload speed, +50% draw/holster speed, -70% sidearm recoil',
+  [ARMOR_PASSIVE.SIEGE_READY]: '+20% primary ammo capacity, +30% primary reload speed',
+  [ARMOR_PASSIVE.REINFORCED_EPAULETTES]: '50% chance to prevent limb breaks',
+  [ARMOR_PASSIVE.ADRENO_DEFIBRILLATOR]: 'Revives after death, 50% arc resistance, +2s stim duration',
+  [ARMOR_PASSIVE.FEET_FIRST]: 'Prevents major leg injuries, +30% radar detection, -50% movement sound',
 };

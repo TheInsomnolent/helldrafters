@@ -19,10 +19,12 @@ import LoadoutDisplay from './components/LoadoutDisplay';
 import GameLobby from './components/GameLobby';
 import GameConfiguration from './components/GameConfiguration';
 import RarityWeightDebug from './components/RarityWeightDebug';
+import ExplainerModal from './components/ExplainerModal';
 import { MultiplayerModeSelect, JoinGameScreen, MultiplayerWaitingRoom, MultiplayerStatusBar } from './components/MultiplayerLobby';
 import { MultiplayerProvider, useMultiplayer } from './systems/multiplayer';
 import { gameReducer, initialState } from './state/gameReducer';
 import * as actions from './state/actions';
+import * as types from './state/actionTypes';
 import { COLORS, SHADOWS, BUTTON_STYLES, GRADIENTS, getFactionColors } from './constants/theme';
 import { getWarbondById } from './constants/warbonds';
 
@@ -116,6 +118,7 @@ function HelldiversRogueliteApp() {
   // UI-only state (not part of game state)
   const [selectedPlayer, setSelectedPlayer] = React.useState(0); // For custom setup phase
   const [multiplayerMode, setMultiplayerMode] = React.useState(null); // null, 'select', 'host', 'join', 'waiting'
+  const [showExplainer, setShowExplainer] = React.useState(false); // For explainer modal
   
   // Ref for the hidden file input
   const fileInputRef = React.useRef(null);
@@ -198,6 +201,7 @@ function HelldiversRogueliteApp() {
         inventory: Object.values(initialLoadouts[i]).flat().filter(id => id !== null),
         warbonds: lp.warbonds,
         includeSuperstore: lp.includeSuperstore,
+        excludedItems: lp.excludedItems || [],
         weaponRestricted: false,
         lockedSlots: [],
         extracted: true
@@ -220,6 +224,7 @@ function HelldiversRogueliteApp() {
         inventory: Object.values(STARTING_LOADOUT).flat().filter(id => id !== null),
         warbonds: lp.warbonds,
         includeSuperstore: lp.includeSuperstore,
+        excludedItems: lp.excludedItems || [],
         weaponRestricted: false,
         lockedSlots: [],
         extracted: true
@@ -451,7 +456,7 @@ function HelldiversRogueliteApp() {
     // In multiplayer as client, send action to host instead of processing locally
     if (isMultiplayer && !isHost) {
       sendAction({
-        type: 'DRAFT_PICK',
+        type: types.DRAFT_PICK,
         payload: {
           playerIndex: currentPlayerIdx,
           item: item
@@ -516,9 +521,34 @@ function HelldiversRogueliteApp() {
 
   const handleStratagemReplacement = (slotIndex) => {
     const currentPlayerIdx = draftState.activePlayerIndex;
+    
+    // In multiplayer, only the player whose turn it is can select replacement
+    if (isMultiplayer && playerSlot !== currentPlayerIdx) {
+      console.warn('Not your turn to select replacement', { playerSlot, currentPlayerIdx });
+      return;
+    }
+    
+    // In multiplayer as client, send action to host instead of processing locally
+    if (isMultiplayer && !isHost) {
+      sendAction({
+        type: types.STRATAGEM_REPLACEMENT,
+        payload: {
+          playerIndex: currentPlayerIdx,
+          slotIndex: slotIndex
+        }
+      });
+      return;
+    }
+    
     const updatedPlayers = [...players];
     const player = updatedPlayers[currentPlayerIdx];
     const item = draftState.pendingStratagem;
+    
+    // Guard: ensure we have a pending stratagem
+    if (!item) {
+      console.error('handleStratagemReplacement: No pending stratagem', { currentPlayerIdx, slotIndex });
+      return;
+    }
 
     // Add to inventory
     player.inventory.push(item.id);
@@ -527,6 +557,7 @@ function HelldiversRogueliteApp() {
     player.loadout.stratagems[slotIndex] = item.id;
     
     dispatch(actions.setPlayers(updatedPlayers));
+    dispatch(actions.updateDraftState({ pendingStratagem: null }));
 
     // Next player, extra draft, or finish
     proceedToNextDraft(updatedPlayers);
@@ -537,7 +568,7 @@ function HelldiversRogueliteApp() {
   
   // Update the ref whenever dependencies change
   draftPickHandlerRef.current = (action) => {
-    if (action.type === 'DRAFT_PICK') {
+    if (action.type === types.DRAFT_PICK) {
       const { playerIndex, item } = action.payload;
       
       // Process the draft pick for this player
@@ -561,12 +592,11 @@ function HelldiversRogueliteApp() {
         // Special handling for stratagems when slots are full
         if (item.type === TYPE.STRATAGEM) {
           if (areStratagemSlotsFull(player.loadout)) {
-            // For now, just add to first slot as replacement (could be enhanced)
-            player.loadout.stratagems[0] = item.id;
-            player.inventory.push(item.id);
-            dispatch(actions.setPlayers(updatedPlayers));
-            proceedToNextDraft(updatedPlayers);
-            return true;
+            // Set pending stratagem to trigger modal for player to choose which slot to replace
+            dispatch(actions.updateDraftState({
+              pendingStratagem: item
+            }));
+            return true; // Action was handled, wait for STRATAGEM_REPLACEMENT action
           }
         }
 
@@ -589,8 +619,39 @@ function HelldiversRogueliteApp() {
       return true; // Action was handled
     }
     
+    // Handle stratagem replacement from clients
+    if (action.type === types.STRATAGEM_REPLACEMENT) {
+      const { playerIndex, slotIndex } = action.payload;
+      const updatedPlayers = [...players];
+      const player = updatedPlayers[playerIndex];
+      
+      if (!player || !player?.loadout || !draftState.pendingStratagem) {
+        console.error('STRATAGEM_REPLACEMENT: Invalid state', { 
+          playerIndex, 
+          slotIndex, 
+          hasPlayer: !!player, 
+          hasLoadout: !!player?.loadout,
+          hasPendingStratagem: !!draftState.pendingStratagem
+        });
+        return true;
+      }
+      
+      const item = draftState.pendingStratagem;
+      
+      // Add to inventory
+      player.inventory.push(item.id);
+      
+      // Replace the selected slot
+      player.loadout.stratagems[slotIndex] = item.id;
+      
+      dispatch(actions.setPlayers(updatedPlayers));
+      dispatch(actions.updateDraftState({ pendingStratagem: null }));
+      proceedToNextDraft(updatedPlayers);
+      return true;
+    }
+    
     // Handle extraction status toggle from clients
-    if (action.type === 'SET_PLAYER_EXTRACTED') {
+    if (action.type === types.SET_PLAYER_EXTRACTED) {
       const { playerIndex, extracted } = action.payload;
       dispatch(actions.setPlayerExtracted(playerIndex, extracted));
       return true;
@@ -599,6 +660,17 @@ function HelldiversRogueliteApp() {
     // Handle skip draft from clients
     if (action.type === 'SKIP_DRAFT') {
       proceedToNextDraft(players);
+      return true;
+    }
+    
+    // Handle draft reroll from clients
+    if (action.type === 'DRAFT_REROLL') {
+      const { cost } = action.payload;
+      if (requisition < cost) return true; // Action consumed but rejected
+      dispatch(actions.spendRequisition(cost));
+      dispatch(actions.updateDraftState({
+        roundCards: generateDraftHandForPlayer(draftState.activePlayerIndex)
+      }));
       return true;
     }
     
@@ -626,6 +698,19 @@ function HelldiversRogueliteApp() {
 
   const rerollDraft = (cost) => {
     if (requisition < cost) return;
+    
+    // In multiplayer as client, send action to host instead of processing locally
+    if (isMultiplayer && !isHost) {
+      sendAction({
+        type: 'DRAFT_REROLL',
+        payload: {
+          cost: cost,
+          playerIndex: draftState.activePlayerIndex
+        }
+      });
+      return;
+    }
+    
     dispatch(actions.spendRequisition(cost));
     dispatch(actions.updateDraftState({
       roundCards: generateDraftHandForPlayer(draftState.activePlayerIndex)
@@ -1358,6 +1443,43 @@ function HelldiversRogueliteApp() {
                 Load Game
               </button>
             </div>
+            
+            {/* Help Button */}
+            <div style={{ marginTop: '12px' }}>
+              <button 
+                onClick={() => setShowExplainer(true)}
+                style={{
+                  width: '100%',
+                  padding: '12px',
+                  fontSize: '14px',
+                  letterSpacing: '0.1em',
+                  borderRadius: '4px',
+                  border: `1px solid ${COLORS.CARD_BORDER}`,
+                  backgroundColor: 'transparent',
+                  color: COLORS.TEXT_MUTED,
+                  fontWeight: '700',
+                  textTransform: 'uppercase',
+                  cursor: 'pointer',
+                  transition: 'all 0.2s',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: '8px'
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.borderColor = factionColors.PRIMARY;
+                  e.currentTarget.style.color = factionColors.PRIMARY;
+                  e.currentTarget.style.backgroundColor = `${factionColors.PRIMARY}10`;
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.borderColor = COLORS.CARD_BORDER;
+                  e.currentTarget.style.color = COLORS.TEXT_MUTED;
+                  e.currentTarget.style.backgroundColor = 'transparent';
+                }}
+              >
+                <span style={{ fontSize: '16px' }}>📖</span> How to Play
+              </button>
+            </div>
 
             {/* Build Info */}
             <div style={{ marginTop: '24px', paddingTop: '24px', borderTop: '1px solid rgba(100, 116, 139, 0.3)', textAlign: 'center' }}>
@@ -1385,6 +1507,13 @@ function HelldiversRogueliteApp() {
         
         {/* FOOTER */}
         <GameFooter />
+        
+        {/* Explainer Modal */}
+        <ExplainerModal 
+          isOpen={showExplainer} 
+          onClose={() => setShowExplainer(false)}
+          faction={gameConfig.faction}
+        />
       </div>
     );
   }
@@ -2645,6 +2774,20 @@ function HelldiversRogueliteApp() {
               {player.name}'s Current Loadout
             </div>
             <div style={{ display: 'flex', gap: '24px', flexWrap: 'wrap', justifyContent: 'center' }}>
+              {/* Primary */}
+              <div style={{ textAlign: 'center' }}>
+                <div style={{ fontSize: '10px', color: '#94a3b8', marginBottom: '4px' }}>Primary</div>
+                <div style={{ 
+                  padding: '4px 8px', 
+                  backgroundColor: player.loadout.primary ? 'rgba(100, 116, 139, 0.3)' : 'rgba(100, 116, 139, 0.1)',
+                  borderRadius: '4px',
+                  fontSize: '10px',
+                  color: player.loadout.primary ? factionColors.PRIMARY : '#64748b'
+                }}>
+                  {player.loadout.primary ? getItemById(player.loadout.primary)?.name || '—' : '—'}
+                </div>
+              </div>
+              
               {/* Stratagems */}
               <div style={{ textAlign: 'center' }}>
                 <div style={{ fontSize: '10px', color: '#94a3b8', marginBottom: '4px' }}>Stratagems</div>
@@ -2684,17 +2827,17 @@ function HelldiversRogueliteApp() {
                 </div>
               </div>
               
-              {/* Throwable */}
+              {/* Grenade */}
               <div style={{ textAlign: 'center' }}>
-                <div style={{ fontSize: '10px', color: '#94a3b8', marginBottom: '4px' }}>Throwable</div>
+                <div style={{ fontSize: '10px', color: '#94a3b8', marginBottom: '4px' }}>Grenade</div>
                 <div style={{ 
                   padding: '4px 8px', 
-                  backgroundColor: player.loadout.throwable ? 'rgba(100, 116, 139, 0.3)' : 'rgba(100, 116, 139, 0.1)',
+                  backgroundColor: player.loadout.grenade ? 'rgba(100, 116, 139, 0.3)' : 'rgba(100, 116, 139, 0.1)',
                   borderRadius: '4px',
                   fontSize: '10px',
-                  color: player.loadout.throwable ? '#cbd5e1' : '#64748b'
+                  color: player.loadout.grenade ? '#cbd5e1' : '#64748b'
                 }}>
-                  {player.loadout.throwable ? getItemById(player.loadout.throwable)?.name || '—' : '—'}
+                  {player.loadout.grenade ? getItemById(player.loadout.grenade)?.name || '—' : '—'}
                 </div>
               </div>
               
@@ -2867,6 +3010,7 @@ function HelldiversRogueliteApp() {
         subfaction={gameConfig.subfaction}
         samples={state.samples}
         onExport={exportGameState}
+        onHelp={() => setShowExplainer(true)}
       />
 
       {/* MAIN CONTENT */}
@@ -2874,8 +3018,10 @@ function HelldiversRogueliteApp() {
         
         {/* PLAYER ROSTER */}
         <div style={{ display: 'grid', gridTemplateColumns: gameConfig.playerCount > 1 ? 'repeat(auto-fit, minmax(400px, 1fr))' : '1fr', gap: '32px', marginBottom: '48px' }}>
-          {players.map(player => {
+          {players.map((player, index) => {
             const { getSlotLockCost, MAX_LOCKED_SLOTS } = require('./constants/balancingConfig');
+            // In multiplayer, only allow the current player to lock their own slots
+            const isCurrentPlayer = !isMultiplayer || (playerSlot === index);
             return (
               <LoadoutDisplay 
                 key={player.id} 
@@ -2886,8 +3032,8 @@ function HelldiversRogueliteApp() {
                 requisition={requisition}
                 slotLockCost={getSlotLockCost(gameConfig.playerCount)}
                 maxLockedSlots={MAX_LOCKED_SLOTS}
-                onLockSlot={handleLockSlot}
-                onUnlockSlot={handleUnlockSlot}
+                onLockSlot={isCurrentPlayer ? handleLockSlot : undefined}
+                onUnlockSlot={isCurrentPlayer ? handleUnlockSlot : undefined}
               />
             );
           })}
@@ -3427,6 +3573,13 @@ function HelldiversRogueliteApp() {
       
       {/* FOOTER */}
       <GameFooter />
+      
+      {/* Explainer Modal */}
+      <ExplainerModal 
+        isOpen={showExplainer} 
+        onClose={() => setShowExplainer(false)}
+        faction={gameConfig.faction}
+      />
     </div>
   );
 }

@@ -228,6 +228,12 @@ export const draftPick = (playerIndex, item) => ({
   payload: { playerIndex, item }
 });
 
+// Multiplayer stratagem replacement action
+export const stratagemReplacement = (playerIndex, slotIndex) => ({
+  type: types.STRATAGEM_REPLACEMENT,
+  payload: { playerIndex, slotIndex }
+});
+
 // Events
 export const setCurrentEvent = (event) => ({
   type: types.SET_CURRENT_EVENT,
