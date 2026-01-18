@@ -1,13 +1,13 @@
 {
   "files": {
     "main.css": "/helldrafters/static/css/main.d7f0e2c0.css",
-    "main.js": "/helldrafters/static/js/main.bc2f856e.js",
+    "main.js": "/helldrafters/static/js/main.d8b2df0f.js",
     "index.html": "/helldrafters/index.html",
     "main.d7f0e2c0.css.map": "/helldrafters/static/css/main.d7f0e2c0.css.map",
-    "main.bc2f856e.js.map": "/helldrafters/static/js/main.bc2f856e.js.map"
+    "main.d8b2df0f.js.map": "/helldrafters/static/js/main.d8b2df0f.js.map"
   },
   "entrypoints": [
     "static/css/main.d7f0e2c0.css",
-    "static/js/main.bc2f856e.js"
+    "static/js/main.d8b2df0f.js"
   ]
 }
