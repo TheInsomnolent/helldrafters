@@ -45,21 +45,21 @@ export const COLORS = {
 
 // Faction color mapping (maps faction names to their theme colors)
 export const FACTION_COLORS = {
-  'Terminids': {
+  'terminid': {
     PRIMARY: '#e59f61',
     PRIMARY_HOVER: '#e2914b',
     SHADOW: '0 4px 16px rgba(229, 159, 97, 0.4)',
     SHADOW_HOVER: '0 6px 20px rgba(229, 159, 97, 0.5)',
     GLOW: '0 4px 20px rgba(229, 159, 97, 0.3)'
   },
-  'Automatons': {
+  'automaton': {
     PRIMARY: '#cf6559',
     PRIMARY_HOVER: '#c95245',
     SHADOW: '0 4px 16px rgba(207, 101, 89, 0.4)',
     SHADOW_HOVER: '0 6px 20px rgba(207, 101, 89, 0.5)',
     GLOW: '0 4px 20px rgba(207, 101, 89, 0.3)'
   },
-  'Illuminate': {
+  'illuminate': {
     PRIMARY: '#b28ac1',
     PRIMARY_HOVER: '#a779b9',
     SHADOW: '0 4px 16px rgba(178, 138, 193, 0.4)',
@@ -70,7 +70,7 @@ export const FACTION_COLORS = {
 
 // Helper function to get faction-specific colors
 export const getFactionColors = (factionName) => {
-  return FACTION_COLORS[factionName] || FACTION_COLORS['Terminids'];
+  return FACTION_COLORS[factionName] || FACTION_COLORS['terminid'];
 };
 
 export const SHADOWS = {

@@ -17,9 +17,9 @@ export const TYPE = {
 };
 
 export const FACTION = {
-  BUGS: 'Terminids',
-  BOTS: 'Automatons',
-  SQUIDS: 'Illuminate'
+  BUGS: 'terminid',
+  BOTS: 'automaton',
+  SQUIDS: 'illuminate'
 };
 
 export const TAGS = {

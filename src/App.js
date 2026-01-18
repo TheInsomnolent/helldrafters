@@ -1,7 +1,7 @@
 import React, { useReducer, useEffect } from 'react';
-import { RefreshCw, CheckCircle, XCircle } from 'lucide-react';
+import { RefreshCw, CheckCircle, XCircle, Users } from 'lucide-react';
 import { selectRandomEvent, EVENT_TYPES, EVENTS } from './systems/events/events';
-import { RARITY, TYPE, FACTION } from './constants/types';
+import { RARITY, TYPE } from './constants/types';
 import { MASTER_DB } from './data/itemsByWarbond';
 import { STARTING_LOADOUT, DIFFICULTY_CONFIG } from './constants/gameConfig';
 import { ARMOR_PASSIVE_DESCRIPTIONS } from './constants/armorPassives';
@@ -16,11 +16,13 @@ import GameFooter from './components/GameFooter';
 import EventDisplay from './components/EventDisplay';
 import LoadoutDisplay from './components/LoadoutDisplay';
 import GameLobby from './components/GameLobby';
+import GameConfiguration from './components/GameConfiguration';
 import RarityWeightDebug from './components/RarityWeightDebug';
+import { MultiplayerModeSelect, JoinGameScreen, MultiplayerWaitingRoom, MultiplayerStatusBar } from './components/MultiplayerLobby';
+import { MultiplayerProvider, useMultiplayer } from './systems/multiplayer';
 import { gameReducer, initialState } from './state/gameReducer';
 import * as actions from './state/actions';
-import { COLORS, SHADOWS, BUTTON_STYLES, getFactionColors } from './constants/theme';
-import { getSubfactionsForFaction, SUBFACTION_CONFIG } from './constants/balancingConfig';
+import { COLORS, SHADOWS, BUTTON_STYLES, GRADIENTS, getFactionColors } from './constants/theme';
 
 // --- DATA CONSTANTS (imported from modules) ---
 
@@ -36,9 +38,27 @@ import { getSubfactionsForFaction, SUBFACTION_CONFIG } from './constants/balanci
 
 
 
-export default function HelldiversRoguelite() {
+function HelldiversRogueliteApp() {
   // --- STATE (Using useReducer for complex state management) ---
   const [state, dispatch] = useReducer(gameReducer, initialState);
+  
+  // Multiplayer context
+  const multiplayer = useMultiplayer();
+  const { 
+    isMultiplayer, 
+    isHost, 
+    hostGame, 
+    joinGame, 
+    startMultiplayerGame,
+    syncState, 
+    disconnect,
+    setDispatch 
+  } = multiplayer;
+  
+  // Register dispatch with multiplayer context
+  useEffect(() => {
+    setDispatch(dispatch);
+  }, [dispatch, setDispatch]);
   
   // Destructure commonly used state values for easier access
   const {
@@ -71,7 +91,14 @@ export default function HelldiversRoguelite() {
   
   // UI-only state (not part of game state)
   const [selectedPlayer, setSelectedPlayer] = React.useState(0); // For custom setup phase
+  const [multiplayerMode, setMultiplayerMode] = React.useState(null); // null, 'select', 'host', 'join', 'waiting'
   
+  // Sync state to clients when host and in multiplayer mode
+  useEffect(() => {
+    if (isMultiplayer && isHost && phase !== 'MENU') {
+      syncState(state);
+    }
+  }, [isMultiplayer, isHost, state, phase, syncState]);
   
   // Load game state from localStorage on mount
   useEffect(() => {
@@ -108,6 +135,9 @@ export default function HelldiversRoguelite() {
     exportGameStateToFile(state);
   };
 
+  // Import functionality removed from main menu for cleaner UI
+  // Can be re-enabled via debug menu or settings if needed
+  // eslint-disable-next-line no-unused-vars
   const importGameState = async (event) => {
     const file = event.target.files?.[0];
     if (!file) return;
@@ -132,8 +162,9 @@ export default function HelldiversRoguelite() {
   // --- INITIALIZATION ---
 
   const startGame = () => {
-    // Go to lobby to configure players
-    dispatch(actions.setPhase('LOBBY'));
+    // Solo mode: set player count to 1 and go to config
+    dispatch(actions.updateGameConfig({ playerCount: 1 }));
+    dispatch(actions.setPhase('SOLO_CONFIG'));
   };
 
   const startGameFromLobby = (lobbyPlayers) => {
@@ -910,6 +941,62 @@ export default function HelldiversRoguelite() {
     );
   }
 
+  // Multiplayer mode selection screens
+  if (phase === 'MENU' && multiplayerMode === 'select') {
+    return (
+      <MultiplayerModeSelect
+        gameConfig={gameConfig}
+        onHost={async () => {
+          // Create lobby and go to waiting room
+          const newLobbyId = await hostGame('Host', gameConfig);
+          if (newLobbyId) {
+            setMultiplayerMode('waiting');
+          }
+        }}
+        onJoin={() => setMultiplayerMode('join')}
+        onBack={() => setMultiplayerMode(null)}
+      />
+    );
+  }
+
+  if (phase === 'MENU' && multiplayerMode === 'join') {
+    return (
+      <JoinGameScreen
+        gameConfig={gameConfig}
+        onJoinLobby={async (joinLobbyId, name, slot) => {
+          const success = await joinGame(joinLobbyId, name, slot);
+          if (success) {
+            setMultiplayerMode('waiting');
+          }
+        }}
+        onBack={() => setMultiplayerMode('select')}
+      />
+    );
+  }
+
+  if (phase === 'MENU' && multiplayerMode === 'waiting') {
+    return (
+      <MultiplayerWaitingRoom
+        gameConfig={gameConfig}
+        eventsEnabled={eventsEnabled}
+        onUpdateGameConfig={(updates) => dispatch(actions.updateGameConfig(updates))}
+        onSetSubfaction={(subfaction) => dispatch(actions.setSubfaction(subfaction))}
+        onSetEventsEnabled={(enabled) => dispatch(actions.setEventsEnabled(enabled))}
+        onStartGame={async (actualPlayerCount) => {
+          // Host starts the multiplayer game and proceeds to lobby configuration
+          // Update the player count to match how many actually joined
+          dispatch(actions.updateGameConfig({ playerCount: actualPlayerCount }));
+          await startMultiplayerGame();
+          dispatch(actions.setPhase('LOBBY'));
+        }}
+        onLeave={async () => {
+          await disconnect();
+          setMultiplayerMode(null);
+        }}
+      />
+    );
+  }
+
   if (phase === 'MENU') {
     return (
       <div style={{ minHeight: '100vh', padding: '80px 24px' }}>
@@ -932,328 +1019,63 @@ export default function HelldiversRoguelite() {
           
           <div style={{ backgroundColor: '#283548', padding: '40px', borderRadius: '8px', border: '1px solid rgba(100, 116, 139, 0.5)' }}>
             
-            
-            {/* Faction */}
-            <div style={{ marginBottom: '40px' }}>
-              <label style={{ display: 'block', fontSize: '12px', fontWeight: 'bold', color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.15em', marginBottom: '24px' }}>
-                Select Theater of War
-              </label>
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '16px' }}>
-                {Object.values(FACTION).map(f => {
-                  const isSelected = gameConfig.faction === f;
-                  const btnColors = getFactionColors(f);
-                  return (
-                    <button 
-                      key={f}
-                      onClick={() => {
-                        const { getDefaultSubfaction } = require('./constants/balancingConfig');
-                        dispatch(actions.updateGameConfig({ 
-                          faction: f,
-                          subfaction: getDefaultSubfaction(f)
-                        }));
-                      }}
-                      style={{
-                        padding: '16px',
-                        borderRadius: '4px',
-                        fontWeight: 'bold',
-                        textTransform: 'uppercase',
-                        transition: 'all 0.2s',
-                        fontSize: '14px',
-                        letterSpacing: '1px',
-                        backgroundColor: isSelected ? `${btnColors.PRIMARY}15` : 'transparent',
-                        color: isSelected ? btnColors.PRIMARY : '#64748b',
-                        border: isSelected ? `2px solid ${btnColors.PRIMARY}` : '1px solid rgba(100, 116, 139, 0.5)',
-                        cursor: 'pointer'
-                      }}
-                    >
-                      {f}
-                    </button>
-                  );
-                })}
-              </div>
-            </div>
-
-            {/* Subfaction */}
-            <div style={{ marginBottom: '40px' }}>
-              <label style={{ display: 'block', fontSize: '12px', fontWeight: 'bold', color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.15em', marginBottom: '16px' }}>
-                Enemy Variant
-              </label>
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: '12px' }}>
-                {getSubfactionsForFaction(gameConfig.faction).map(subfaction => {
-                  const isSelected = gameConfig.subfaction === subfaction;
-                  const config = SUBFACTION_CONFIG[subfaction];
-                  
-                  return (
-                    <button 
-                      key={subfaction}
-                      onClick={() => {
-                        console.log('Subfaction clicked:', subfaction);
-                        dispatch(actions.setSubfaction(subfaction));
-                      }}
-                      style={{
-                        padding: '16px',
-                        borderRadius: '4px',
-                        fontWeight: 'bold',
-                        textTransform: 'uppercase',
-                        transition: 'all 0.2s',
-                        fontSize: '13px',
-                        letterSpacing: '0.5px',
-                        backgroundColor: isSelected ? `${factionColors.PRIMARY}15` : 'transparent',
-                        color: isSelected ? factionColors.PRIMARY : '#64748b',
-                        border: isSelected ? `2px solid ${factionColors.PRIMARY}` : '1px solid rgba(100, 116, 139, 0.5)',
-                        cursor: 'pointer',
-                        textAlign: 'left'
-                      }}
-                      onMouseEnter={(e) => {
-                        if (!isSelected) {
-                          e.currentTarget.style.backgroundColor = 'rgba(100, 116, 139, 0.1)';
-                          e.currentTarget.style.color = '#94a3b8';
-                        }
-                      }}
-                      onMouseLeave={(e) => {
-                        if (!isSelected) {
-                          e.currentTarget.style.backgroundColor = 'transparent';
-                          e.currentTarget.style.color = '#64748b';
-                        }
-                      }}
-                    >
-                      <div style={{ fontSize: '14px', marginBottom: '4px' }}>{config.name}</div>
-                      <div style={{ fontSize: '11px', color: isSelected ? factionColors.PRIMARY : '#64748b', opacity: 0.8 }}>
-                        {config.description} • Req: {config.reqMultiplier}x • Rares: {config.rareWeightMultiplier}x
-                      </div>
-                    </button>
-                  );
-                })}
-              </div>
-            </div>
-
-            {/* Squad Size */}
-            <div style={{ marginBottom: '40px' }}>
-              <label style={{ display: 'block', fontSize: '12px', fontWeight: 'bold', color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.15em', marginBottom: '24px' }}>
-                Squad Size
-              </label>
-              <div style={{ display: 'flex', justifyContent: 'center', gap: '16px' }}>
-                {[1, 2, 3, 4].map(n => (
-                  <button 
-                    key={n}
-                    onClick={() => dispatch(actions.updateGameConfig({ playerCount: n }))}
-                    style={{
-                      width: '64px',
-                      height: '64px',
-                      borderRadius: '4px',
-                      fontWeight: '900',
-                      fontSize: '32px',
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      transition: 'all 0.2s',
-                      backgroundColor: gameConfig.playerCount === n ? factionColors.PRIMARY : 'transparent',
-                      color: gameConfig.playerCount === n ? 'black' : '#64748b',
-                      border: gameConfig.playerCount === n ? `2px solid ${factionColors.PRIMARY}` : '1px solid rgba(100, 116, 139, 0.5)',
-                      cursor: 'pointer'
-                    }}
-                  >
-                    {n}
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            {/* Game Mode Options */}
-            <div style={{ marginBottom: '40px' }}>
-              <label style={{ display: 'block', fontSize: '12px', fontWeight: 'bold', color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.15em', marginBottom: '16px' }}>
-                Game Mode Options
-              </label>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', textAlign: 'left' }}>
-                <label style={{ display: 'flex', alignItems: 'center', gap: '12px', cursor: 'pointer', padding: '12px', backgroundColor: gameConfig.globalUniqueness ? `${factionColors.PRIMARY}1A` : 'transparent', borderRadius: '4px', border: '1px solid rgba(100, 116, 139, 0.5)' }}>
-                  <input 
-                    type="checkbox" 
-                    checked={gameConfig.globalUniqueness}
-                    onChange={(e) => dispatch(actions.updateGameConfig({ globalUniqueness: e.target.checked }))}
-                    style={{ width: '20px', height: '20px', cursor: 'pointer' }}
-                  />
-                  <div>
-                    <div style={{ color: factionColors.PRIMARY, fontWeight: 'bold', fontSize: '14px' }}>Global Card Uniqueness</div>
-                    <div style={{ color: '#94a3b8', fontSize: '11px', marginTop: '4px' }}>Cards drafted by one player cannot appear for other players</div>
-                  </div>
-                </label>
-                <label style={{ display: 'flex', alignItems: 'center', gap: '12px', cursor: 'pointer', padding: '12px', backgroundColor: gameConfig.burnCards ? `${factionColors.PRIMARY}1A` : 'transparent', borderRadius: '4px', border: '1px solid rgba(100, 116, 139, 0.5)' }}>
-                  <input 
-                    type="checkbox" 
-                    checked={gameConfig.burnCards}
-                    onChange={(e) => dispatch(actions.updateGameConfig({ burnCards: e.target.checked }))}
-                    style={{ width: '20px', height: '20px', cursor: 'pointer' }}
-                  />
-                  <div>
-                    <div style={{ color: factionColors.PRIMARY, fontWeight: 'bold', fontSize: '14px' }}>Burn Cards After Viewing</div>
-                    <div style={{ color: '#94a3b8', fontSize: '11px', marginTop: '4px' }}>Once a card appears in a draft, it cannot appear again this run</div>
-                  </div>
-                </label>
-                <label style={{ display: 'flex', alignItems: 'center', gap: '12px', cursor: 'pointer', padding: '12px', backgroundColor: gameConfig.customStart ? `${factionColors.PRIMARY}1A` : 'transparent', borderRadius: '4px', border: '1px solid rgba(100, 116, 139, 0.5)' }}>
-                  <input 
-                    type="checkbox" 
-                    checked={gameConfig.customStart}
-                    onChange={(e) => dispatch(actions.updateGameConfig({ customStart: e.target.checked }))}
-                    style={{ width: '20px', height: '20px', cursor: 'pointer' }}
-                  />
-                  <div>
-                    <div style={{ color: factionColors.PRIMARY, fontWeight: 'bold', fontSize: '14px' }}>Custom Start Mode</div>
-                    <div style={{ color: '#94a3b8', fontSize: '11px', marginTop: '4px' }}>Choose starting difficulty and loadouts for each player</div>
-                  </div>
-                </label>
-                <label style={{ display: 'flex', alignItems: 'center', gap: '12px', cursor: 'pointer', padding: '12px', backgroundColor: eventsEnabled ? `${factionColors.PRIMARY}1A` : 'transparent', borderRadius: '4px', border: '1px solid rgba(100, 116, 139, 0.5)' }}>
-                  <input 
-                    type="checkbox" 
-                    checked={eventsEnabled}
-                    onChange={(e) => dispatch(actions.setEventsEnabled(e.target.checked))}
-                    style={{ width: '20px', height: '20px', cursor: 'pointer' }}
-                  />
-                  <div>
-                    <div style={{ color: factionColors.PRIMARY, fontWeight: 'bold', fontSize: '14px' }}>Enable Events</div>
-                    <div style={{ color: '#94a3b8', fontSize: '11px', marginTop: '4px' }}>Random high-risk, high-reward events between missions</div>
-                  </div>
-                </label>
-                <label style={{ display: 'flex', alignItems: 'center', gap: '12px', cursor: 'pointer', padding: '12px', backgroundColor: gameConfig.endlessMode ? `${factionColors.PRIMARY}1A` : 'transparent', borderRadius: '4px', border: '1px solid rgba(100, 116, 139, 0.5)' }}>
-                  <input 
-                    type="checkbox" 
-                    checked={gameConfig.endlessMode}
-                    onChange={(e) => dispatch(actions.updateGameConfig({ endlessMode: e.target.checked }))}
-                    style={{ width: '20px', height: '20px', cursor: 'pointer' }}
-                  />
-                  <div>
-                    <div style={{ color: factionColors.PRIMARY, fontWeight: 'bold', fontSize: '14px' }}>Endless Mode</div>
-                    <div style={{ color: '#94a3b8', fontSize: '11px', marginTop: '4px' }}>Continue running D10 missions indefinitely. Otherwise, win after completing D10</div>
-                  </div>
-                </label>
-                <label style={{ display: 'flex', alignItems: 'center', gap: '12px', cursor: 'pointer', padding: '12px', backgroundColor: gameConfig.debugEventsMode ? `${factionColors.PRIMARY}1A` : 'transparent', borderRadius: '4px', border: '1px solid rgba(100, 116, 139, 0.5)' }}>
-                  <input 
-                    type="checkbox" 
-                    checked={gameConfig.debugEventsMode}
-                    onChange={(e) => dispatch(actions.updateGameConfig({ debugEventsMode: e.target.checked }))}
-                    style={{ width: '20px', height: '20px', cursor: 'pointer' }}
-                  />
-                  <div>
-                    <div style={{ color: factionColors.PRIMARY, fontWeight: 'bold', fontSize: '14px' }}>Debug Events Mode</div>
-                    <div style={{ color: '#94a3b8', fontSize: '11px', marginTop: '4px' }}>Manually trigger events from dashboard for testing</div>
-                  </div>
-                </label>
-                <label style={{ display: 'flex', alignItems: 'center', gap: '12px', cursor: 'pointer', padding: '12px', backgroundColor: gameConfig.brutalityMode ? `${factionColors.PRIMARY}1A` : 'transparent', borderRadius: '4px', border: '1px solid rgba(100, 116, 139, 0.5)' }}>
-                  <input 
-                    type="checkbox" 
-                    checked={gameConfig.brutalityMode}
-                    onChange={(e) => dispatch(actions.updateGameConfig({ brutalityMode: e.target.checked }))}
-                    style={{ width: '20px', height: '20px', cursor: 'pointer' }}
-                  />
-                  <div>
-                    <div style={{ color: factionColors.PRIMARY, fontWeight: 'bold', fontSize: '14px' }}>Brutality Mode</div>
-                    <div style={{ color: '#94a3b8', fontSize: '11px', marginTop: '4px' }}>Non-extracted Helldivers sacrifice loadout items (down to Peacemaker & B-01). If disabled, only all-fail triggers sacrifice.</div>
-                  </div>
-                </label>
-                <label style={{ display: 'flex', alignItems: 'center', gap: '12px', cursor: 'pointer', padding: '12px', backgroundColor: gameConfig.showCardPool ? `${factionColors.PRIMARY}1A` : 'transparent', borderRadius: '4px', border: '1px solid rgba(100, 116, 139, 0.5)' }}>
-                  <input 
-                    type="checkbox" 
-                    checked={gameConfig.showCardPool || false}
-                    onChange={(e) => dispatch(actions.updateGameConfig({ showCardPool: e.target.checked }))}
-                    style={{ width: '20px', height: '20px', cursor: 'pointer' }}
-                  />
-                  <div>
-                    <div style={{ color: factionColors.PRIMARY, fontWeight: 'bold', fontSize: '14px' }}>Show Card Pool</div>
-                    <div style={{ color: '#94a3b8', fontSize: '11px', marginTop: '4px' }}>Display all available items in the draw pool (debug)</div>
-                  </div>
-                </label>
-              </div>
-            </div>
-
-            <button 
-              onClick={startGame}
-              style={{
-                ...BUTTON_STYLES.PRIMARY,
-                width: '100%',
-                padding: '16px',
-                fontSize: '18px',
-                letterSpacing: '0.2em',
-                borderRadius: '4px',
-                border: 'none'
-              }}
-              onMouseEnter={(e) => {
-                e.currentTarget.style.backgroundColor = COLORS.PRIMARY_HOVER;
-                e.currentTarget.style.boxShadow = SHADOWS.BUTTON_PRIMARY_HOVER;
-              }}
-              onMouseLeave={(e) => {
-                e.currentTarget.style.backgroundColor = COLORS.PRIMARY;
-                e.currentTarget.style.boxShadow = SHADOWS.BUTTON_PRIMARY;
-              }}
-            >
-              Initialize Operation
-            </button>
-
-            {/* Save/Load Section */}
-            <div style={{ marginTop: '24px', paddingTop: '24px', borderTop: '1px solid rgba(100, 116, 139, 0.3)' }}>
-              <label style={{ display: 'block', fontSize: '11px', fontWeight: 'bold', color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.15em', marginBottom: '12px', textAlign: 'center' }}>
-                Save / Load Game
-              </label>
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
-                <button
-                  onClick={exportGameState}
-                  style={{
-                    padding: '12px',
-                    backgroundColor: 'transparent',
-                    color: '#94a3b8',
-                    border: '1px solid rgba(100, 116, 139, 0.5)',
-                    borderRadius: '4px',
-                    fontWeight: 'bold',
-                    fontSize: '12px',
-                    textTransform: 'uppercase',
-                    cursor: 'pointer',
-                    transition: 'all 0.2s'
-                  }}
-                  onMouseEnter={(e) => {
-                    e.currentTarget.style.borderColor = factionColors.PRIMARY;
-                    e.currentTarget.style.color = factionColors.PRIMARY;
-                  }}
-                  onMouseLeave={(e) => {
-                    e.currentTarget.style.borderColor = 'rgba(100, 116, 139, 0.5)';
-                    e.currentTarget.style.color = '#94a3b8';
-                  }}
-                >
-                  Export Game
-                </button>
-                <label
-                  style={{
-                    padding: '12px',
-                    backgroundColor: 'transparent',
-                    color: '#94a3b8',
-                    border: '1px solid rgba(100, 116, 139, 0.5)',
-                    borderRadius: '4px',
-                    fontWeight: 'bold',
-                    fontSize: '12px',
-                    textTransform: 'uppercase',
-                    cursor: 'pointer',
-                    transition: 'all 0.2s',
-                    textAlign: 'center',
-                    display: 'block'
-                  }}
-                  onMouseEnter={(e) => {
-                    e.currentTarget.style.borderColor = factionColors.PRIMARY;
-                    e.currentTarget.style.color = factionColors.PRIMARY;
-                  }}
-                  onMouseLeave={(e) => {
-                    e.currentTarget.style.borderColor = 'rgba(100, 116, 139, 0.5)';
-                    e.currentTarget.style.color = '#94a3b8';
-                  }}
-                >
-                  Import Game
-                  <input
-                    type="file"
-                    accept=".json"
-                    onChange={importGameState}
-                    style={{ display: 'none' }}
-                  />
-                </label>
-              </div>
-              <p style={{ fontSize: '10px', color: '#64748b', marginTop: '8px', textAlign: 'center', margin: '8px 0 0 0' }}>
-                Export saves your current game to a file. Import loads a saved game.
-              </p>
+            {/* Start Buttons */}
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+              <button 
+                onClick={startGame}
+                style={{
+                  ...BUTTON_STYLES.PRIMARY,
+                  width: '100%',
+                  padding: '16px',
+                  fontSize: '16px',
+                  letterSpacing: '0.15em',
+                  borderRadius: '4px',
+                  border: 'none'
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.backgroundColor = COLORS.PRIMARY_HOVER;
+                  e.currentTarget.style.boxShadow = SHADOWS.BUTTON_PRIMARY_HOVER;
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.backgroundColor = COLORS.PRIMARY;
+                  e.currentTarget.style.boxShadow = SHADOWS.BUTTON_PRIMARY;
+                }}
+              >
+                Solo
+              </button>
+              
+              <button 
+                onClick={() => setMultiplayerMode('select')}
+                style={{
+                  width: '100%',
+                  padding: '16px',
+                  fontSize: '16px',
+                  letterSpacing: '0.15em',
+                  borderRadius: '4px',
+                  border: `2px solid ${COLORS.ACCENT_BLUE}`,
+                  backgroundColor: 'transparent',
+                  color: COLORS.ACCENT_BLUE,
+                  fontWeight: '900',
+                  textTransform: 'uppercase',
+                  cursor: 'pointer',
+                  transition: 'all 0.2s',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: '8px'
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.backgroundColor = `${COLORS.ACCENT_BLUE}20`;
+                  e.currentTarget.style.boxShadow = SHADOWS.GLOW_BLUE;
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.backgroundColor = 'transparent';
+                  e.currentTarget.style.boxShadow = 'none';
+                }}
+              >
+                <Users size={18} />
+                Multiplayer
+              </button>
             </div>
 
             {/* Build Info */}
@@ -1282,6 +1104,89 @@ export default function HelldiversRoguelite() {
         
         {/* FOOTER */}
         <GameFooter />
+      </div>
+    );
+  }
+
+  // SOLO_CONFIG PHASE - Game configuration for solo play
+  if (phase === 'SOLO_CONFIG') {
+    return (
+      <div style={{ minHeight: '100vh', background: GRADIENTS.BACKGROUND, color: 'white', padding: '80px 24px' }}>
+        <div style={{ maxWidth: '600px', margin: '0 auto' }}>
+          {/* Header */}
+          <div style={{ textAlign: 'center', marginBottom: '48px' }}>
+            <h1 style={{ 
+              fontSize: '48px', 
+              fontWeight: '900', 
+              color: factionColors.PRIMARY, 
+              margin: '0 0 8px 0', 
+              letterSpacing: '0.05em', 
+              textTransform: 'uppercase', 
+              textShadow: factionColors.GLOW 
+            }}>
+              SOLO OPERATION
+            </h1>
+            <div style={{ background: GRADIENTS.HEADER_BAR, padding: '12px', margin: '0 auto', maxWidth: '400px' }}>
+              <p style={{ fontSize: '14px', fontWeight: 'bold', color: 'white', textTransform: 'uppercase', letterSpacing: '0.3em', margin: 0 }}>
+                Configure Your Mission
+              </p>
+            </div>
+          </div>
+
+          {/* Game Configuration */}
+          <div style={{ backgroundColor: COLORS.CARD_BG, padding: '32px', borderRadius: '8px', border: `1px solid ${COLORS.CARD_BORDER}`, marginBottom: '32px' }}>
+            <GameConfiguration
+              gameConfig={gameConfig}
+              eventsEnabled={eventsEnabled}
+              onUpdateGameConfig={(updates) => dispatch(actions.updateGameConfig(updates))}
+              onSetSubfaction={(subfaction) => dispatch(actions.setSubfaction(subfaction))}
+              onSetEventsEnabled={(enabled) => dispatch(actions.setEventsEnabled(enabled))}
+              factionColors={factionColors}
+            />
+          </div>
+
+          {/* Action Buttons */}
+          <div style={{ display: 'flex', gap: '16px' }}>
+            <button
+              onClick={() => dispatch(actions.setPhase('MENU'))}
+              style={{
+                flex: 1,
+                padding: '16px',
+                backgroundColor: 'transparent',
+                color: COLORS.TEXT_MUTED,
+                border: `2px solid ${COLORS.CARD_BORDER}`,
+                borderRadius: '4px',
+                fontWeight: '900',
+                fontSize: '14px',
+                textTransform: 'uppercase',
+                cursor: 'pointer',
+                transition: 'all 0.2s'
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.borderColor = COLORS.TEXT_DISABLED;
+                e.currentTarget.style.color = COLORS.TEXT_SECONDARY;
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.borderColor = COLORS.CARD_BORDER;
+                e.currentTarget.style.color = COLORS.TEXT_MUTED;
+              }}
+            >
+              ← BACK TO MENU
+            </button>
+            <button
+              onClick={() => dispatch(actions.setPhase('LOBBY'))}
+              style={{
+                ...BUTTON_STYLES.PRIMARY,
+                flex: 2,
+                padding: '16px',
+                fontSize: '16px',
+                letterSpacing: '0.15em'
+              }}
+            >
+              CONTINUE →
+            </button>
+          </div>
+        </div>
       </div>
     );
   }
@@ -1874,7 +1779,16 @@ export default function HelldiversRoguelite() {
     };
 
     return (
-      <EventDisplay
+      <div style={{ minHeight: '100vh' }}>
+        {/* MULTIPLAYER STATUS BAR */}
+        {isMultiplayer && (
+          <MultiplayerStatusBar 
+            gameConfig={gameConfig} 
+            onDisconnect={disconnect}
+          />
+        )}
+        
+        <EventDisplay
         currentEvent={currentEvent}
         eventPlayerChoice={eventPlayerChoice}
         eventStratagemSelection={eventStratagemSelection}
@@ -1922,6 +1836,7 @@ export default function HelldiversRoguelite() {
         }}
         onConfirmSelections={handleEventChoice}
       />
+      </div>
     );
   }
 
@@ -2219,8 +2134,17 @@ export default function HelldiversRoguelite() {
     const player = players[draftState.activePlayerIndex];
     
     return (
-      <div style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column', padding: '24px' }}>
-        <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: '16px', gap: '12px' }}>
+      <div style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column' }}>
+        {/* MULTIPLAYER STATUS BAR */}
+        {isMultiplayer && (
+          <MultiplayerStatusBar 
+            gameConfig={gameConfig} 
+            onDisconnect={disconnect}
+          />
+        )}
+        
+        <div style={{ padding: '24px' }}>
+          <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: '16px', gap: '12px' }}>
           <button
             onClick={exportGameState}
             style={{
@@ -2502,6 +2426,7 @@ export default function HelldiversRoguelite() {
             <span style={{ color: factionColors.PRIMARY, fontFamily: 'monospace' }}>Current Requisition: {requisition} R</span>
           </div>
         </div>
+        </div>
       </div>
     );
   }
@@ -2509,6 +2434,14 @@ export default function HelldiversRoguelite() {
   // DASHBOARD PHASE
   return (
     <div style={{ minHeight: '100vh', paddingBottom: '80px' }}>
+      {/* MULTIPLAYER STATUS BAR */}
+      {isMultiplayer && (
+        <MultiplayerStatusBar 
+          gameConfig={gameConfig} 
+          onDisconnect={disconnect}
+        />
+      )}
+      
       {/* HEADER */}
       <GameHeader 
         currentDiff={currentDiff}
@@ -3082,5 +3015,14 @@ export default function HelldiversRoguelite() {
       {/* FOOTER */}
       <GameFooter />
     </div>
+  );
+}
+
+// Wrapper component that provides multiplayer context
+export default function HelldiversRoguelite() {
+  return (
+    <MultiplayerProvider>
+      <HelldiversRogueliteApp />
+    </MultiplayerProvider>
   );
 }

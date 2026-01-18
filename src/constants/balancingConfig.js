@@ -162,37 +162,37 @@ export function getRareWeightMultiplier(playerCount, subfaction) {
 
 /**
  * Get default subfaction for a given faction
- * @param {string} faction - Main faction (Terminids, Automatons, Illuminate)
+ * @param {string} faction - Main faction (terminid, automaton, illuminate)
  * @returns {string} - Default subfaction identifier
  */
 export function getDefaultSubfaction(faction) {
   switch (faction) {
-    case 'Terminids':
+    case 'terminid':
       return SUBFACTION.BUGS_VANILLA;
-    case 'Automatons':
+    case 'automaton':
       return SUBFACTION.BOTS_VANILLA;
-    case 'Illuminate':
+    case 'illuminate':
       return SUBFACTION.SQUIDS_VANILLA;
     default:
-      return SUBFACTION.BOTS_VANILLA;
+      return SUBFACTION.BUGS_VANILLA;
   }
 }
 
 /**
  * Get all subfactions for a given main faction
- * @param {string} faction - Main faction (Terminids, Automatons, Illuminate)
+ * @param {string} faction - Main faction (terminid, automaton, illuminate)
  * @returns {Array<string>} - Array of subfaction identifiers
  */
 export function getSubfactionsForFaction(faction) {
   switch (faction) {
-    case 'Terminids':
+    case 'terminid':
       return [SUBFACTION.BUGS_VANILLA, SUBFACTION.BUGS_PREDATOR, SUBFACTION.BUGS_SPORE_BURST, SUBFACTION.BUGS_RUPTURE];
-    case 'Automatons':
+    case 'automaton':
       return [SUBFACTION.BOTS_VANILLA, SUBFACTION.BOTS_JET_BRIGADE, SUBFACTION.BOTS_INCINERATION_CORE];
-    case 'Illuminate':
+    case 'illuminate':
       return [SUBFACTION.SQUIDS_VANILLA];
     default:
-      return [SUBFACTION.BOTS_VANILLA];
+      return [SUBFACTION.BUGS_VANILLA];
   }
 }
 
