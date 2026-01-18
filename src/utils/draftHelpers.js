@@ -5,7 +5,7 @@ import { MASTER_DB } from '../data/itemsByWarbond';
 
 /**
  * Calculate draft hand size based on mission star rating
- * @param {number} starRating - Mission star rating (1-6)
+ * @param {number} starRating - Mission star rating (1-5)
  * @returns {number} Number of cards to show (2-4)
  */
 export const getDraftHandSize = (starRating) => {
