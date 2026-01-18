@@ -481,7 +481,7 @@ export const EVENTS = [
   {
     id: 'training_accident',
     name: 'Training Exercise Gone Wrong',
-    description: 'A live-fire training exercise has gone catastrophically wrong. The instructor barks: "This is what happens when you don\'t follow protocol! Medical treatment is available, or you can tough it out and prove you\'re Helldiver material!"',
+    description: 'A live-fire training exercise has gone catastrophically wrong. The instructor barks: "This is what happens when you don\'t follow protocol! You can pay for medical treatment, or you can prove your worth by accepting additional training with a randomly assigned booster."',
     type: EVENT_TYPES.CHOICE,
     minDifficulty: 1,
     maxDifficulty: 6,
@@ -489,14 +489,14 @@ export const EVENTS = [
     targetPlayer: 'all',
     choices: [
       {
-        text: 'Seek Medical Treatment',
+        text: 'Pay for Medical Treatment',
         requiresRequisition: 2,
         outcomes: []
       },
       {
-        text: 'Tough It Out',
+        text: 'Accept Additional Training',
         outcomes: [
-          { type: OUTCOME_TYPES.LOSE_REQUISITION, value: 1 }
+          { type: OUTCOME_TYPES.GAIN_BOOSTER, targetPlayer: 'random' }
         ]
       }
     ]
