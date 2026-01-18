@@ -75,17 +75,20 @@ export const processEventOutcome = (outcome, choice, state, selections = {}) => 
 
     case OUTCOME_TYPES.GAIN_BOOSTER:
       if (outcome.targetPlayer === 'random') {
-        const availableBoosters = getAvailableBoosters(players, gameConfig, burnedCards);
-        if (availableBoosters.length === 0 || !players || players.length === 0) {
+        if (!players || players.length === 0) {
           break;
         }
 
-        const playersWithoutBoosters = players
-          .map((player, index) => ({ player, index }))
-          .filter(({ player }) => !player.loadout.booster);
+        const availableBoosters = getAvailableBoosters(players, gameConfig, burnedCards);
+        if (availableBoosters.length === 0) {
+          break;
+        }
+
+        const mappedPlayers = players.map((player, index) => ({ player, index }));
+        const playersWithoutBoosters = mappedPlayers.filter(({ player }) => !player.loadout.booster);
         const playerPool = playersWithoutBoosters.length > 0
           ? playersWithoutBoosters
-          : players.map((player, index) => ({ player, index }));
+          : mappedPlayers;
         const selectedPlayer = playerPool[Math.floor(Math.random() * playerPool.length)];
         const selectedBooster = availableBoosters[Math.floor(Math.random() * availableBoosters.length)];
         const newPlayers = [...players];
