@@ -145,9 +145,11 @@ export function MultiplayerProvider({ children }) {
     
     try {
       let activePlayerId = playerId;
+      let didRetry = false;
       let result = await joinLobby(joinLobbyId, { id: activePlayerId, name }, slot);
       
       if (!result.success && result.errorCode === 'PLAYER_ID_CONFLICT') {
+        didRetry = true;
         activePlayerId = uuidv4();
         sessionStorage.setItem('helldrafters_player_id', activePlayerId);
         setPlayerId(activePlayerId);
@@ -155,7 +157,11 @@ export function MultiplayerProvider({ children }) {
       }
       
       if (!result.success) {
-        setError(result.error);
+        if (didRetry && result.errorCode === 'PLAYER_ID_CONFLICT') {
+          setError('Unable to join lobby. Please try again.');
+        } else {
+          setError(result.error);
+        }
         setConnectionStatus('disconnected');
         return false;
       }
