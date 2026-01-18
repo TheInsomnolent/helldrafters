@@ -74,6 +74,37 @@ export const processEventOutcome = (outcome, choice, state, selections = {}) => 
       break;
 
     case OUTCOME_TYPES.GAIN_BOOSTER:
+      if (outcome.targetPlayer === 'random') {
+        const availableBoosters = getAvailableBoosters(players, gameConfig, burnedCards);
+        if (availableBoosters.length === 0 || !players || players.length === 0) {
+          break;
+        }
+
+        const playersWithoutBoosters = players
+          .map((player, index) => ({ player, index }))
+          .filter(({ player }) => !player.loadout.booster);
+        const playerPool = playersWithoutBoosters.length > 0
+          ? playersWithoutBoosters
+          : players.map((player, index) => ({ player, index }));
+        const selectedPlayer = playerPool[Math.floor(Math.random() * playerPool.length)];
+        const selectedBooster = availableBoosters[Math.floor(Math.random() * availableBoosters.length)];
+        const newPlayers = [...players];
+        const targetPlayer = newPlayers[selectedPlayer.index];
+
+        targetPlayer.loadout.booster = selectedBooster.id;
+        if (!targetPlayer.inventory.includes(selectedBooster.id)) {
+          targetPlayer.inventory.push(selectedBooster.id);
+        }
+
+        updates.players = newPlayers;
+        updates.gainedItems = [{ playerIndex: selectedPlayer.index, itemName: selectedBooster.name }];
+
+        if (gameConfig.burnCards) {
+          updates.newBurnedCards = [selectedBooster.id];
+        }
+        break;
+      }
+
       // Generate booster draft instead of directly applying
       updates.needsBoosterSelection = true;
       const boosterDraft = generateBoosterDraft(players, gameConfig, state.burnedCards || []);
@@ -423,10 +454,55 @@ export const processAllOutcomes = (outcomes, choice, state, selections = {}) => 
       ...state,
       ...allUpdates // Apply previous updates
     }, selections);
+
+    if (updates.newBurnedCards) {
+      allUpdates.newBurnedCards = [
+        ...(allUpdates.newBurnedCards || []),
+        ...updates.newBurnedCards
+      ];
+      delete updates.newBurnedCards;
+    }
+
+    if (updates.gainedItems) {
+      allUpdates.gainedItems = [
+        ...(allUpdates.gainedItems || []),
+        ...updates.gainedItems
+      ];
+      delete updates.gainedItems;
+    }
+
     Object.assign(allUpdates, updates);
   });
 
   return allUpdates;
+};
+
+/**
+ * Get available boosters filtered by current state.
+ * @param {Array} players - Array of player objects
+ * @param {Object} gameConfig - Game configuration
+ * @param {Array} burnedCards - Array of burned card IDs
+ * @returns {Array} Array of booster objects
+ */
+const getAvailableBoosters = (players = [], gameConfig = {}, burnedCards = []) => {
+  let boosters = MASTER_DB.filter(item => item.type === TYPE.BOOSTER);
+  if (boosters.length === 0) return [];
+
+  // Filter out boosters that any player already has (globally unique)
+  const existingBoosters = new Set();
+  players.forEach(player => {
+    if (player.loadout.booster) {
+      existingBoosters.add(player.loadout.booster);
+    }
+  });
+  boosters = boosters.filter(b => !existingBoosters.has(b.id));
+
+  // Filter out burned cards if burn mode is enabled
+  if (gameConfig.burnCards && burnedCards.length > 0) {
+    boosters = boosters.filter(b => !burnedCards.includes(b.id));
+  }
+
+  return boosters;
 };
 
 /**
@@ -437,25 +513,9 @@ export const processAllOutcomes = (outcomes, choice, state, selections = {}) => 
  * @returns {Array} Array of 2 random booster IDs
  */
 const generateBoosterDraft = (players = [], gameConfig = {}, burnedCards = []) => {
-  let boosters = MASTER_DB.filter(item => item.type === TYPE.BOOSTER);
+  const boosters = getAvailableBoosters(players, gameConfig, burnedCards);
   if (boosters.length === 0) return [];
-  
-  // Filter out boosters that any player already has (globally unique)
-  const existingBoosters = new Set();
-  players.forEach(player => {
-    if (player.loadout.booster) {
-      existingBoosters.add(player.loadout.booster);
-    }
-  });
-  boosters = boosters.filter(b => !existingBoosters.has(b.id));
-  
-  // Filter out burned cards if burn mode is enabled
-  if (gameConfig.burnCards && burnedCards.length > 0) {
-    boosters = boosters.filter(b => !burnedCards.includes(b.id));
-  }
-  
-  if (boosters.length === 0) return [];
-  
+
   // Shuffle and take 2
   const shuffled = [...boosters].sort(() => Math.random() - 0.5);
   return shuffled.slice(0, Math.min(2, shuffled.length)).map(b => b.id);
