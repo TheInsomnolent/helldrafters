@@ -3,7 +3,7 @@ import { RefreshCw, CheckCircle, XCircle, Users } from 'lucide-react';
 import { selectRandomEvent, EVENT_TYPES, EVENTS } from './systems/events/events';
 import { RARITY, TYPE } from './constants/types';
 import { MASTER_DB } from './data/itemsByWarbond';
-import { STARTING_LOADOUT, DIFFICULTY_CONFIG } from './constants/gameConfig';
+import { STARTING_LOADOUT, DIFFICULTY_CONFIG, getMissionsForDifficulty } from './constants/gameConfig';
 import { ARMOR_PASSIVE_DESCRIPTIONS } from './constants/armorPassives';
 import { getItemById } from './utils/itemHelpers';
 import { getDraftHandSize, getWeightedPool, generateDraftHand, generateRandomDraftOrder } from './utils/draftHelpers';
@@ -87,6 +87,7 @@ function HelldiversRogueliteApp() {
     phase,
     gameConfig,
     currentDiff,
+    currentMission,
     requisition,
     burnedCards,
     customSetup,
@@ -313,6 +314,36 @@ function HelldiversRogueliteApp() {
     dispatch(actions.setPhase('DRAFT'));
   };
 
+  /**
+   * Check if a random event should trigger based on samples collected.
+   * If an event triggers, dispatches the necessary state updates and returns true.
+   * Otherwise returns false.
+   */
+  const tryTriggerRandomEvent = () => {
+    if (!eventsEnabled) return false;
+    
+    const baseChance = 0.0;
+    const sampleBonus = (
+      (state.samples.common * 0.01) +
+      (state.samples.rare * 0.02) +
+      (state.samples.superRare * 0.03)
+    );
+    const totalChance = Math.min(1.0, baseChance + sampleBonus);
+
+    if (Math.random() < totalChance) {
+      const event = selectRandomEvent(currentDiff, players.length > 1, seenEvents, players);
+      if (event) {
+        dispatch(actions.resetSamples());
+        dispatch(actions.addSeenEvent(event.id));
+        dispatch(actions.setCurrentEvent(event));
+        dispatch(actions.setEventPlayerChoice(null));
+        dispatch(actions.setPhase('EVENT'));
+        return true;
+      }
+    }
+    return false;
+  };
+
   const proceedToNextDraft = (updatedPlayers) => {
     const currentPlayerIdx = draftState.activePlayerIndex;
     const currentPlayer = updatedPlayers[currentPlayerIdx];
@@ -387,26 +418,8 @@ function HelldiversRogueliteApp() {
       }));
     } else {
       // Draft complete - check for event
-      if (eventsEnabled) {
-        const baseChance = 0.0;
-        const sampleBonus = (
-          (state.samples.common * 0.01) +
-          (state.samples.rare * 0.02) +
-          (state.samples.superRare * 0.03)
-        );
-        const totalChance = Math.min(1.0, baseChance + sampleBonus);
-
-        if (Math.random() < totalChance) {
-          const event = selectRandomEvent(currentDiff, players.length > 1, seenEvents, players);
-          if (event) {
-            dispatch(actions.resetSamples());
-            dispatch(actions.addSeenEvent(event.id));
-            dispatch(actions.setCurrentEvent(event));
-            dispatch(actions.setEventPlayerChoice(null));
-            dispatch(actions.setPhase('EVENT'));
-            return;
-          }
-        }
+      if (tryTriggerRandomEvent()) {
+        return;
       }
       dispatch(actions.setPhase('DASHBOARD'));
     }
@@ -2847,6 +2860,8 @@ function HelldiversRogueliteApp() {
       {/* HEADER */}
       <GameHeader 
         currentDiff={currentDiff}
+        currentMission={currentMission}
+        enduranceMode={gameConfig.enduranceMode}
         requisition={requisition}
         faction={gameConfig.faction}
         subfaction={gameConfig.subfaction}
@@ -3178,15 +3193,6 @@ function HelldiversRogueliteApp() {
                   if (document.getElementById('rareSamples')) document.getElementById('rareSamples').value = '0';
                   if (document.getElementById('superRareSamples')) document.getElementById('superRareSamples').value = '0';
                   
-                  // Calculate dynamic requisition based on player count and subfaction
-                  const { getRequisitionMultiplier } = require('./constants/balancingConfig');
-                  const reqMultiplier = getRequisitionMultiplier(
-                    gameConfig.playerCount,
-                    gameConfig.subfaction
-                  );
-                  const reqGained = 1 * reqMultiplier;
-                  dispatch(actions.addRequisition(reqGained));
-                  
                   // Clear weapon restrictions from all players
                   const updatedPlayers = players.map(p => ({
                     ...p,
@@ -3194,15 +3200,7 @@ function HelldiversRogueliteApp() {
                   }));
                   dispatch(actions.setPlayers(updatedPlayers));
                   
-                  // Check for victory condition
-                  if (currentDiff === 10 && !gameConfig.endlessMode) {
-                    dispatch(actions.setPhase('VICTORY'));
-                    return;
-                  }
-                  
-                  if (currentDiff < 10) dispatch(actions.setDifficulty(currentDiff + 1));
-                  
-                  // Check if sacrifice is required
+                  // Check if sacrifice is required (processed at end of each mission)
                   let sacrificesRequired = [];
                   
                   if (gameConfig.brutalityMode) {
@@ -3219,15 +3217,92 @@ function HelldiversRogueliteApp() {
                     }
                   }
                   
-                  // Route to SACRIFICE or DRAFT
-                  if (sacrificesRequired.length > 0) {
-                    dispatch(actions.setSacrificeState({
-                      activePlayerIndex: sacrificesRequired[0],
-                      sacrificesRequired: sacrificesRequired
-                    }));
-                    dispatch(actions.setPhase('SACRIFICE'));
+                  // Endurance Mode logic
+                  if (gameConfig.enduranceMode) {
+                    const missionsRequired = getMissionsForDifficulty(currentDiff);
+                    const isOperationComplete = currentMission >= missionsRequired;
+                    
+                    if (isOperationComplete) {
+                      // Operation complete - give draft rewards and advance difficulty
+                      const { getRequisitionMultiplier } = require('./constants/balancingConfig');
+                      const reqMultiplier = getRequisitionMultiplier(
+                        gameConfig.playerCount,
+                        gameConfig.subfaction
+                      );
+                      const reqGained = 1 * reqMultiplier;
+                      dispatch(actions.addRequisition(reqGained));
+                      
+                      // Reset mission counter for next difficulty
+                      dispatch(actions.setCurrentMission(1));
+                      
+                      // Check for victory condition
+                      if (currentDiff === 10 && !gameConfig.endlessMode) {
+                        dispatch(actions.setPhase('VICTORY'));
+                        return;
+                      }
+                      
+                      if (currentDiff < 10) dispatch(actions.setDifficulty(currentDiff + 1));
+                      
+                      // Route to SACRIFICE, EVENT, or DRAFT based on operation end
+                      if (sacrificesRequired.length > 0) {
+                        dispatch(actions.setSacrificeState({
+                          activePlayerIndex: sacrificesRequired[0],
+                          sacrificesRequired: sacrificesRequired
+                        }));
+                        dispatch(actions.setPhase('SACRIFICE'));
+                      } else {
+                        startDraftPhase();
+                      }
+                    } else {
+                      // Mission complete but operation continues - process penalties and events, but NO draft
+                      dispatch(actions.setCurrentMission(currentMission + 1));
+                      
+                      // Process sacrifice if required (end of each mission)
+                      if (sacrificesRequired.length > 0) {
+                        dispatch(actions.setSacrificeState({
+                          activePlayerIndex: sacrificesRequired[0],
+                          sacrificesRequired: sacrificesRequired
+                        }));
+                        dispatch(actions.setPhase('SACRIFICE'));
+                      } else {
+                        // Check for event (can occur at end of each mission)
+                        if (tryTriggerRandomEvent()) {
+                          return;
+                        }
+                        // No event - stay on dashboard for next mission
+                        // Reset extraction status for next mission
+                        const resetPlayers = players.map(p => ({ ...p, extracted: true }));
+                        dispatch(actions.setPlayers(resetPlayers));
+                      }
+                    }
                   } else {
-                    startDraftPhase();
+                    // Standard mode - original logic
+                    const { getRequisitionMultiplier } = require('./constants/balancingConfig');
+                    const reqMultiplier = getRequisitionMultiplier(
+                      gameConfig.playerCount,
+                      gameConfig.subfaction
+                    );
+                    const reqGained = 1 * reqMultiplier;
+                    dispatch(actions.addRequisition(reqGained));
+                    
+                    // Check for victory condition
+                    if (currentDiff === 10 && !gameConfig.endlessMode) {
+                      dispatch(actions.setPhase('VICTORY'));
+                      return;
+                    }
+                    
+                    if (currentDiff < 10) dispatch(actions.setDifficulty(currentDiff + 1));
+                    
+                    // Route to SACRIFICE or DRAFT
+                    if (sacrificesRequired.length > 0) {
+                      dispatch(actions.setSacrificeState({
+                        activePlayerIndex: sacrificesRequired[0],
+                        sacrificesRequired: sacrificesRequired
+                      }));
+                      dispatch(actions.setPhase('SACRIFICE'));
+                    } else {
+                      startDraftPhase();
+                    }
                   }
                 }}
                 style={{

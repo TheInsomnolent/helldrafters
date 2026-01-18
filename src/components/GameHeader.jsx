@@ -1,13 +1,58 @@
 import React from 'react';
-import { DIFFICULTY_CONFIG } from '../constants/gameConfig';
+import { DIFFICULTY_CONFIG, getMissionsForDifficulty } from '../constants/gameConfig';
 import { getFactionColors } from '../constants/theme';
 import { SUBFACTION_CONFIG } from '../constants/balancingConfig';
+
+/**
+ * Mission Progress Indicator Component
+ * Shows hollow and filled circles for mission progress in Endurance Mode
+ */
+function MissionProgressIndicator({ currentMission, totalMissions, factionColors }) {
+  const circles = [];
+  for (let i = 1; i <= totalMissions; i++) {
+    const isComplete = i < currentMission;
+    const isCurrent = i === currentMission;
+    circles.push(
+      <div
+        key={i}
+        style={{
+          width: '16px',
+          height: '16px',
+          borderRadius: '50%',
+          border: `2px solid ${factionColors.PRIMARY}`,
+          backgroundColor: isComplete ? factionColors.PRIMARY : 'transparent',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          position: 'relative'
+        }}
+        title={`Mission ${i}${isComplete ? ' (Complete)' : isCurrent ? ' (Current)' : ''}`}
+      >
+        {isCurrent && (
+          <div style={{
+            width: '6px',
+            height: '6px',
+            borderRadius: '50%',
+            backgroundColor: factionColors.PRIMARY
+          }} />
+        )}
+      </div>
+    );
+  }
+  return (
+    <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+      {circles}
+    </div>
+  );
+}
 
 /**
  * Game header component showing current difficulty, stats, and action buttons
  */
 export default function GameHeader({ 
   currentDiff, 
+  currentMission,
+  enduranceMode,
   requisition, 
   faction,
   subfaction,
@@ -16,6 +61,8 @@ export default function GameHeader({
 }) {
   const factionColors = getFactionColors(faction);
   const subfactionName = SUBFACTION_CONFIG[subfaction]?.name || 'Unknown';
+  const totalMissions = enduranceMode ? getMissionsForDifficulty(currentDiff) : 1;
+  
   return (
     <div style={{ 
       backgroundColor: '#0f1419', 
@@ -62,6 +109,41 @@ export default function GameHeader({
               Theater: {faction} - {subfactionName}
             </div>
           </div>
+          
+          {/* Endurance Mode Mission Progress */}
+          {enduranceMode && (
+            <div style={{ 
+              display: 'flex', 
+              alignItems: 'center', 
+              gap: '8px',
+              marginLeft: '16px',
+              padding: '8px 12px',
+              backgroundColor: 'rgba(100, 116, 139, 0.2)',
+              borderRadius: '4px',
+              border: '1px solid rgba(100, 116, 139, 0.3)'
+            }}>
+              <span style={{ 
+                fontSize: '11px', 
+                color: '#94a3b8', 
+                textTransform: 'uppercase',
+                letterSpacing: '0.5px'
+              }}>
+                Operation
+              </span>
+              <MissionProgressIndicator 
+                currentMission={currentMission || 1} 
+                totalMissions={totalMissions}
+                factionColors={factionColors}
+              />
+              <span style={{ 
+                fontSize: '11px', 
+                color: factionColors.PRIMARY,
+                fontWeight: 'bold'
+              }}>
+                {currentMission || 1}/{totalMissions}
+              </span>
+            </div>
+          )}
         </div>
         
         <div style={{ display: 'flex', alignItems: 'center', gap: '24px' }}>

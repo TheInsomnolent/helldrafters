@@ -79,6 +79,9 @@ export const SET_SELECTED_PLAYER = 'SET_SELECTED_PLAYER';
 export const ADD_BURNED_CARD = 'ADD_BURNED_CARD';
 export const SET_BURNED_CARDS = 'SET_BURNED_CARDS';
 
+// Endurance mode
+export const SET_CURRENT_MISSION = 'SET_CURRENT_MISSION';
+
 // Full state load
 export const LOAD_GAME_STATE = 'LOAD_GAME_STATE';
 export const RESET_GAME = 'RESET_GAME';

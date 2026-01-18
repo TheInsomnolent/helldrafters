@@ -280,6 +280,12 @@ export const setBurnedCards = (cards) => ({
   payload: cards
 });
 
+// Endurance mode
+export const setCurrentMission = (mission) => ({
+  type: types.SET_CURRENT_MISSION,
+  payload: mission
+});
+
 // Full state operations
 export const loadGameState = (state) => ({
   type: types.LOAD_GAME_STATE,

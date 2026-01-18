@@ -191,6 +191,19 @@ export default function GameConfiguration({
             </div>
           </label>
 
+          <label style={{ display: 'flex', alignItems: 'center', gap: '12px', cursor: 'pointer', padding: '12px', backgroundColor: gameConfig.enduranceMode ? `${factionColors.PRIMARY}1A` : 'transparent', borderRadius: '4px', border: '1px solid rgba(100, 116, 139, 0.5)' }}>
+            <input 
+              type="checkbox" 
+              checked={gameConfig.enduranceMode}
+              onChange={(e) => onUpdateGameConfig({ enduranceMode: e.target.checked })}
+              style={{ width: '20px', height: '20px', cursor: 'pointer' }}
+            />
+            <div>
+              <div style={{ color: factionColors.PRIMARY, fontWeight: 'bold', fontSize: '14px' }}>Endurance Mode</div>
+              <div style={{ color: '#94a3b8', fontSize: '11px', marginTop: '4px' }}>Complete full operations (1-3 missions) at each difficulty. Draft rewards only given at operation end</div>
+            </div>
+          </label>
+
           <label style={{ display: 'flex', alignItems: 'center', gap: '12px', cursor: 'pointer', padding: '12px', backgroundColor: gameConfig.brutalityMode ? `${factionColors.PRIMARY}1A` : 'transparent', borderRadius: '4px', border: '1px solid rgba(100, 116, 139, 0.5)' }}>
             <input 
               type="checkbox" 

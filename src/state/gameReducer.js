@@ -28,11 +28,13 @@ export const initialState = {
     burnCards: true,
     customStart: false,
     endlessMode: false,
+    enduranceMode: false, // New: complete full operations instead of single missions
     debugEventsMode: isDebugModeEnabled(),
     debugRarityWeights: false,
     brutalityMode: false
   },
   currentDiff: 1,
+  currentMission: 1, // New: tracks which mission within current difficulty operation
   requisition: 0,
   samples: {
     common: 0,
@@ -103,6 +105,9 @@ export function gameReducer(state, action) {
     // Difficulty and resources
     case types.SET_DIFFICULTY:
       return { ...state, currentDiff: action.payload };
+
+    case types.SET_CURRENT_MISSION:
+      return { ...state, currentMission: action.payload };
 
     case types.SET_REQUISITION:
       return { ...state, requisition: action.payload };
@@ -505,6 +510,7 @@ export function gameReducer(state, action) {
         samples: action.payload.samples || { common: 0, rare: 0, superRare: 0 },
         seenEvents: action.payload.seenEvents || [],
         eventSpecialDraftSelections: action.payload.eventSpecialDraftSelections ?? null,
+        currentMission: action.payload.currentMission || 1,
         players: (action.payload.players || []).map(p => ({
           ...p,
           weaponRestricted: p.weaponRestricted || false,

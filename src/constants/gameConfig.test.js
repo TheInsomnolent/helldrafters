@@ -1,4 +1,4 @@
-import { STARTING_LOADOUT, DIFFICULTY_CONFIG } from './gameConfig';
+import { STARTING_LOADOUT, DIFFICULTY_CONFIG, ENDURANCE_MISSION_COUNT, getMissionsForDifficulty } from './gameConfig';
 
 describe('Constants - Game Configuration', () => {
   describe('STARTING_LOADOUT', () => {
@@ -60,6 +60,47 @@ describe('Constants - Game Configuration', () => {
         expect(config).toHaveProperty('name');
         expect(config).toHaveProperty('reqAT');
       });
+    });
+  });
+
+  describe('ENDURANCE_MISSION_COUNT', () => {
+    it('should have mission counts for all 10 difficulty levels', () => {
+      for (let i = 1; i <= 10; i++) {
+        expect(ENDURANCE_MISSION_COUNT[i]).toBeDefined();
+      }
+    });
+
+    it('should have 1 mission for Trivial and Easy (D1-D2)', () => {
+      expect(ENDURANCE_MISSION_COUNT[1]).toBe(1);
+      expect(ENDURANCE_MISSION_COUNT[2]).toBe(1);
+    });
+
+    it('should have 2 missions for Medium and Challenging (D3-D4)', () => {
+      expect(ENDURANCE_MISSION_COUNT[3]).toBe(2);
+      expect(ENDURANCE_MISSION_COUNT[4]).toBe(2);
+    });
+
+    it('should have 3 missions for Hard through Super Helldive (D5-D10)', () => {
+      for (let i = 5; i <= 10; i++) {
+        expect(ENDURANCE_MISSION_COUNT[i]).toBe(3);
+      }
+    });
+  });
+
+  describe('getMissionsForDifficulty', () => {
+    it('should return correct mission count for each difficulty', () => {
+      expect(getMissionsForDifficulty(1)).toBe(1);
+      expect(getMissionsForDifficulty(2)).toBe(1);
+      expect(getMissionsForDifficulty(3)).toBe(2);
+      expect(getMissionsForDifficulty(4)).toBe(2);
+      expect(getMissionsForDifficulty(5)).toBe(3);
+      expect(getMissionsForDifficulty(10)).toBe(3);
+    });
+
+    it('should return 1 for invalid difficulty levels', () => {
+      expect(getMissionsForDifficulty(0)).toBe(1);
+      expect(getMissionsForDifficulty(11)).toBe(1);
+      expect(getMissionsForDifficulty(-1)).toBe(1);
     });
   });
 });
