@@ -14,9 +14,8 @@ describe('Utils - Draft Helpers', () => {
       expect(getDraftHandSize(4)).toBe(3);
     });
 
-    it('should return 4 cards for 5-6 star missions', () => {
+    it('should return 4 cards for 5 star missions', () => {
       expect(getDraftHandSize(5)).toBe(4);
-      expect(getDraftHandSize(6)).toBe(4);
     });
   });
 

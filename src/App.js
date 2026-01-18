@@ -2835,8 +2835,8 @@ function HelldiversRogueliteApp() {
               <label style={{ display: 'block', fontSize: '12px', fontWeight: 'bold', color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.15em', marginBottom: '16px' }}>
                 Mission Performance Rating
               </label>
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(6, 1fr)', gap: '12px', marginBottom: '12px', pointerEvents: (!isMultiplayer || isHost) ? 'auto' : 'none' }}>
-                {[1, 2, 3, 4, 5, 6].map(n => (
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: '12px', marginBottom: '12px', pointerEvents: (!isMultiplayer || isHost) ? 'auto' : 'none' }}>
+                {[1, 2, 3, 4, 5].map(n => (
                   <button 
                     key={n}
                     onClick={() => dispatch(actions.updateGameConfig({ starRating: n }))}
