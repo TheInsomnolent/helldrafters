@@ -68,6 +68,7 @@ export const initialState = {
   eventBoosterSelection: null, // Selected booster ID
   eventSpecialDraft: null, // Array of item objects for special draft selection
   eventSpecialDraftType: null, // 'throwable' or 'secondary'
+  eventSpecialDraftSelections: null, // Array of selected item IDs by player index
   pendingFaction: null, // Faction to switch to (awaiting subfaction selection)
   pendingSubfactionSelection: null, // Selected subfaction for pending faction change
   seenEvents: [],
@@ -401,6 +402,24 @@ export function gameReducer(state, action) {
     case types.SET_EVENT_SPECIAL_DRAFT_TYPE:
       return { ...state, eventSpecialDraftType: action.payload };
 
+    case types.SET_EVENT_SPECIAL_DRAFT_SELECTIONS:
+      return { ...state, eventSpecialDraftSelections: action.payload };
+
+    case types.SET_EVENT_SPECIAL_DRAFT_SELECTION:
+      const playerCount = state.players?.length || 0;
+      const currentSelections = Array.isArray(state.eventSpecialDraftSelections)
+        ? state.eventSpecialDraftSelections
+        : new Array(playerCount).fill(null);
+      const normalizedSelections = currentSelections
+        .slice(0, playerCount)
+        .concat(new Array(Math.max(0, playerCount - currentSelections.length)).fill(null));
+      return {
+        ...state,
+        eventSpecialDraftSelections: normalizedSelections.map((selection, idx) =>
+          idx === action.payload.playerIndex ? action.payload.itemId : selection
+        )
+      };
+
     case types.SET_PENDING_FACTION:
       return { ...state, pendingFaction: action.payload };
 
@@ -417,6 +436,7 @@ export function gameReducer(state, action) {
         eventBoosterSelection: null,
         eventSpecialDraft: null,
         eventSpecialDraftType: null,
+        eventSpecialDraftSelections: null,
         pendingFaction: null,
         pendingSubfactionSelection: null
       };
@@ -474,6 +494,7 @@ export function gameReducer(state, action) {
         // Ensure new fields exist with defaults
         samples: action.payload.samples || { common: 0, rare: 0, superRare: 0 },
         seenEvents: action.payload.seenEvents || [],
+        eventSpecialDraftSelections: action.payload.eventSpecialDraftSelections ?? null,
         players: (action.payload.players || []).map(p => ({
           ...p,
           weaponRestricted: p.weaponRestricted || false,

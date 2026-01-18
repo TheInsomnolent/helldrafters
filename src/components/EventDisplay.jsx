@@ -29,8 +29,11 @@ export default function EventDisplay({
   eventBoosterSelection,
   eventSpecialDraft,
   eventSpecialDraftType,
+  eventSpecialDraftSelections,
   pendingFaction,
   pendingSubfactionSelection,
+  isMultiplayer = false,
+  playerSlot = null,
   onStratagemSelection,
   onTargetPlayerSelection,
   onTargetStratagemSelection,
@@ -90,9 +93,6 @@ export default function EventDisplay({
   // Track which choice was selected and needs selections
   const [selectedChoice, setSelectedChoice] = useState(null);
   
-  // Track player selections for special draft
-  const [playerSelections, setPlayerSelections] = useState({});
-
   const handleChoiceClick = (choice) => {
     if (needsSelectionDialogue(choice)) {
       setSelectedChoice(choice);
@@ -211,6 +211,9 @@ export default function EventDisplay({
   const availableStratagems = getAvailableStratagems();
   const targetPlayerStratagems = getTargetPlayerStratagems();
   const otherPlayers = getOtherPlayers();
+  const specialDraftSelections = Array.isArray(eventSpecialDraftSelections) ? eventSpecialDraftSelections : [];
+  const allSpecialDraftSelectionsMade = specialDraftSelections.length === players.length &&
+    specialDraftSelections.every(selection => selection !== null && selection !== undefined);
   
   // Check if we need to show target stratagem selection for duplicate (when target is full)
   const needsOverwriteForDuplicate = isDuplicateChoice(selectedChoice) && 
@@ -795,78 +798,85 @@ export default function EventDisplay({
                   </div>
 
                   {/* Selection for each player */}
-                  {players.map((player, playerIndex) => (
-                    <div key={playerIndex} style={{ marginBottom: '24px', padding: '16px', backgroundColor: '#283548', borderRadius: '8px' }}>
-                      <div style={{ fontSize: '16px', marginBottom: '12px', color: '#F5C642', fontWeight: 'bold' }}>
-                        Helldiver {playerIndex + 1}
+                  {players.map((player, playerIndex) => {
+                    const canSelect = !isMultiplayer || playerIndex === playerSlot;
+                    const playerName = player?.name || `Helldiver ${playerIndex + 1}`;
+                    return (
+                      <div key={playerIndex} style={{ marginBottom: '24px', padding: '16px', backgroundColor: '#283548', borderRadius: '8px' }}>
+                        <div style={{ fontSize: '16px', marginBottom: '12px', color: '#F5C642', fontWeight: 'bold' }}>
+                          {playerName}
+                        </div>
+                        
+                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '8px' }}>
+                          {eventSpecialDraft.map((item) => {
+                            const isSelected = specialDraftSelections[playerIndex] === item.id;
+                            return (
+                              <button
+                                key={item.id}
+                                onClick={() => {
+                                  if (canSelect) {
+                                    onSpecialDraftSelection(playerIndex, item.id);
+                                  }
+                                }}
+                                disabled={!canSelect}
+                                style={{
+                                  padding: '12px',
+                                  fontSize: '14px',
+                                  backgroundColor: isSelected ? '#F5C642' : '#1f2937',
+                                  color: isSelected ? '#0f1419' : '#e0e0e0',
+                                  border: '2px solid ' + (isSelected ? '#F5C642' : '#555'),
+                                  borderRadius: '4px',
+                                  cursor: canSelect ? 'pointer' : 'not-allowed',
+                                  fontWeight: isSelected ? 'bold' : 'normal',
+                                  transition: 'all 0.2s',
+                                  textAlign: 'center',
+                                  opacity: canSelect ? 1 : 0.6
+                                }}
+                                onMouseEnter={(e) => {
+                                  if (canSelect && !isSelected) {
+                                    e.target.style.backgroundColor = '#374151';
+                                    e.target.style.borderColor = '#F5C642';
+                                  }
+                                }}
+                                onMouseLeave={(e) => {
+                                  if (canSelect && !isSelected) {
+                                    e.target.style.backgroundColor = '#1f2937';
+                                    e.target.style.borderColor = '#555';
+                                  }
+                                }}
+                              >
+                                {item.name}
+                              </button>
+                            );
+                          })}
+                        </div>
                       </div>
-                      
-                      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '8px' }}>
-                        {eventSpecialDraft.map((item) => {
-                          const isSelected = playerSelections[playerIndex] === item.id;
-                          return (
-                            <button
-                              key={item.id}
-                              onClick={() => {
-                                setPlayerSelections(prev => ({ ...prev, [playerIndex]: item.id }));
-                                onSpecialDraftSelection(playerIndex, item.id);
-                              }}
-                              style={{
-                                padding: '12px',
-                                fontSize: '14px',
-                                backgroundColor: isSelected ? '#F5C642' : '#1f2937',
-                                color: isSelected ? '#0f1419' : '#e0e0e0',
-                                border: '2px solid ' + (isSelected ? '#F5C642' : '#555'),
-                                borderRadius: '4px',
-                                cursor: 'pointer',
-                                fontWeight: isSelected ? 'bold' : 'normal',
-                                transition: 'all 0.2s',
-                                textAlign: 'center'
-                              }}
-                              onMouseEnter={(e) => {
-                                if (!isSelected) {
-                                  e.target.style.backgroundColor = '#374151';
-                                  e.target.style.borderColor = '#F5C642';
-                                }
-                              }}
-                              onMouseLeave={(e) => {
-                                if (!isSelected) {
-                                  e.target.style.backgroundColor = '#1f2937';
-                                  e.target.style.borderColor = '#555';
-                                }
-                              }}
-                            >
-                              {item.name}
-                            </button>
-                          );
-                        })}
-                      </div>
-                    </div>
-                  ))}
+                    );
+                  })}
 
                   {/* Confirm Button */}
                   <div style={{ display: 'flex', gap: '12px', justifyContent: 'center', marginTop: '24px' }}>
                     <button
                       onClick={onAutoContinue}
-                      disabled={Object.keys(playerSelections).length < players.length}
+                      disabled={!isHost || !allSpecialDraftSelectionsMade}
                       style={{
                         padding: '12px 32px',
                         fontSize: '16px',
                         fontWeight: 'bold',
-                        backgroundColor: Object.keys(playerSelections).length < players.length ? '#555' : '#4ade80',
-                        color: Object.keys(playerSelections).length < players.length ? '#888' : '#0f1419',
+                        backgroundColor: !isHost || !allSpecialDraftSelectionsMade ? '#555' : '#4ade80',
+                        color: !isHost || !allSpecialDraftSelectionsMade ? '#888' : '#0f1419',
                         border: 'none',
                         borderRadius: '4px',
-                        cursor: Object.keys(playerSelections).length < players.length ? 'not-allowed' : 'pointer',
+                        cursor: !isHost || !allSpecialDraftSelectionsMade ? 'not-allowed' : 'pointer',
                         transition: 'all 0.2s'
                       }}
                       onMouseEnter={(e) => {
-                        if (Object.keys(playerSelections).length >= players.length) {
+                        if (isHost && allSpecialDraftSelectionsMade) {
                           e.target.style.backgroundColor = '#22c55e';
                         }
                       }}
                       onMouseLeave={(e) => {
-                        if (Object.keys(playerSelections).length >= players.length) {
+                        if (isHost && allSpecialDraftSelectionsMade) {
                           e.target.style.backgroundColor = '#4ade80';
                         }
                       }}
