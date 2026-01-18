@@ -182,7 +182,7 @@ export const CUSTOM_ICON_URLS = {
   // Stratagems - Backpacks
   'st_bp_jump': `${WIKI_BASE_URL}/LIFT-850_Jump_Pack.png`,
   'st_bp_supply': `${WIKI_BASE_URL}/B-1_Supply_Pack.png`,
-  'st_bp_dog': `${WIKI_BASE_URL}/AX-LAS-5_%22Guard_Dog%22_Rover.png`,
+  'st_bp_dog': `${WIKI_BASE_URL}/AX-AR-23_%22Guard_Dog%22.png`,
   'st_bp_shield': `${WIKI_BASE_URL}/SH-20_Ballistic_Shield_Backpack.png`,
   'st_bp_ballistic': `${WIKI_BASE_URL}/SH-32_Shield_Generator_Pack.png`,
   'st_bp_rover': `${WIKI_BASE_URL}/AX-LAS-5_%22Guard_Dog%22_Rover.png`,
