@@ -139,15 +139,26 @@ export const joinLobby = async (lobbyId, playerInfo, requestedSlot) => {
       return { success: false, error: 'Player is already in this lobby', errorCode: 'PLAYER_ID_CONFLICT' };
     }
     
-    // Check if slot is available
-    const slotTaken = Object.values(players).some(p => p.slot === requestedSlot);
-    if (slotTaken) {
-      return { success: false, error: 'Slot is already taken' };
+    // Check if slot is available - a slot is available if:
+    // 1. No player is in that slot, OR
+    // 2. The player in that slot is disconnected (connected === false)
+    const playerInSlot = Object.values(players).find(p => p.slot === requestedSlot);
+    const slotTakenByConnectedPlayer = playerInSlot && playerInSlot.connected !== false;
+    if (slotTakenByConnectedPlayer) {
+      return { success: false, error: 'Slot is already taken by an active player' };
     }
     
-    // Check player count limit (always allow up to 4 players in multiplayer)
-    const playerCount = Object.keys(players).length;
-    if (playerCount >= 4) {
+    // If taking over a disconnected player's slot, remove the old player entry first
+    if (playerInSlot && playerInSlot.connected === false) {
+      const oldPlayerRef = ref(db, `lobbies/${lobbyId}/players/${playerInSlot.id}`);
+      const oldConnectedRef = ref(db, `lobbies/${lobbyId}/players/${playerInSlot.id}/connected`);
+      await onDisconnect(oldConnectedRef).cancel();
+      await remove(oldPlayerRef);
+    }
+    
+    // Check player count limit (only count connected players for the limit)
+    const connectedPlayerCount = Object.values(players).filter(p => p.connected !== false).length;
+    if (connectedPlayerCount >= 4) {
       return { success: false, error: 'Lobby is full' };
     }
     
@@ -196,8 +207,12 @@ export const joinLobby = async (lobbyId, playerInfo, requestedSlot) => {
 export const leaveLobby = async (lobbyId, playerId) => {
   const db = getFirebaseDatabase();
   const playerRef = ref(db, `lobbies/${lobbyId}/players/${playerId}`);
+  const connectedRef = ref(db, `lobbies/${lobbyId}/players/${playerId}/connected`);
   
   try {
+    // Cancel the onDisconnect handler BEFORE removing the player
+    // This prevents the handler from creating a partial entry after removal
+    await onDisconnect(connectedRef).cancel();
     await remove(playerRef);
   } catch (error) {
     console.error('Error leaving lobby:', error);
@@ -215,8 +230,11 @@ export const leaveLobby = async (lobbyId, playerId) => {
 export const kickPlayer = async (lobbyId, playerId) => {
   const db = getFirebaseDatabase();
   const playerRef = ref(db, `lobbies/${lobbyId}/players/${playerId}`);
+  const connectedRef = ref(db, `lobbies/${lobbyId}/players/${playerId}/connected`);
   
   try {
+    // Cancel the onDisconnect handler to prevent partial entry creation
+    await onDisconnect(connectedRef).cancel();
     await remove(playerRef);
     return { success: true };
   } catch (error) {

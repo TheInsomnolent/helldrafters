@@ -332,11 +332,17 @@ function HelldiversRogueliteApp() {
   // --- CORE LOGIC: THE DRAFT DIRECTOR ---
 
   // Helper to check if a player at a given index is connected in multiplayer
+  // Returns false if:
+  // 1. Player is in lobby but connected === false (disconnected)
+  // 2. Player is NOT in lobby at all (kicked or never joined)
   const isPlayerConnected = (playerIdx) => {
     if (!isMultiplayer) return true;
     if (!lobbyData?.players) return true;
     const lobbyPlayer = Object.values(lobbyData.players).find(p => p.slot === playerIdx);
-    return lobbyPlayer?.connected !== false;
+    // If no lobby player found for this slot, they're not connected (kicked)
+    if (!lobbyPlayer) return false;
+    // If lobby player exists, check their connected status
+    return lobbyPlayer.connected !== false;
   };
 
   // Get indices of connected players for draft order
@@ -3192,7 +3198,14 @@ function HelldiversRogueliteApp() {
             const lobbyPlayer = isMultiplayer && lobbyData?.players 
               ? Object.values(lobbyData.players).find(p => p.slot === index)
               : null;
-            const isConnected = !isMultiplayer || lobbyPlayer?.connected !== false;
+            // Player is connected if: not multiplayer, or lobby player exists and is connected
+            const isConnected = !isMultiplayer || (lobbyPlayer && lobbyPlayer.connected !== false);
+            
+            // In multiplayer, hide loadouts for players not in the lobby (kicked)
+            if (isMultiplayer && !lobbyPlayer) {
+              return null;
+            }
+            
             return (
               <LoadoutDisplay 
                 key={player.id} 

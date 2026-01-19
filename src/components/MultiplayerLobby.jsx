@@ -283,15 +283,26 @@ export function JoinGameScreen({ gameConfig, onJoinLobby, onBack }) {
     if (!lobbyInfo) return [];
     const totalSlots = 4; // Always allow up to 4 players in multiplayer (dynamic)
     const players = lobbyInfo.players || {};
-    const takenSlots = Object.values(players).map(p => p.slot);
     
+    // A slot is available if:
+    // 1. No player is in that slot, OR
+    // 2. The player in that slot is disconnected (connected === false)
     const available = [];
     for (let i = 0; i < totalSlots; i++) {
-      if (!takenSlots.includes(i)) {
+      const playerInSlot = Object.values(players).find(p => p.slot === i);
+      // Slot is available if no player or player is disconnected
+      if (!playerInSlot || playerInSlot.connected === false) {
         available.push(i);
       }
     }
     return available;
+  };
+  
+  // Get info about disconnected players by slot (for UI indication)
+  const getDisconnectedPlayerInSlot = (slot) => {
+    if (!lobbyInfo?.players) return null;
+    const player = Object.values(lobbyInfo.players).find(p => p.slot === slot && p.connected === false);
+    return player;
   };
 
   // Check if slot selection should be shown (only for loaded games)
@@ -456,25 +467,41 @@ export function JoinGameScreen({ gameConfig, onJoinLobby, onBack }) {
                 {availableSlots.length === 0 ? (
                   <p style={{ color: '#ef4444' }}>No slots available - lobby is full</p>
                 ) : (
-                  <div style={{ display: 'flex', gap: '12px' }}>
-                    {availableSlots.map(slot => (
-                      <button
-                        key={slot}
-                        onClick={() => setSelectedSlot(slot)}
-                        style={{
-                          padding: '16px 24px',
-                          backgroundColor: selectedSlot === slot ? factionColors.PRIMARY : COLORS.BG_MAIN,
-                          color: selectedSlot === slot ? 'black' : 'white',
-                          border: `2px solid ${selectedSlot === slot ? factionColors.PRIMARY : COLORS.CARD_BORDER}`,
-                          borderRadius: '4px',
-                          fontWeight: 'bold',
-                          cursor: 'pointer',
-                          transition: 'all 0.2s'
-                        }}
-                      >
-                        Slot {slot + 1}
-                      </button>
-                    ))}
+                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: '12px' }}>
+                    {availableSlots.map(slot => {
+                      const disconnectedPlayer = getDisconnectedPlayerInSlot(slot);
+                      return (
+                        <button
+                          key={slot}
+                          onClick={() => setSelectedSlot(slot)}
+                          style={{
+                            padding: '16px 24px',
+                            backgroundColor: selectedSlot === slot ? factionColors.PRIMARY : COLORS.BG_MAIN,
+                            color: selectedSlot === slot ? 'black' : 'white',
+                            border: `2px solid ${selectedSlot === slot ? factionColors.PRIMARY : disconnectedPlayer ? '#f59e0b' : COLORS.CARD_BORDER}`,
+                            borderRadius: '4px',
+                            fontWeight: 'bold',
+                            cursor: 'pointer',
+                            transition: 'all 0.2s',
+                            display: 'flex',
+                            flexDirection: 'column',
+                            alignItems: 'center',
+                            gap: '4px'
+                          }}
+                        >
+                          <span>Slot {slot + 1}</span>
+                          {disconnectedPlayer && (
+                            <span style={{ 
+                              fontSize: '10px', 
+                              color: selectedSlot === slot ? 'rgba(0,0,0,0.6)' : '#f59e0b',
+                              fontWeight: 'normal'
+                            }}>
+                              (Rejoin as {disconnectedPlayer.name})
+                            </span>
+                          )}
+                        </button>
+                      );
+                    })}
                   </div>
                 )}
               </div>
