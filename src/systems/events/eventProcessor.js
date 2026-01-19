@@ -259,9 +259,14 @@ export const processEventOutcome = (outcome, choice, state, selections = {}) => 
       break;
 
     case OUTCOME_TYPES.RESTRICT_TO_SINGLE_WEAPON:
-      if (outcome.targetPlayer === 'choose' && eventPlayerChoice !== null) {
+      // Use eventTargetPlayerSelection if provided (for host-chosen player), otherwise eventPlayerChoice
+      const restrictPlayerIndex = selections && selections.targetPlayerSelection !== null && selections.targetPlayerSelection !== undefined
+        ? selections.targetPlayerSelection
+        : (outcome.targetPlayer === 'choose' && eventPlayerChoice !== null ? eventPlayerChoice : null);
+      
+      if (restrictPlayerIndex !== null) {
         const newPlayers = [...players];
-        const player = newPlayers[eventPlayerChoice];
+        const player = newPlayers[restrictPlayerIndex];
         
         // Save current stratagems for restoration after mission
         player.savedStratagems = [...player.loadout.stratagems];
@@ -964,27 +969,32 @@ const calculateRedraftBonus = (player, divisionValue) => {
  * @param {Object} selections - User selections {stratagemSelection, targetPlayerSelection, targetStratagemSelection}
  */
 const applySwapStratagem = (players, eventPlayerChoice, selections = {}) => {
-  if (players.length <= 1 || eventPlayerChoice === null) return players;
+  if (players.length <= 1) return players;
 
-  const { stratagemSelection, targetPlayerSelection, targetStratagemSelection } = selections;
+  const { sourcePlayerSelection, stratagemSelection, targetPlayerSelection, targetStratagemSelection } = selections;
+
+  // New behavior: use sourcePlayerSelection if provided
+  const sourcePlayerIndex = sourcePlayerSelection !== null && sourcePlayerSelection !== undefined 
+    ? sourcePlayerSelection 
+    : eventPlayerChoice;
 
   // If we have all selections, use them
-  if (stratagemSelection && targetPlayerSelection !== null && targetPlayerSelection !== undefined && targetStratagemSelection) {
+  if (stratagemSelection && targetPlayerSelection !== null && targetPlayerSelection !== undefined && targetStratagemSelection && sourcePlayerIndex !== null) {
     const newPlayers = [...players];
     const { stratagemSlotIndex } = stratagemSelection;
     const { stratagemSlotIndex: targetStratagemSlotIndex } = targetStratagemSelection;
 
     // Perform swap
-    const temp = newPlayers[eventPlayerChoice].loadout.stratagems[stratagemSlotIndex];
-    newPlayers[eventPlayerChoice].loadout.stratagems[stratagemSlotIndex] = 
+    const temp = newPlayers[sourcePlayerIndex].loadout.stratagems[stratagemSlotIndex];
+    newPlayers[sourcePlayerIndex].loadout.stratagems[stratagemSlotIndex] = 
       newPlayers[targetPlayerSelection].loadout.stratagems[targetStratagemSlotIndex];
     newPlayers[targetPlayerSelection].loadout.stratagems[targetStratagemSlotIndex] = temp;
 
     return newPlayers;
   }
 
-  // If we have partial selections (old behavior for duplicate), use them
-  if (stratagemSelection && targetPlayerSelection !== null && targetPlayerSelection !== undefined) {
+  // If we have partial selections (old behavior for duplicate/fallback), use them
+  if (stratagemSelection && targetPlayerSelection !== null && targetPlayerSelection !== undefined && sourcePlayerIndex !== null) {
     const newPlayers = [...players];
     const { stratagemSlotIndex } = stratagemSelection;
     
@@ -999,8 +1009,8 @@ const applySwapStratagem = (players, eventPlayerChoice, selections = {}) => {
     const targetStratData = targetStratagems[0];
 
     // Perform swap
-    const temp = newPlayers[eventPlayerChoice].loadout.stratagems[stratagemSlotIndex];
-    newPlayers[eventPlayerChoice].loadout.stratagems[stratagemSlotIndex] = 
+    const temp = newPlayers[sourcePlayerIndex].loadout.stratagems[stratagemSlotIndex];
+    newPlayers[sourcePlayerIndex].loadout.stratagems[stratagemSlotIndex] = 
       newPlayers[targetPlayerSelection].loadout.stratagems[targetStratData.idx];
     newPlayers[targetPlayerSelection].loadout.stratagems[targetStratData.idx] = temp;
 

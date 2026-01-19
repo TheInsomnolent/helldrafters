@@ -75,6 +75,11 @@ export const setSamples = (samples) => ({
 });
 
 // Event selections
+export const setEventSourcePlayerSelection = (playerIndex) => ({
+  type: types.SET_EVENT_SOURCE_PLAYER_SELECTION,
+  payload: playerIndex
+});
+
 export const setEventStratagemSelection = (selection) => ({
   type: types.SET_EVENT_STRATAGEM_SELECTION,
   payload: selection
@@ -242,6 +247,11 @@ export const setCurrentEvent = (event) => ({
 
 export const setEventPlayerChoice = (choice) => ({
   type: types.SET_EVENT_PLAYER_CHOICE,
+  payload: choice
+});
+
+export const setEventSelectedChoice = (choice) => ({
+  type: types.SET_EVENT_SELECTED_CHOICE,
   payload: choice
 });
 

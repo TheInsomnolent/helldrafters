@@ -129,6 +129,7 @@ function HelldiversRogueliteApp() {
     eventsEnabled,
     currentEvent,
     eventPlayerChoice,
+    eventSourcePlayerSelection,
     eventStratagemSelection,
     eventTargetPlayerSelection,
     eventTargetStratagemSelection,
@@ -137,6 +138,7 @@ function HelldiversRogueliteApp() {
     eventSpecialDraft,
     eventSpecialDraftType,
     eventSpecialDraftSelections,
+    eventSelectedChoice,
     pendingFaction,
     pendingSubfactionSelection,
     seenEvents
@@ -2557,6 +2559,7 @@ function HelldiversRogueliteApp() {
     const handleEventChoice = (choice) => {
       // Process outcomes using the event processor with selections
       const selections = {
+        sourcePlayerSelection: eventSourcePlayerSelection,
         stratagemSelection: eventStratagemSelection,
         targetPlayerSelection: eventTargetPlayerSelection,
         targetStratagemSelection: eventTargetStratagemSelection
@@ -2856,6 +2859,7 @@ function HelldiversRogueliteApp() {
         <EventDisplay
         currentEvent={currentEvent}
         eventPlayerChoice={eventPlayerChoice}
+        eventSourcePlayerSelection={eventSourcePlayerSelection}
         eventStratagemSelection={eventStratagemSelection}
         eventTargetPlayerSelection={eventTargetPlayerSelection}
         eventTargetStratagemSelection={eventTargetStratagemSelection}
@@ -2864,6 +2868,7 @@ function HelldiversRogueliteApp() {
         eventSpecialDraft={eventSpecialDraft}
         eventSpecialDraftType={eventSpecialDraftType}
         eventSpecialDraftSelections={eventSpecialDraftSelections}
+        eventSelectedChoice={eventSelectedChoice}
         pendingFaction={pendingFaction}
         pendingSubfactionSelection={pendingSubfactionSelection}
         players={players}
@@ -2880,12 +2885,21 @@ function HelldiversRogueliteApp() {
         onPlayerChoice={(choice) => dispatch(actions.setEventPlayerChoice(choice))}
         onEventChoice={handleEventChoice}
         onAutoContinue={handleAutoContinue}
+        onSourcePlayerSelection={(playerIndex) => dispatch(actions.setEventSourcePlayerSelection(playerIndex))}
         onStratagemSelection={(selection) => dispatch(actions.setEventStratagemSelection(selection))}
         onTargetPlayerSelection={(playerIndex) => dispatch(actions.setEventTargetPlayerSelection(playerIndex))}
         onTargetStratagemSelection={(selection) => dispatch(actions.setEventTargetStratagemSelection(selection))}
         onBoosterSelection={(boosterId) => dispatch(actions.setEventBoosterSelection(boosterId))}
-        onSubfactionSelection={(subfaction) => dispatch(actions.setPendingSubfactionSelection(subfaction))}
+        onEventSelectedChoice={(choice) => dispatch(actions.setEventSelectedChoice(choice))}
+        onSubfactionSelection={(subfaction) => {
+          // Only host can select subfaction in multiplayer
+          if (isMultiplayer && !isHost) return;
+          dispatch(actions.setPendingSubfactionSelection(subfaction));
+        }}
         onConfirmSubfaction={() => {
+          // Only host can confirm subfaction in multiplayer
+          if (isMultiplayer && !isHost) return;
+          
           // Apply the faction and subfaction change
           dispatch(actions.updateGameConfig({ 
             faction: pendingFaction,

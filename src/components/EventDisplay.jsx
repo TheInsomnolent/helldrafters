@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React from 'react';
 import { EVENT_TYPES, OUTCOME_TYPES } from '../systems/events/events';
 import { MASTER_DB } from '../data/itemsByWarbond';
 import { getSubfactionsForFaction, SUBFACTION_CONFIG } from '../constants/balancingConfig';
@@ -22,6 +22,7 @@ export default function EventDisplay({
   onPlayerChoice,
   onEventChoice,
   onAutoContinue,
+  eventSourcePlayerSelection,
   eventStratagemSelection,
   eventTargetPlayerSelection,
   eventTargetStratagemSelection,
@@ -30,14 +31,17 @@ export default function EventDisplay({
   eventSpecialDraft,
   eventSpecialDraftType,
   eventSpecialDraftSelections,
+  eventSelectedChoice,
   pendingFaction,
   pendingSubfactionSelection,
   isMultiplayer = false,
   playerSlot = null,
+  onSourcePlayerSelection,
   onStratagemSelection,
   onTargetPlayerSelection,
   onTargetStratagemSelection,
   onBoosterSelection,
+  onEventSelectedChoice,
   onSubfactionSelection,
   onConfirmSubfaction,
   onSpecialDraftSelection,
@@ -78,7 +82,8 @@ export default function EventDisplay({
     if (!choice || !choice.outcomes) return false;
     return choice.outcomes.some(outcome => 
       outcome.type === OUTCOME_TYPES.DUPLICATE_STRATAGEM_TO_ANOTHER_HELLDIVER ||
-      outcome.type === OUTCOME_TYPES.SWAP_STRATAGEM_WITH_PLAYER
+      outcome.type === OUTCOME_TYPES.SWAP_STRATAGEM_WITH_PLAYER ||
+      (outcome.type === OUTCOME_TYPES.RESTRICT_TO_SINGLE_WEAPON && outcome.targetPlayer === 'choose')
     );
   };
 
@@ -98,36 +103,53 @@ export default function EventDisplay({
     );
   };
 
-  // Track which choice was selected and needs selections
-  const [selectedChoice, setSelectedChoice] = useState(null);
+  // Check if this is a RESTRICT_TO_SINGLE_WEAPON choice
+  const isRestrictWeaponChoice = (choice) => {
+    if (!choice || !choice.outcomes) return false;
+    return choice.outcomes.some(outcome => 
+      outcome.type === OUTCOME_TYPES.RESTRICT_TO_SINGLE_WEAPON && outcome.targetPlayer === 'choose'
+    );
+  };
+
+  // Use the eventSelectedChoice from props (synced across multiplayer)
+  const selectedChoice = eventSelectedChoice;
   
   const handleChoiceClick = (choice) => {
+    if (!isHost) return; // Only host can select choices
+    
     if (needsSelectionDialogue(choice)) {
-      setSelectedChoice(choice);
+      onEventSelectedChoice(choice);
     } else {
       onEventChoice(choice);
     }
   };
 
   const handleConfirmSelections = () => {
+    if (!isHost) return; // Only host can confirm
+    
     if (selectedChoice) {
       onConfirmSelections(selectedChoice);
-      setSelectedChoice(null);
+      onEventSelectedChoice(null); // Clear the selection after confirming
     }
   };
 
   const handleCancelSelections = () => {
-    setSelectedChoice(null);
+    if (!isHost) return; // Only host can cancel
+    
+    onEventSelectedChoice(null);
+    onSourcePlayerSelection(null);
     onStratagemSelection(null);
     onTargetPlayerSelection(null);
     onTargetStratagemSelection(null);
     onBoosterSelection(null);
   };
 
-  // Get available stratagems from the active player
+  // Get available stratagems from the source player (for swaps/duplicates)
   const getAvailableStratagems = () => {
-    if (eventPlayerChoice === null) return [];
-    const player = players[eventPlayerChoice];
+    // For SWAP, use eventSourcePlayerSelection; for others, use eventPlayerChoice
+    const sourcePlayerIndex = isSwapChoice(selectedChoice) ? eventSourcePlayerSelection : eventPlayerChoice;
+    if (sourcePlayerIndex === null) return [];
+    const player = players[sourcePlayerIndex];
     return player.loadout.stratagems
       .map((stratagemId, slotIndex) => ({
         stratagemId,
@@ -157,8 +179,8 @@ export default function EventDisplay({
     const player = players[eventTargetPlayerSelection];
     
     // For swap: filter out stratagems that would cause duplicates on source player
-    if (isSwapChoice(selectedChoice) && eventStratagemSelection) {
-      const sourcePlayer = players[eventPlayerChoice];
+    if (isSwapChoice(selectedChoice) && eventStratagemSelection && eventSourcePlayerSelection !== null) {
+      const sourcePlayer = players[eventSourcePlayerSelection];
       return player.loadout.stratagems
         .map((stratagemId, slotIndex) => ({
           stratagemId,
@@ -188,11 +210,20 @@ export default function EventDisplay({
 
   // Get other players for target selection (filtered for disconnected and duplicates if duplicate choice)
   const getOtherPlayers = () => {
-    if (eventPlayerChoice === null) return [];
+    // For RESTRICT_TO_SINGLE_WEAPON, show all connected players (no exclusions)
+    if (isRestrictWeaponChoice(selectedChoice)) {
+      return players
+        .map((player, idx) => ({ player, idx }))
+        .filter(({ idx }) => isPlayerSelectable(idx));
+    }
+    
+    // For SWAP, exclude the source player; for others, exclude eventPlayerChoice
+    const excludePlayerIndex = isSwapChoice(selectedChoice) ? eventSourcePlayerSelection : eventPlayerChoice;
+    if (excludePlayerIndex === null) return [];
     
     const allOtherPlayers = players
       .map((player, idx) => ({ player, idx }))
-      .filter((_, idx) => idx !== eventPlayerChoice)
+      .filter((_, idx) => idx !== excludePlayerIndex)
       .filter(({ idx }) => isPlayerSelectable(idx)); // Filter out disconnected players
     
     // For duplicate: filter out players who already have the selected stratagem (unless they're full)
@@ -229,12 +260,15 @@ export default function EventDisplay({
     eventTargetPlayerSelection !== null && 
     !targetPlayerHasFreeSlot(eventTargetPlayerSelection);
   
-  // For swap, need both stratagems selected
+  // For swap, need source player, source stratagem, target player, and target stratagem selected
   // For duplicate with free slot, just need stratagem and player
   // For duplicate with full slots, need stratagem, player, and target stratagem to overwrite
-  const canConfirm = eventStratagemSelection !== null && eventTargetPlayerSelection !== null &&
-    (!isSwapChoice(selectedChoice) || eventTargetStratagemSelection !== null) &&
-    (!needsOverwriteForDuplicate || eventTargetStratagemSelection !== null);
+  // For RESTRICT_TO_SINGLE_WEAPON, just need target player selected
+  const canConfirm = isRestrictWeaponChoice(selectedChoice) 
+    ? eventTargetPlayerSelection !== null
+    : (eventStratagemSelection !== null && eventTargetPlayerSelection !== null &&
+      (!isSwapChoice(selectedChoice) || (eventSourcePlayerSelection !== null && eventTargetStratagemSelection !== null)) &&
+      (!needsOverwriteForDuplicate || eventTargetStratagemSelection !== null));
   return (
     <div style={{ minHeight: '100vh', backgroundColor: '#1a2332', color: '#e0e0e0', padding: '24px' }}>
       {/* Header */}
@@ -394,6 +428,18 @@ export default function EventDisplay({
                 padding: '24px',
                 marginBottom: '16px'
               }}>
+                {!isHost && (
+                  <div style={{ 
+                    fontSize: '14px', 
+                    marginBottom: '12px', 
+                    color: '#9ca3af', 
+                    textAlign: 'center',
+                    fontStyle: 'italic'
+                  }}>
+                    Waiting for host to make selections...
+                  </div>
+                )}
+                
                 {selectedChoice.outcomes.some(o => o.type === OUTCOME_TYPES.DUPLICATE_STRATAGEM_TO_ANOTHER_HELLDIVER) && (
                   <div style={{ fontSize: '18px', marginBottom: '16px', color: '#F5C642', textAlign: 'center' }}>
                     Select a stratagem to duplicate and a player to receive it:
@@ -401,23 +447,62 @@ export default function EventDisplay({
                 )}
                 {selectedChoice.outcomes.some(o => o.type === OUTCOME_TYPES.SWAP_STRATAGEM_WITH_PLAYER) && (
                   <div style={{ fontSize: '18px', marginBottom: '16px', color: '#F5C642', textAlign: 'center' }}>
-                    Select a stratagem to swap and a player to swap with:
+                    Select two helldivers and their stratagems to swap:
+                  </div>
+                )}
+                {isRestrictWeaponChoice(selectedChoice) && (
+                  <div style={{ fontSize: '18px', marginBottom: '16px', color: '#F5C642', textAlign: 'center' }}>
+                    Select which Helldiver will be restricted to a single weapon:
+                  </div>
+                )}
+
+                {/* Source Player Selection (for SWAP only) */}
+                {isSwapChoice(selectedChoice) && (
+                  <div style={{ marginBottom: '20px' }}>
+                    <div style={{ fontSize: '14px', marginBottom: '8px', color: '#b0b0b0' }}>
+                      Step 1: Select Source Helldiver:
+                    </div>
+                    <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', justifyContent: 'center' }}>
+                      {players.map((player, idx) => (
+                        <button
+                          key={idx}
+                          onClick={() => isHost && onSourcePlayerSelection(idx)}
+                          disabled={!isHost || !isPlayerSelectable(idx)}
+                          style={{
+                            padding: '12px 24px',
+                            fontSize: '14px',
+                            fontWeight: eventSourcePlayerSelection === idx ? 'bold' : 'normal',
+                            backgroundColor: eventSourcePlayerSelection === idx ? '#F5C642' : '#283548',
+                            color: eventSourcePlayerSelection === idx ? '#0f1419' : '#e0e0e0',
+                            border: '2px solid ' + (eventSourcePlayerSelection === idx ? '#F5C642' : '#555'),
+                            borderRadius: '4px',
+                            cursor: (isHost && isPlayerSelectable(idx)) ? 'pointer' : 'not-allowed',
+                            transition: 'all 0.2s',
+                            opacity: (isHost && isPlayerSelectable(idx)) ? 1 : 0.6
+                          }}
+                        >
+                          HELLDIVER {idx + 1}
+                        </button>
+                      ))}
+                    </div>
                   </div>
                 )}
 
                 {/* Stratagem Selection */}
+                {((!isSwapChoice(selectedChoice)) || (eventSourcePlayerSelection !== null)) && (
                 <div style={{ marginBottom: '20px' }}>
                   <div style={{ fontSize: '14px', marginBottom: '8px', color: '#b0b0b0' }}>
-                    Your Stratagems:
+                    {isSwapChoice(selectedChoice) ? `Step 2: Select HELLDIVER ${eventSourcePlayerSelection + 1}'s Stratagem:` : 'Your Stratagems:'}
                   </div>
                   <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '8px' }}>
                     {availableStratagems.map((strat, idx) => (
                       <button
                         key={idx}
-                        onClick={() => onStratagemSelection({
+                        onClick={() => isHost && onStratagemSelection({
                           stratagemId: strat.stratagemId,
                           stratagemSlotIndex: strat.stratagemSlotIndex
                         })}
+                        disabled={!isHost}
                         style={{
                           padding: '12px',
                           fontSize: '14px',
@@ -425,10 +510,11 @@ export default function EventDisplay({
                           color: eventStratagemSelection?.stratagemId === strat.stratagemId ? '#0f1419' : '#e0e0e0',
                           border: '2px solid ' + (eventStratagemSelection?.stratagemId === strat.stratagemId ? '#F5C642' : '#555'),
                           borderRadius: '4px',
-                          cursor: 'pointer',
+                          cursor: isHost ? 'pointer' : 'not-allowed',
                           fontWeight: eventStratagemSelection?.stratagemId === strat.stratagemId ? 'bold' : 'normal',
                           transition: 'all 0.2s',
-                          textAlign: 'left'
+                          textAlign: 'left',
+                          opacity: isHost ? 1 : 0.6
                         }}
                       >
                         {strat.name}
@@ -436,12 +522,16 @@ export default function EventDisplay({
                     ))}
                   </div>
                 </div>
+                )}
 
                 {/* Target Player Selection */}
+                {(isRestrictWeaponChoice(selectedChoice) || 
+                  (!isSwapChoice(selectedChoice) && eventStratagemSelection !== null) || 
+                  (isSwapChoice(selectedChoice) && eventStratagemSelection !== null)) && (
                 <div style={{ marginBottom: '20px' }}>
                   <div style={{ fontSize: '14px', marginBottom: '8px', color: '#b0b0b0', display: 'flex', alignItems: 'center', gap: '12px' }}>
-                    <span>Target Helldiver:</span>
-                    {eventTargetPlayerSelection !== null && (
+                    <span>{isSwapChoice(selectedChoice) ? 'Step 3: Target Helldiver:' : (isRestrictWeaponChoice(selectedChoice) ? 'Select Helldiver:' : 'Target Helldiver:')}</span>
+                    {isHost && eventTargetPlayerSelection !== null && (
                       <button
                         onClick={() => {
                           onTargetPlayerSelection(null);
@@ -469,7 +559,8 @@ export default function EventDisplay({
                     {otherPlayers.map(({ player, idx }) => (
                       <button
                         key={idx}
-                        onClick={() => onTargetPlayerSelection(idx)}
+                        onClick={() => isHost && onTargetPlayerSelection(idx)}
+                        disabled={!isHost}
                         style={{
                           padding: '12px 24px',
                           fontSize: '14px',
@@ -478,8 +569,9 @@ export default function EventDisplay({
                           color: eventTargetPlayerSelection === idx ? '#0f1419' : '#e0e0e0',
                           border: '2px solid ' + (eventTargetPlayerSelection === idx ? '#F5C642' : '#555'),
                           borderRadius: '4px',
-                          cursor: 'pointer',
-                          transition: 'all 0.2s'
+                          cursor: isHost ? 'pointer' : 'not-allowed',
+                          transition: 'all 0.2s',
+                          opacity: isHost ? 1 : 0.6
                         }}
                       >
                         HELLDIVER {idx + 1}
@@ -487,6 +579,7 @@ export default function EventDisplay({
                     ))}
                   </div>
                 </div>
+                )}
 
                 {/* Target Player Stratagem Selection (for swap OR duplicate with overwrite) */}
                 {((isSwapChoice(selectedChoice) && eventTargetPlayerSelection !== null && targetPlayerStratagems.length > 0) ||
@@ -494,17 +587,18 @@ export default function EventDisplay({
                   <div style={{ marginBottom: '20px' }}>
                     <div style={{ fontSize: '14px', marginBottom: '8px', color: '#b0b0b0' }}>
                       {isSwapChoice(selectedChoice) 
-                        ? "Target Helldiver's Stratagems (select one to swap):" 
+                        ? `Step 4: Select HELLDIVER ${eventTargetPlayerSelection + 1}'s Stratagem:` 
                         : "Target Helldiver's Stratagems (select one to overwrite):"}
                     </div>
                     <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '8px' }}>
                       {targetPlayerStratagems.map((strat, idx) => (
                         <button
                           key={idx}
-                          onClick={() => onTargetStratagemSelection({
+                          onClick={() => isHost && onTargetStratagemSelection({
                             stratagemId: strat.stratagemId,
                             stratagemSlotIndex: strat.stratagemSlotIndex
                           })}
+                          disabled={!isHost}
                           style={{
                             padding: '12px',
                             fontSize: '14px',
@@ -512,10 +606,11 @@ export default function EventDisplay({
                             color: eventTargetStratagemSelection?.stratagemId === strat.stratagemId ? '#0f1419' : '#e0e0e0',
                             border: '2px solid ' + (eventTargetStratagemSelection?.stratagemId === strat.stratagemId ? '#4ade80' : '#555'),
                             borderRadius: '4px',
-                            cursor: 'pointer',
+                            cursor: isHost ? 'pointer' : 'not-allowed',
                             fontWeight: eventTargetStratagemSelection?.stratagemId === strat.stratagemId ? 'bold' : 'normal',
                             transition: 'all 0.2s',
-                            textAlign: 'left'
+                            textAlign: 'left',
+                            opacity: isHost ? 1 : 0.6
                           }}
                         >
                           {strat.name}
@@ -525,46 +620,48 @@ export default function EventDisplay({
                   </div>
                 )}
 
-                {/* Confirm/Cancel Buttons */}
-                <div style={{ display: 'flex', gap: '12px', justifyContent: 'center' }}>
-                  <button
-                    onClick={handleConfirmSelections}
-                    disabled={!canConfirm}
-                    style={{
-                      padding: '12px 32px',
-                      fontSize: '16px',
-                      fontWeight: 'bold',
-                      backgroundColor: canConfirm ? '#4ade80' : '#555',
-                      color: canConfirm ? '#0f1419' : '#888',
-                      border: 'none',
-                      borderRadius: '4px',
-                      cursor: canConfirm ? 'pointer' : 'not-allowed',
-                      transition: 'all 0.2s'
-                    }}
-                    onMouseEnter={(e) => canConfirm && (e.target.style.backgroundColor = '#22c55e')}
-                    onMouseLeave={(e) => canConfirm && (e.target.style.backgroundColor = '#4ade80')}
-                  >
-                    CONFIRM
-                  </button>
-                  <button
-                    onClick={handleCancelSelections}
-                    style={{
-                      padding: '12px 32px',
-                      fontSize: '16px',
-                      fontWeight: 'bold',
-                      backgroundColor: '#ef4444',
-                      color: '#fff',
-                      border: 'none',
-                      borderRadius: '4px',
-                      cursor: 'pointer',
-                      transition: 'all 0.2s'
-                    }}
-                    onMouseEnter={(e) => e.target.style.backgroundColor = '#dc2626'}
-                    onMouseLeave={(e) => e.target.style.backgroundColor = '#ef4444'}
-                  >
-                    CANCEL
-                  </button>
-                </div>
+                {/* Confirm/Cancel Buttons - only shown to host */}
+                {isHost && (
+                  <div style={{ display: 'flex', gap: '12px', justifyContent: 'center' }}>
+                    <button
+                      onClick={handleConfirmSelections}
+                      disabled={!canConfirm}
+                      style={{
+                        padding: '12px 32px',
+                        fontSize: '16px',
+                        fontWeight: 'bold',
+                        backgroundColor: canConfirm ? '#4ade80' : '#555',
+                        color: canConfirm ? '#0f1419' : '#888',
+                        border: 'none',
+                        borderRadius: '4px',
+                        cursor: canConfirm ? 'pointer' : 'not-allowed',
+                        transition: 'all 0.2s'
+                      }}
+                      onMouseEnter={(e) => canConfirm && (e.target.style.backgroundColor = '#22c55e')}
+                      onMouseLeave={(e) => canConfirm && (e.target.style.backgroundColor = '#4ade80')}
+                    >
+                      CONFIRM
+                    </button>
+                    <button
+                      onClick={handleCancelSelections}
+                      style={{
+                        padding: '12px 32px',
+                        fontSize: '16px',
+                        fontWeight: 'bold',
+                        backgroundColor: '#ef4444',
+                        color: '#fff',
+                        border: 'none',
+                        borderRadius: '4px',
+                        cursor: 'pointer',
+                        transition: 'all 0.2s'
+                      }}
+                      onMouseEnter={(e) => e.target.style.backgroundColor = '#dc2626'}
+                      onMouseLeave={(e) => e.target.style.backgroundColor = '#ef4444'}
+                    >
+                      CANCEL
+                    </button>
+                  </div>
+                )}
               </div>
             </div>
           )}
@@ -720,7 +817,21 @@ export default function EventDisplay({
                 marginBottom: '16px'
               }}>
                 <div style={{ fontSize: '18px', marginBottom: '16px', color: getFactionColors(pendingFaction).PRIMARY, textAlign: 'center' }}>
-                  Select Enemy Variant for {pendingFaction}
+                  {isHost || !isMultiplayer ? 'Select Enemy Variant for' : 'Host selected Helldiver 1'}
+                </div>
+                {!isHost && isMultiplayer && (
+                  <div style={{ 
+                    fontSize: '14px', 
+                    marginBottom: '16px', 
+                    color: '#94a3b8', 
+                    textAlign: 'center',
+                    fontStyle: 'italic'
+                  }}>
+                    Waiting for host to make a choice...
+                  </div>
+                )}
+                <div style={{ fontSize: '18px', marginBottom: '16px', color: getFactionColors(pendingFaction).PRIMARY, textAlign: 'center' }}>
+                  {isHost || !isMultiplayer ? pendingFaction : ''}
                 </div>
 
                 {/* Subfaction Selection Grid */}
@@ -731,10 +842,12 @@ export default function EventDisplay({
                       const isSelected = pendingSubfactionSelection === subfaction;
                       const factionColor = getFactionColors(pendingFaction).PRIMARY;
                       
+                      const canInteract = isHost || !isMultiplayer;
                       return (
                         <button
                           key={subfaction}
-                          onClick={() => onSubfactionSelection(subfaction)}
+                          onClick={() => canInteract && onSubfactionSelection(subfaction)}
+                          disabled={!canInteract}
                           style={{
                             padding: '16px',
                             borderRadius: '4px',
@@ -746,8 +859,9 @@ export default function EventDisplay({
                             backgroundColor: isSelected ? `${factionColor}15` : 'transparent',
                             color: isSelected ? factionColor : '#64748b',
                             border: isSelected ? `2px solid ${factionColor}` : '1px solid rgba(100, 116, 139, 0.5)',
-                            cursor: 'pointer',
-                            textAlign: 'left'
+                            cursor: canInteract ? 'pointer' : 'not-allowed',
+                            textAlign: 'left',
+                            opacity: canInteract ? 1 : 0.6
                           }}
                           onMouseEnter={(e) => {
                             if (!isSelected) {
@@ -773,27 +887,29 @@ export default function EventDisplay({
                 </div>
 
                 {/* Confirm Button */}
-                <div style={{ display: 'flex', gap: '12px', justifyContent: 'center' }}>
-                  <button
-                    onClick={onConfirmSubfaction}
-                    disabled={!pendingSubfactionSelection}
-                    style={{
-                      padding: '12px 32px',
-                      fontSize: '16px',
-                      fontWeight: 'bold',
-                      backgroundColor: pendingSubfactionSelection ? '#4ade80' : '#555',
-                      color: pendingSubfactionSelection ? '#0f1419' : '#888',
-                      border: 'none',
-                      borderRadius: '4px',
-                      cursor: pendingSubfactionSelection ? 'pointer' : 'not-allowed',
-                      transition: 'all 0.2s'
-                    }}
-                    onMouseEnter={(e) => pendingSubfactionSelection && (e.target.style.backgroundColor = '#22c55e')}
-                    onMouseLeave={(e) => pendingSubfactionSelection && (e.target.style.backgroundColor = '#4ade80')}
-                  >
-                    CONFIRM
-                  </button>
-                </div>
+                {(isHost || !isMultiplayer) && (
+                  <div style={{ display: 'flex', gap: '12px', justifyContent: 'center' }}>
+                    <button
+                      onClick={onConfirmSubfaction}
+                      disabled={!pendingSubfactionSelection}
+                      style={{
+                        padding: '12px 32px',
+                        fontSize: '16px',
+                        fontWeight: 'bold',
+                        backgroundColor: pendingSubfactionSelection ? '#4ade80' : '#555',
+                        color: pendingSubfactionSelection ? '#0f1419' : '#888',
+                        border: 'none',
+                        borderRadius: '4px',
+                        cursor: pendingSubfactionSelection ? 'pointer' : 'not-allowed',
+                        transition: 'all 0.2s'
+                      }}
+                      onMouseEnter={(e) => pendingSubfactionSelection && (e.target.style.backgroundColor = '#22c55e')}
+                      onMouseLeave={(e) => pendingSubfactionSelection && (e.target.style.backgroundColor = '#4ade80')}
+                    >
+                      CONFIRM
+                    </button>
+                  </div>
+                )}
               </div>
             </div>
           )}

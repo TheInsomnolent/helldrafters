@@ -63,6 +63,8 @@ export const initialState = {
   eventsEnabled: true,
   currentEvent: null,
   eventPlayerChoice: null,
+  eventSelectedChoice: null, // The choice object selected by host (for multi-step dialogues)
+  eventSourcePlayerSelection: null, // Source player index for swaps (which helldiver to take stratagem from)
   eventStratagemSelection: null, // { sourcePlayerIndex, stratagemSlotIndex, stratagemId }
   eventTargetPlayerSelection: null, // targetPlayerIndex
   eventTargetStratagemSelection: null, // { stratagemSlotIndex, stratagemId }
@@ -387,6 +389,9 @@ export function gameReducer(state, action) {
     case types.SET_EVENT_PLAYER_CHOICE:
       return { ...state, eventPlayerChoice: action.payload };
 
+    case types.SET_EVENT_SELECTED_CHOICE:
+      return { ...state, eventSelectedChoice: action.payload };
+
     case types.SET_EVENTS_ENABLED:
       return { ...state, eventsEnabled: action.payload };
 
@@ -395,6 +400,9 @@ export function gameReducer(state, action) {
 
     case types.RESET_SEEN_EVENTS:
       return { ...state, seenEvents: [] };
+
+    case types.SET_EVENT_SOURCE_PLAYER_SELECTION:
+      return { ...state, eventSourcePlayerSelection: action.payload };
 
     case types.SET_EVENT_STRATAGEM_SELECTION:
       return { ...state, eventStratagemSelection: action.payload };
@@ -444,6 +452,8 @@ export function gameReducer(state, action) {
     case types.RESET_EVENT_SELECTIONS:
       return { 
         ...state, 
+        eventSelectedChoice: null,
+        eventSourcePlayerSelection: null,
         eventStratagemSelection: null,
         eventTargetPlayerSelection: null,
         eventTargetStratagemSelection: null,
