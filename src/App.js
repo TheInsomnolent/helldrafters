@@ -335,8 +335,12 @@ function HelldiversRogueliteApp() {
       return;
     }
     
-    // Randomize only connected players
-    const draftOrder = connectedIndices.sort(() => Math.random() - 0.5);
+    // Randomize only connected players using Fisher-Yates shuffle
+    const draftOrder = [...connectedIndices];
+    for (let i = draftOrder.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [draftOrder[i], draftOrder[j]] = [draftOrder[j], draftOrder[i]];
+    }
     const firstPlayerIdx = draftOrder[0];
     
     dispatch(actions.setDraftState({
