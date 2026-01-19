@@ -14,6 +14,9 @@ All notable changes to Helldrafters will be documented in this file.
 - `lastUpdated` timestamp tracking on all lobby operations for cleanup detection
 - Scheduled daily lobby cleanup task (runs at 3:00 AM UTC)
 - Automated Firebase Functions deployment in CI/CD pipeline alongside GitHub Pages
+
+### Fixed
+- Added package-lock.json for Firebase Functions to enable faster CI builds
 - Initial release of Helldrafters
 - Roguelite draft system for Helldivers 2
 - Support for 1-4 players
