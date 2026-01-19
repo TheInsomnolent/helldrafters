@@ -63,6 +63,6 @@ jobs:
       - name: Deploy to Firebase
         uses: w9jds/firebase-action@master
         with:
-          args: deploy --only database,functions --project ${{ vars.FIREBASE_PROJECT_ID }}
+          args: deploy --only database,functions --project ${{ vars.FIREBASE_PROJECT_ID }} --force
         env:
           FIREBASE_TOKEN: ${{ secrets.FIREBASE_TOKEN }}
