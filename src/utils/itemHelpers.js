@@ -124,10 +124,15 @@ export const getArmorsByCombo = (passive, armorClass) => {
  * @param {Object} combo - Armor combo object {passive, armorClass, items}
  * @param {string[]} playerWarbonds - Player's unlocked warbonds
  * @param {boolean} includeSuperstore - Whether player has superstore access
+ * @param {string[]} excludedItems - Items the player has explicitly excluded
  * @returns {boolean} True if player can access at least one armor in this combo
  */
-export const playerHasAccessToArmorCombo = (combo, playerWarbonds = [], includeSuperstore = false) => {
+export const playerHasAccessToArmorCombo = (combo, playerWarbonds = [], includeSuperstore = false, excludedItems = []) => {
   return combo.items.some(armor => {
+    // Skip if this armor is explicitly excluded
+    if (excludedItems.includes(armor.id)) {
+      return false;
+    }
     // Check warbond access
     if (armor.warbond && playerWarbonds.includes(armor.warbond)) {
       return true;

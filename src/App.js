@@ -2066,7 +2066,7 @@ function HelldiversRogueliteApp() {
               }}>
                 <p style={{ color: '#94a3b8', fontSize: '14px', marginBottom: '8px' }}>Removing:</p>
                 <p style={{ color: '#F5C642', fontSize: '18px', fontWeight: 'bold' }}>
-                  {pendingCardRemoval.name || getArmorComboDisplayName(pendingCardRemoval)}
+                  {pendingCardRemoval.name || (pendingCardRemoval.passive && pendingCardRemoval.armorClass ? getArmorComboDisplayName(pendingCardRemoval.passive, pendingCardRemoval.armorClass, players[draftState.activePlayerIndex]?.inventory) : 'Unknown Item')}
                 </p>
               </div>
             )}
@@ -3715,7 +3715,7 @@ function HelldiversRogueliteApp() {
                 }}>
                   <p style={{ color: '#94a3b8', fontSize: '14px', marginBottom: '8px' }}>Removing:</p>
                   <p style={{ color: '#F5C642', fontSize: '18px', fontWeight: 'bold' }}>
-                    {pendingCardRemoval.name || getArmorComboDisplayName(pendingCardRemoval)}
+                    {pendingCardRemoval.name || (pendingCardRemoval.passive && pendingCardRemoval.armorClass ? getArmorComboDisplayName(pendingCardRemoval.passive, pendingCardRemoval.armorClass, players[draftState.activePlayerIndex]?.inventory) : 'Unknown Item')}
                   </p>
                 </div>
               )}

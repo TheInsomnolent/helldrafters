@@ -105,8 +105,8 @@ export const getWeightedPool = (player, difficulty, gameConfig, burnedCards = []
     const alreadyOwned = hasArmorCombo(player.inventory, combo.passive, combo.armorClass);
     if (alreadyOwned) return false;
     
-    // Check if player has access to at least one armor in this combo
-    return playerHasAccessToArmorCombo(combo, player.warbonds, player.includeSuperstore);
+    // Check if player has access to at least one armor in this combo (excluding excluded items)
+    return playerHasAccessToArmorCombo(combo, player.warbonds, player.includeSuperstore, player.excludedItems || []);
   });
 
   // 6. Apply weights to non-armor items
