@@ -10,6 +10,28 @@ The CI workflow now performs these steps on every push to `master`:
 3. ✅ Install Firebase Functions dependencies
 4. ✅ Deploy Firebase Functions and Database Rules
 
+## Prerequisites (First-Time Setup)
+
+Before setting up CI/CD, you need to enable the required Google Cloud APIs. This prevents rate limiting errors during the first deployment.
+
+**Option A: Manual deployment** (Recommended - Easiest)
+```bash
+firebase deploy --only functions
+```
+This automatically enables all required APIs with proper timing.
+
+**Option B: Enable APIs manually**
+```bash
+# If you have gcloud CLI installed
+gcloud services enable cloudfunctions.googleapis.com --project=YOUR_PROJECT_ID
+gcloud services enable cloudbuild.googleapis.com --project=YOUR_PROJECT_ID
+gcloud services enable artifactregistry.googleapis.com --project=YOUR_PROJECT_ID
+```
+
+**Option C: Enable via Console**
+- Go to https://console.cloud.google.com/apis/library?project=YOUR_PROJECT_ID
+- Search and enable: Cloud Functions API, Cloud Build API, Artifact Registry API
+
 ## Required GitHub Secrets
 
 ⚠️ **CRITICAL**: You need to add one secret and one variable to your GitHub repository or the deployment will fail.
@@ -117,6 +139,23 @@ The workflow deploys:
   - `cleanupOldLobbiesManual` - Manual trigger function
 
 ## Troubleshooting
+
+### Error: "Quota exceeded for quota metric 'Mutate requests'"
+
+**Full Error**: `HTTP Error: 429, Quota exceeded for quota metric 'Mutate requests' and limit 'Mutate requests per minute'`
+
+**Problem**: Firebase is trying to enable multiple Google Cloud APIs at once (Cloud Functions, Cloud Build, Artifact Registry) and hitting rate limits. This typically happens on the first deployment.
+
+**Solution**:
+
+Do a manual deployment first to enable all required APIs:
+```bash
+firebase deploy --only functions
+```
+
+This will enable the APIs one at a time with proper timing. After this succeeds, CI deployments will work without issues.
+
+Alternatively, wait 1 minute and re-run the failed workflow - the APIs may have been partially enabled.
 
 ### Error: "Invalid or expired token"
 
