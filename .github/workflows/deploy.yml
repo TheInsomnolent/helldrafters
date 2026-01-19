@@ -50,13 +50,19 @@ jobs:
 
       - name: Setup Firebase project
         run: |
+          if [ -z "${{ vars.FIREBASE_PROJECT_ID }}" ]; then
+            echo "ERROR: FIREBASE_PROJECT_ID variable is not set!"
+            echo "Please add FIREBASE_PROJECT_ID to your GitHub repository variables."
+            echo "See GITHUB_ACTIONS_FIREBASE_SETUP.md for instructions."
+            exit 1
+          fi
           echo "Setting up Firebase project configuration"
-          echo "{\"projects\":{\"default\":\"${{ secrets.FIREBASE_PROJECT_ID }}\"}}" > .firebaserc
+          echo "{\"projects\":{\"default\":\"${{ vars.FIREBASE_PROJECT_ID }}\"}}" > .firebaserc
+          cat .firebaserc
 
       - name: Deploy to Firebase
         uses: w9jds/firebase-action@master
         with:
-          args: deploy --only database,functions
+          args: deploy --only database,functions --project ${{ vars.FIREBASE_PROJECT_ID }}
         env:
           FIREBASE_TOKEN: ${{ secrets.FIREBASE_TOKEN }}
-          PROJECT_ID: ${{ secrets.FIREBASE_PROJECT_ID }}

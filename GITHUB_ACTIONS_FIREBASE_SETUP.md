@@ -12,9 +12,9 @@ The CI workflow now performs these steps on every push to `master`:
 
 ## Required GitHub Secrets
 
-You need to add two secrets to your GitHub repository:
+⚠️ **CRITICAL**: You need to add one secret and one variable to your GitHub repository or the deployment will fail.
 
-### 1. FIREBASE_TOKEN
+### 1. FIREBASE_TOKEN (Secret)
 
 This is a CI token that allows GitHub Actions to deploy to Firebase on your behalf.
 
@@ -40,11 +40,11 @@ This will:
 5. Value: Paste the token from the `firebase login:ci` command
 6. Click **Add secret**
 
-### 2. FIREBASE_PROJECT_ID
+### 2. FIREBASE_PROJECT_ID (Variable)
 
 This is your Firebase project ID.
 
-**IMPORTANT**: This secret is **required** for CI deployment. The workflow will automatically generate the correct `.firebaserc` file using this value.
+**IMPORTANT**: This is a repository **variable**, not a secret. Variables are used for non-sensitive configuration.
 
 #### Find your project ID:
 
@@ -64,20 +64,22 @@ Option B - From Firebase Console:
 
 1. Go to your repository on GitHub
 2. Navigate to **Settings** → **Secrets and variables** → **Actions**
-3. Click **New repository secret**
-4. Name: `FIREBASE_PROJECT_ID`
-5. Value: Your Firebase project ID (e.g., `helldrafters-12345`)
-6. Click **Add secret**
+3. Click the **Variables** tab (not Secrets)
+4. Click **New repository variable**
+5. Name: `FIREBASE_PROJECT_ID`
+6. Value: Your Firebase project ID (e.g., `helldrafters-12345`)
+7. Click **Add variable**
 
 ## Verification
 
-### Check Secrets Are Set
+### Check Secrets and Variables Are Set
 
 1. Go to **Settings** → **Secrets and variables** → **Actions**
-2. You should see:
+2. Under **Secrets** tab, you should see:
    - ✅ `FIREBASE_TOKEN`
+3. Under **Variables** tab, you should see:
    - ✅ `FIREBASE_PROJECT_ID`
-   - ✅ `GITHUB_TOKEN` (automatically provided)
+4. Note: `GITHUB_TOKEN` is automatically provided
 
 ### Test the Workflow
 
