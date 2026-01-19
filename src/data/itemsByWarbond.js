@@ -95,7 +95,7 @@ export const HELLDIVERS_MOBILIZE_ITEMS = [
   { id: 'st_s_mortar', name: 'Mortar Sentry', type: TYPE.STRATAGEM, rarity: RARITY.UNCOMMON, tags: [TAGS.DEFENSIVE, TAGS.EXPLOSIVE], warbond: 'helldivers_mobilize' },
   { id: 'st_s_ems', name: 'EMS Mortar Sentry', type: TYPE.STRATAGEM, rarity: RARITY.UNCOMMON, tags: [TAGS.DEFENSIVE, TAGS.STUN], warbond: 'helldivers_mobilize' },
   { id: 'st_s_ac', name: 'Autocannon Sentry', type: TYPE.STRATAGEM, rarity: RARITY.UNCOMMON, tags: [TAGS.DEFENSIVE, TAGS.AT], warbond: 'helldivers_mobilize' },
-  { id: 'st_s_rocket', name: 'Rocket Sentry', type: TYPE.STRATAGEM, rarity: RARITY.UNCOMMON, tags: [TAGS.DEFENSIVE, TAGS.AT], warbond: 'helldivers_mobilize' },
+  { id: 'st_s_rocket', name: 'Rocket Sentry', type: TYPE.STRATAGEM, rarity: RARITY.RARE, tags: [TAGS.DEFENSIVE, TAGS.AT], warbond: 'helldivers_mobilize' },
   { id: 'st_s_tesla', name: 'Tesla Tower', type: TYPE.STRATAGEM, rarity: RARITY.UNCOMMON, tags: [TAGS.DEFENSIVE], warbond: 'helldivers_mobilize' },
   { id: 'st_s_mines', name: 'Anti-Personnel Mines', type: TYPE.STRATAGEM, rarity: RARITY.COMMON, tags: [TAGS.DEFENSIVE], warbond: 'helldivers_mobilize' },
   { id: 'st_s_inc_mines', name: 'Incendiary Mines', type: TYPE.STRATAGEM, rarity: RARITY.UNCOMMON, tags: [TAGS.DEFENSIVE, TAGS.FIRE], warbond: 'helldivers_mobilize' },
