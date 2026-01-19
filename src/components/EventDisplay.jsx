@@ -177,10 +177,12 @@ export default function EventDisplay({
   const getTargetPlayerStratagems = () => {
     if (eventTargetPlayerSelection === null || eventTargetPlayerSelection === undefined) return [];
     const player = players[eventTargetPlayerSelection];
+    if (!player || !player.loadout) return [];
     
     // For swap: filter out stratagems that would cause duplicates on source player
     if (isSwapChoice(selectedChoice) && eventStratagemSelection && eventSourcePlayerSelection !== null) {
       const sourcePlayer = players[eventSourcePlayerSelection];
+      if (!sourcePlayer || !sourcePlayer.loadout) return [];
       return player.loadout.stratagems
         .map((stratagemId, slotIndex) => ({
           stratagemId,

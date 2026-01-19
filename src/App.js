@@ -508,8 +508,9 @@ function HelldiversRogueliteApp() {
       if (event) {
         dispatch(actions.resetSamples());
         dispatch(actions.addSeenEvent(event.id));
+        // Reset all event selections before setting new event to prevent stale state
+        dispatch(actions.resetEventSelections());
         dispatch(actions.setCurrentEvent(event));
-        dispatch(actions.setEventPlayerChoice(null));
         dispatch(actions.setPhase('EVENT'));
         return true;
       }
@@ -2669,7 +2670,6 @@ function HelldiversRogueliteApp() {
         
         // Close event
         dispatch(actions.setCurrentEvent(null));
-        dispatch(actions.setEventPlayerChoice(null));
         dispatch(actions.resetEventSelections());
         
         // Start first draft round for the redrafting player
@@ -2734,7 +2734,6 @@ function HelldiversRogueliteApp() {
       
       // After event, proceed to dashboard
       dispatch(actions.setCurrentEvent(null));
-      dispatch(actions.setEventPlayerChoice(null));
       dispatch(actions.resetEventSelections());
       dispatch(actions.setPhase('DASHBOARD'));
     };
@@ -2749,7 +2748,6 @@ function HelldiversRogueliteApp() {
         // Clean up and close event
         window.__boosterOutcome = null;
         dispatch(actions.setCurrentEvent(null));
-        dispatch(actions.setEventPlayerChoice(null));
         dispatch(actions.resetEventSelections());
         dispatch(actions.setPhase('DASHBOARD'));
         return;
@@ -2787,7 +2785,6 @@ function HelldiversRogueliteApp() {
         
         // Clean up
         dispatch(actions.setCurrentEvent(null));
-        dispatch(actions.setEventPlayerChoice(null));
         dispatch(actions.resetEventSelections());
         dispatch(actions.setPhase('DASHBOARD'));
         return;
@@ -2841,7 +2838,6 @@ function HelldiversRogueliteApp() {
       }
       
       dispatch(actions.setCurrentEvent(null));
-      dispatch(actions.setEventPlayerChoice(null));
       dispatch(actions.resetEventSelections());
       dispatch(actions.setPhase('DASHBOARD'));
     };
@@ -4389,8 +4385,9 @@ function HelldiversRogueliteApp() {
                     key={event.id}
                     onClick={() => {
                       dispatch(actions.addSeenEvent(event.id));
+                      // Reset all event selections before setting new event to prevent stale state
+                      dispatch(actions.resetEventSelections());
                       dispatch(actions.setCurrentEvent(event));
-                      dispatch(actions.setEventPlayerChoice(null));
                       dispatch(actions.setPhase('EVENT'));
                     }}
                     style={{

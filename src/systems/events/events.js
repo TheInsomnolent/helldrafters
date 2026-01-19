@@ -154,7 +154,7 @@ export const EVENTS = [
       {
         text: 'Request Medical Reinforcement',
         outcomes: [
-          { type: OUTCOME_TYPES.ADD_REQUISITION, value: 2 }
+          { type: OUTCOME_TYPES.ADD_REQUISITION, value: 2, targetPlayer: 'choose' }
         ]
       }
     ]
@@ -175,7 +175,7 @@ export const EVENTS = [
         text: 'Accept the Deal',
         outcomes: [
           { type: OUTCOME_TYPES.RESTRICT_TO_SINGLE_WEAPON, targetPlayer: 'choose' },
-          { type: OUTCOME_TYPES.EXTRA_DRAFT, value: 2 }
+          { type: OUTCOME_TYPES.EXTRA_DRAFT, value: 2, targetPlayer: 'choose' }
         ]
       },
       {
@@ -199,7 +199,7 @@ export const EVENTS = [
       {
         text: 'Accept Promotion',
         outcomes: [
-          { type: OUTCOME_TYPES.SKIP_DIFFICULTY, value: 1 }
+          { type: OUTCOME_TYPES.SKIP_DIFFICULTY, value: 1, targetPlayer: 'choose' }
         ]
       },
       {
@@ -250,7 +250,7 @@ export const EVENTS = [
       {
         text: 'Recruit New Squad Member',
         outcomes: [
-          { type: OUTCOME_TYPES.ADD_REQUISITION, value: 2 }
+          { type: OUTCOME_TYPES.ADD_REQUISITION, value: 2, targetPlayer: 'choose' }
         ]
       },
       {
@@ -302,7 +302,7 @@ export const EVENTS = [
       {
         text: 'Accept Requisition Payment',
         outcomes: [
-          { type: OUTCOME_TYPES.ADD_REQUISITION, value: 1 }
+          { type: OUTCOME_TYPES.ADD_REQUISITION, value: 1, targetPlayer: 'choose' }
         ]
       },
       {
@@ -372,7 +372,7 @@ export const EVENTS = [
     minDifficulty: 2,
     maxDifficulty: 9,
     weight: 9,
-    targetPlayer: 'single',
+    targetPlayer: 'all',
     choices: [
       {
         text: 'Request Easier Assessment',
@@ -411,7 +411,7 @@ export const EVENTS = [
         text: 'Volunteer for Extra Training',
         outcomes: [
           { type: OUTCOME_TYPES.SPEND_REQUISITION, value: 2 },
-          { type: OUTCOME_TYPES.EXTRA_DRAFT, value: 1 }
+          { type: OUTCOME_TYPES.EXTRA_DRAFT, value: 1, targetPlayer: 'choose' }
         ]
       }
     ]
@@ -544,7 +544,7 @@ export const EVENTS = [
       {
         text: 'Claim Requisition Credits',
         outcomes: [
-          { type: OUTCOME_TYPES.ADD_REQUISITION, value: 1 }
+          { type: OUTCOME_TYPES.ADD_REQUISITION, value: 1, targetPlayer: 'choose' }
         ]
       },
       {

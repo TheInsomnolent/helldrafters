@@ -452,6 +452,7 @@ export function gameReducer(state, action) {
     case types.RESET_EVENT_SELECTIONS:
       return { 
         ...state, 
+        eventPlayerChoice: null,
         eventSelectedChoice: null,
         eventSourcePlayerSelection: null,
         eventStratagemSelection: null,

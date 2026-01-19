@@ -20,6 +20,7 @@ export const processEventOutcome = (outcome, choice, state, selections = {}) => 
 
   switch (outcome.type) {
     case OUTCOME_TYPES.ADD_REQUISITION:
+      // Add requisition is a global effect (shared pool), but supports targetPlayer: 'choose' for UI consistency
       // Apply dynamic scaling based on player count and subfaction
       const reqMultiplier = getRequisitionMultiplier(
         gameConfig.playerCount,
@@ -30,10 +31,12 @@ export const processEventOutcome = (outcome, choice, state, selections = {}) => 
       break;
 
     case OUTCOME_TYPES.SPEND_REQUISITION:
+      // Spend requisition is a global effect (shared pool)
       updates.requisition = Math.max(0, requisition - outcome.value);
       break;
 
     case OUTCOME_TYPES.LOSE_REQUISITION:
+      // Lose requisition is a global effect (shared pool)
       updates.requisition = Math.max(0, requisition - outcome.value);
       break;
 
@@ -50,19 +53,27 @@ export const processEventOutcome = (outcome, choice, state, selections = {}) => 
 
     case OUTCOME_TYPES.EXTRA_DRAFT:
       // Store extra draft cards in the player who will benefit
-      if (eventPlayerChoice !== null) {
+      // Use targetPlayerSelection if provided (for explicit target selection), otherwise fall back to eventPlayerChoice
+      const extraDraftTargetIndex = outcome.targetPlayer === 'choose' 
+        ? (selections?.targetPlayerSelection ?? eventPlayerChoice)
+        : eventPlayerChoice;
+      
+      if (extraDraftTargetIndex !== null && extraDraftTargetIndex !== undefined) {
         const newPlayers = [...players];
-        const player = newPlayers[eventPlayerChoice];
+        const player = newPlayers[extraDraftTargetIndex];
         player.extraDraftCards = (player.extraDraftCards || 0) + outcome.value;
         updates.players = newPlayers;
       }
       break;
 
     case OUTCOME_TYPES.SKIP_DIFFICULTY:
+      // Skip difficulty is a global effect, but we support targetPlayer: 'choose' for UI consistency
+      // (the selected player gets "credit" for the advancement in the narrative)
       updates.currentDiff = Math.min(10, currentDiff + outcome.value);
       break;
 
     case OUTCOME_TYPES.REPLAY_DIFFICULTY:
+      // Replay difficulty is a global effect, but we support targetPlayer: 'choose' for UI consistency
       updates.currentDiff = Math.max(1, currentDiff - outcome.value);
       break;
 
