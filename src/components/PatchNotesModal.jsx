@@ -1,6 +1,7 @@
 import React from 'react';
 import { X, FileText } from 'lucide-react';
 import { getFactionColors } from '../constants/theme';
+import packageJson from '../../package.json';
 
 /**
  * Modal component that displays patch notes from CHANGELOG.md
@@ -190,6 +191,7 @@ export default function PatchNotesModal({ isOpen, onClose, faction = 'Terminids'
       role="dialog"
       aria-modal="true"
       aria-labelledby="patchnotes-modal-title"
+      aria-describedby="patchnotes-modal-content"
     >
       <div 
         style={{
@@ -260,7 +262,7 @@ export default function PatchNotesModal({ isOpen, onClose, faction = 'Terminids'
         </div>
         
         {/* Content */}
-        <div style={{ padding: '32px' }}>
+        <div style={{ padding: '32px' }} id="patchnotes-modal-content">
           {loading && (
             <div style={{ textAlign: 'center', padding: '40px', color: '#94a3b8' }}>
               <p>Loading patch notes...</p>
@@ -306,7 +308,7 @@ export default function PatchNotesModal({ isOpen, onClose, faction = 'Terminids'
               </a>
             </p>
             <p style={{ color: '#64748b', fontSize: '12px', margin: 0 }}>
-              Version: 0.1.0 | Build: {process.env.REACT_APP_COMMIT_SHA?.substring(0, 7) || 'dev'}
+              Version: {packageJson.version} | Build: {process.env.REACT_APP_COMMIT_SHA?.substring(0, 7) || 'dev'}
             </p>
           </div>
         </div>
