@@ -58,6 +58,8 @@ export function MultiplayerProvider({ children }) {
   const [error, setError] = useState(null);
   const [firebaseReady, setFirebaseReady] = useState(false);
   const [hostDisconnected, setHostDisconnected] = useState(false); // Track if host closed the lobby
+  const [wasKicked, setWasKicked] = useState(false); // Track if player was kicked
+  const [clientDisconnected, setClientDisconnected] = useState(false); // Track if client intentionally disconnected
   
   // Dispatch ref - set by the game component
   const dispatchRef = useRef(null);
@@ -66,9 +68,10 @@ export function MultiplayerProvider({ children }) {
   const actionHandlerRef = useRef(null);
   
   // Refs for cleanup
-  const lobbyUnsubscribeRef = useRef(null);;
+  const lobbyUnsubscribeRef = useRef(null);
   const stateUnsubscribeRef = useRef(null);
-  const actionsUnsubscribeRef = useRef(null);  const disconnectRef = useRef(null);  
+  const actionsUnsubscribeRef = useRef(null);
+  const disconnectRef = useRef(null);
   // Initialize Firebase on mount
   useEffect(() => {
     if (isFirebaseConfigured()) {
@@ -176,7 +179,36 @@ export function MultiplayerProvider({ children }) {
       // Subscribe to lobby updates
       lobbyUnsubscribeRef.current = subscribeLobby(joinLobbyId, (lobby) => {
         if (lobby) {
-          setLobbyData(lobby);
+          // Check if current player has been kicked (no longer in players list)
+          const stillInLobby = lobby.players && Object.keys(lobby.players).includes(playerId);
+          if (!stillInLobby) {
+            // Player was kicked - cleanup subscriptions but don't set clientDisconnected
+            // (so the kicked screen shows instead of going straight to menu)
+            if (lobbyUnsubscribeRef.current) {
+              lobbyUnsubscribeRef.current();
+              lobbyUnsubscribeRef.current = null;
+            }
+            if (stateUnsubscribeRef.current) {
+              stateUnsubscribeRef.current();
+              stateUnsubscribeRef.current = null;
+            }
+            if (actionsUnsubscribeRef.current) {
+              actionsUnsubscribeRef.current();
+              actionsUnsubscribeRef.current = null;
+            }
+            // Reset multiplayer state
+            setIsMultiplayer(false);
+            setIsHost(false);
+            setLobbyId(null);
+            setLobbyData(null);
+            setPlayerSlot(null);
+            setConnectionStatus('disconnected');
+            setError(null);
+            // Set kicked flag LAST so the kicked screen appears
+            setWasKicked(true);
+          } else {
+            setLobbyData(lobby);
+          }
         } else {
           // Lobby was deleted/closed by host
           setError('Lobby was closed by host');
@@ -325,7 +357,7 @@ export function MultiplayerProvider({ children }) {
   }, [isHost, lobbyId, playerId, playerSlot]);
   
   /**
-   * Disconnect from multiplayer
+   * Disconnect from multiplayer (intentional disconnect by user)
    */
   const disconnect = useCallback(async () => {
     // Cleanup subscriptions
@@ -346,8 +378,12 @@ export function MultiplayerProvider({ children }) {
     if (lobbyId && playerId) {
       if (isHost) {
         await closeLobby(lobbyId);
+        // Host also needs to be returned to menu
+        setClientDisconnected(true);
       } else {
         await leaveLobby(lobbyId, playerId);
+        // Set flag that client intentionally disconnected (to trigger menu return)
+        setClientDisconnected(true);
       }
     }
     
@@ -438,6 +474,8 @@ export function MultiplayerProvider({ children }) {
     error,
     firebaseReady,
     hostDisconnected,
+    wasKicked,
+    clientDisconnected,
     
     // Computed
     connectedPlayers: lobbyData?.players ? Object.values(lobbyData.players) : [],
@@ -459,7 +497,9 @@ export function MultiplayerProvider({ children }) {
     setPlayerReady,
     getConnectedPlayers,
     clearError: () => setError(null),
-    clearHostDisconnected: () => setHostDisconnected(false)
+    clearHostDisconnected: () => setHostDisconnected(false),
+    clearWasKicked: () => setWasKicked(false),
+    clearClientDisconnected: () => setClientDisconnected(false)
   };
   
   return (

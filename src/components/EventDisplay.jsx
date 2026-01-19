@@ -41,8 +41,16 @@ export default function EventDisplay({
   onSubfactionSelection,
   onConfirmSubfaction,
   onSpecialDraftSelection,
-  onConfirmSelections
+  onConfirmSelections,
+  connectedPlayerIndices = null // Array of connected player indices (null means all connected)
 }) {
+  // Helper to check if a player index is connected (selectable for events)
+  const isPlayerSelectable = (playerIdx) => {
+    // If connectedPlayerIndices is null, all players are selectable
+    if (connectedPlayerIndices === null) return true;
+    return connectedPlayerIndices.includes(playerIdx);
+  };
+
   // Helper to get item name by ID
   const getItemName = (itemId) => {
     const item = MASTER_DB.find(i => i.id === itemId);
@@ -178,13 +186,14 @@ export default function EventDisplay({
       .filter(s => s.stratagemId !== null);
   };
 
-  // Get other players for target selection (filtered for duplicates if duplicate choice)
+  // Get other players for target selection (filtered for disconnected and duplicates if duplicate choice)
   const getOtherPlayers = () => {
     if (eventPlayerChoice === null) return [];
     
     const allOtherPlayers = players
       .map((player, idx) => ({ player, idx }))
-      .filter((_, idx) => idx !== eventPlayerChoice);
+      .filter((_, idx) => idx !== eventPlayerChoice)
+      .filter(({ idx }) => isPlayerSelectable(idx)); // Filter out disconnected players
     
     // For duplicate: filter out players who already have the selected stratagem (unless they're full)
     if (isDuplicateChoice(selectedChoice) && eventStratagemSelection) {
@@ -297,29 +306,35 @@ export default function EventDisplay({
                 {isHost ? 'Choose a Helldiver:' : 'Waiting for host to choose a Helldiver...'}
               </div>
               <div style={{ display: 'flex', gap: '12px', justifyContent: 'center', flexWrap: 'wrap' }}>
-                {players.map((player, idx) => (
-                  <button
-                    key={idx}
-                    onClick={() => isHost && onPlayerChoice(idx)}
-                    disabled={!isHost}
-                    style={{
-                      padding: '12px 24px',
-                      fontSize: '16px',
-                      fontWeight: 'bold',
-                      backgroundColor: '#1a2332',
-                      color: '#F5C642',
-                      border: '2px solid #F5C642',
-                      borderRadius: '4px',
-                      cursor: isHost ? 'pointer' : 'not-allowed',
-                      opacity: isHost ? 1 : 0.6,
-                      transition: 'all 0.2s'
-                    }}
-                    onMouseEnter={(e) => isHost && (e.currentTarget.style.backgroundColor = '#283548')}
-                    onMouseLeave={(e) => isHost && (e.currentTarget.style.backgroundColor = '#1a2332')}
-                  >
-                    HELLDIVER {idx + 1}
-                  </button>
-                ))}
+                {players.map((player, idx) => {
+                  const selectable = isPlayerSelectable(idx);
+                  const canClick = isHost && selectable;
+                  return (
+                    <button
+                      key={idx}
+                      onClick={() => canClick && onPlayerChoice(idx)}
+                      disabled={!canClick}
+                      style={{
+                        padding: '12px 24px',
+                        fontSize: '16px',
+                        fontWeight: 'bold',
+                        backgroundColor: '#1a2332',
+                        color: selectable ? '#F5C642' : '#64748b',
+                        border: `2px solid ${selectable ? '#F5C642' : '#64748b'}`,
+                        borderRadius: '4px',
+                        cursor: canClick ? 'pointer' : 'not-allowed',
+                        opacity: selectable ? (isHost ? 1 : 0.6) : 0.4,
+                        transition: 'all 0.2s'
+                      }}
+                      onMouseEnter={(e) => canClick && (e.currentTarget.style.backgroundColor = '#283548')}
+                      onMouseLeave={(e) => canClick && (e.currentTarget.style.backgroundColor = '#1a2332')}
+                      title={selectable ? undefined : 'Player is disconnected'}
+                    >
+                      HELLDIVER {idx + 1}
+                      {!selectable && ' (DISCONNECTED)'}
+                    </button>
+                  );
+                })}
               </div>
               
               {/* Show preview of choices below player selection */}

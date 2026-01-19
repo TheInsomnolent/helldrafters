@@ -6,7 +6,7 @@ import { MASTER_DB } from './data/itemsByWarbond';
 import { STARTING_LOADOUT, DIFFICULTY_CONFIG, getMissionsForDifficulty } from './constants/gameConfig';
 import { ARMOR_PASSIVE_DESCRIPTIONS } from './constants/armorPassives';
 import { getItemById } from './utils/itemHelpers';
-import { getDraftHandSize, getWeightedPool, generateDraftHand, generateRandomDraftOrder } from './utils/draftHelpers';
+import { getDraftHandSize, getWeightedPool, generateDraftHand } from './utils/draftHelpers';
 import { areStratagemSlotsFull, getFirstEmptyStratagemSlot } from './utils/loadoutHelpers';
 import { getArmorComboDisplayName } from './utils/itemHelpers';
 import { getItemIconUrl } from './utils/iconHelpers';
@@ -61,9 +61,14 @@ function HelldiversRogueliteApp() {
     setDispatch,
     hostDisconnected,
     clearHostDisconnected,
+    wasKicked,
+    clearWasKicked,
+    clientDisconnected,
+    clearClientDisconnected,
     playerSlot,
     sendAction,
-    setActionHandler
+    setActionHandler,
+    lobbyData
   } = multiplayer;
   
   // Register dispatch with multiplayer context
@@ -71,20 +76,41 @@ function HelldiversRogueliteApp() {
     setDispatch(dispatch);
   }, [dispatch, setDispatch]);
   
-  // Handle host disconnect - show game over for clients
+  // Handle host disconnect - return all clients to main menu
   useEffect(() => {
-    const currentPhase = state.phase;
-    if (hostDisconnected && !isHost && currentPhase !== 'MENU' && currentPhase !== 'GAMEOVER') {
-      // Host disconnected during an active game - show game over
-      dispatch(actions.setPhase('GAMEOVER'));
-      setMultiplayerMode(null);
+    if (hostDisconnected && !isHost) {
+      // Don't override if player was kicked - let them see the kicked screen
+      if (!wasKicked) {
+        // Host disconnected/closed the lobby - return to main menu
+        dispatch(actions.setPhase('MENU'));
+        setMultiplayerMode(null);
+      }
       clearHostDisconnected();
-    } else if (hostDisconnected) {
-      // Host disconnected during lobby/menu - just clear and return to menu
-      setMultiplayerMode(null);
+    } else if (hostDisconnected && isHost) {
+      // This shouldn't happen (host set their own flag), but clear it anyway
       clearHostDisconnected();
     }
-  }, [hostDisconnected, isHost, state.phase, clearHostDisconnected]);
+  }, [hostDisconnected, isHost, wasKicked, clearHostDisconnected]);
+
+  // Handle client intentional disconnect - return to menu
+  useEffect(() => {
+    if (clientDisconnected) {
+      // Don't override if player was kicked - let them see the kicked screen
+      if (!wasKicked) {
+        dispatch(actions.setPhase('MENU'));
+        setMultiplayerMode(null);
+      }
+      clearClientDisconnected();
+    }
+  }, [clientDisconnected, wasKicked, clearClientDisconnected]);
+
+  // Handle being kicked - show kicked screen
+  useEffect(() => {
+    if (wasKicked) {
+      dispatch(actions.setPhase('KICKED'));
+      setMultiplayerMode(null);
+    }
+  }, [wasKicked]);
   
   // Destructure commonly used state values for easier access
   const {
@@ -133,6 +159,59 @@ function HelldiversRogueliteApp() {
       syncState(state);
     }
   }, [isMultiplayer, isHost, state, phase, syncState]);
+
+  // Handle new player joining mid-game (host only)
+  // When a new player joins into a slot that doesn't have a loadout, create one for them
+  useEffect(() => {
+    if (!isMultiplayer || !isHost || !lobbyData?.players) return;
+    
+    // Only handle mid-game joins (not during lobby or menu)
+    if (phase === 'MENU' || phase === 'LOBBY' || !players || players.length === 0) return;
+    
+    // Get currently connected players from lobby
+    const lobbyPlayers = Object.values(lobbyData.players).filter(p => p.connected !== false);
+    
+    // Check if any connected lobby player doesn't have a corresponding game player
+    const newPlayersNeeded = lobbyPlayers.filter(lobbyPlayer => {
+      const existingGamePlayer = players.find(p => p.id === lobbyPlayer.slot + 1);
+      return !existingGamePlayer;
+    });
+    
+    if (newPlayersNeeded.length > 0) {
+      // Add new players with default loadouts
+      const updatedPlayers = [...players];
+      
+      newPlayersNeeded.forEach(lobbyPlayer => {
+        const newPlayer = {
+          id: lobbyPlayer.slot + 1,
+          name: lobbyPlayer.name || `Helldiver ${lobbyPlayer.slot + 1}`,
+          loadout: { 
+            primary: STARTING_LOADOUT.primary,
+            secondary: STARTING_LOADOUT.secondary,
+            grenade: STARTING_LOADOUT.grenade,
+            armor: STARTING_LOADOUT.armor,
+            booster: STARTING_LOADOUT.booster,
+            stratagems: [...STARTING_LOADOUT.stratagems]
+          },
+          inventory: Object.values(STARTING_LOADOUT).flat().filter(id => id !== null),
+          warbonds: [],
+          includeSuperstore: false,
+          excludedItems: [],
+          weaponRestricted: false,
+          lockedSlots: [],
+          extracted: true
+        };
+        updatedPlayers.push(newPlayer);
+      });
+      
+      // Sort by player id to maintain order
+      updatedPlayers.sort((a, b) => a.id - b.id);
+      
+      dispatch(actions.setPlayers(updatedPlayers));
+      dispatch(actions.updateGameConfig({ playerCount: updatedPlayers.length }));
+      // Note: State will be synced to clients automatically via the existing syncState effect
+    }
+  }, [isMultiplayer, isHost, lobbyData, phase, players, dispatch]);
 
   // Save game state to localStorage whenever it changes (for crash recovery)
   useEffect(() => {
@@ -265,6 +344,32 @@ function HelldiversRogueliteApp() {
 
   // --- CORE LOGIC: THE DRAFT DIRECTOR ---
 
+  // Helper to check if a player at a given index is connected in multiplayer
+  // Returns false if:
+  // 1. Player is in lobby but connected === false (disconnected)
+  // 2. Player is NOT in lobby at all (kicked or never joined)
+  const isPlayerConnected = (playerIdx) => {
+    if (!isMultiplayer) return true;
+    if (!lobbyData?.players) return true;
+    const lobbyPlayer = Object.values(lobbyData.players).find(p => p.slot === playerIdx);
+    // If no lobby player found for this slot, they're not connected (kicked)
+    if (!lobbyPlayer) return false;
+    // If lobby player exists, check their connected status
+    return lobbyPlayer.connected !== false;
+  };
+
+  // Get indices of connected players for draft order
+  const getConnectedPlayerIndices = () => {
+    if (!isMultiplayer) {
+      return Array.from({ length: gameConfig.playerCount }, (_, i) => i);
+    }
+    if (!lobbyData?.players) {
+      return Array.from({ length: gameConfig.playerCount }, (_, i) => i);
+    }
+    return Array.from({ length: gameConfig.playerCount }, (_, i) => i)
+      .filter(idx => isPlayerConnected(idx));
+  };
+
   const generateDraftHandForPlayer = (playerIdx) => {
     if (!players || !players[playerIdx]) {
       return [];
@@ -313,8 +418,22 @@ function HelldiversRogueliteApp() {
       dispatch(actions.setPlayers(updatedPlayers));
     }
     
-    // Generate randomized draft order for this round
-    const draftOrder = generateRandomDraftOrder(gameConfig.playerCount);
+    // Generate randomized draft order for this round, filtering out disconnected players in multiplayer
+    const connectedIndices = getConnectedPlayerIndices();
+    
+    // If no players are connected, skip directly to dashboard
+    if (connectedIndices.length === 0) {
+      console.log('No connected players, skipping draft phase');
+      dispatch(actions.setPhase('DASHBOARD'));
+      return;
+    }
+    
+    // Randomize only connected players using Fisher-Yates shuffle
+    const draftOrder = [...connectedIndices];
+    for (let i = draftOrder.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [draftOrder[i], draftOrder[j]] = [draftOrder[j], draftOrder[i]];
+    }
     const firstPlayerIdx = draftOrder[0];
     
     dispatch(actions.setDraftState({
@@ -415,13 +534,22 @@ function HelldiversRogueliteApp() {
       dispatch(actions.setPlayers(clearedPlayers));
     }
     
-    // Move to next player in draft order or complete
+    // Move to next connected player in draft order or complete
     const draftOrder = draftState.draftOrder || [];
     const currentPositionInOrder = draftOrder.indexOf(currentPlayerIdx);
     
-    if (currentPositionInOrder >= 0 && currentPositionInOrder < draftOrder.length - 1) {
-      // Move to next player in the draft order
-      const nextIdx = draftOrder[currentPositionInOrder + 1];
+    // Find next connected player in the draft order
+    let nextIdx = null;
+    for (let i = currentPositionInOrder + 1; i < draftOrder.length; i++) {
+      const candidateIdx = draftOrder[i];
+      if (isPlayerConnected(candidateIdx)) {
+        nextIdx = candidateIdx;
+        break;
+      }
+    }
+    
+    if (nextIdx !== null) {
+      // Move to next connected player in the draft order
       dispatch(actions.setDraftState({
         activePlayerIndex: nextIdx,
         roundCards: generateDraftHandForPlayer(nextIdx),
@@ -458,7 +586,6 @@ function HelldiversRogueliteApp() {
     
     // In multiplayer, only the player whose turn it is can draft
     if (isMultiplayer && playerSlot !== currentPlayerIdx) {
-      console.log('Not your turn to draft', { playerSlot, currentPlayerIdx });
       return;
     }
     
@@ -585,7 +712,7 @@ function HelldiversRogueliteApp() {
       const player = updatedPlayers[playerIndex];
       
       if (!player || !player.loadout) {
-        console.error('DRAFT_PICK: Invalid player', { playerIndex });
+        console.error('DRAFT_PICK: Invalid player', { playerIndex, playersLength: players.length });
         return true; // Consumed the action
       }
       
@@ -1250,6 +1377,53 @@ function HelldiversRogueliteApp() {
 
           <button
             onClick={() => dispatch(actions.setPhase('MENU'))}
+            style={{
+              width: '100%',
+              padding: '20px',
+              backgroundColor: factionColors.PRIMARY,
+              color: 'black',
+              border: 'none',
+              borderRadius: '4px',
+              fontWeight: '900',
+              fontSize: '18px',
+              textTransform: 'uppercase',
+              letterSpacing: '0.2em',
+              cursor: 'pointer',
+              transition: 'all 0.2s'
+            }}
+            onMouseEnter={(e) => e.currentTarget.style.backgroundColor = factionColors.PRIMARY_HOVER}
+            onMouseLeave={(e) => e.currentTarget.style.backgroundColor = factionColors.PRIMARY}
+          >
+            Return to Menu
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  // Kicked screen - shown when host kicks the player
+  if (phase === 'KICKED') {
+    return (
+      <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', backgroundColor: '#0f1419', padding: '24px' }}>
+        <div style={{ maxWidth: '500px', textAlign: 'center' }}>
+          <div style={{ marginBottom: '40px' }}>
+            <div style={{ fontSize: '80px', marginBottom: '16px' }}>🚫</div>
+            <h1 style={{ fontSize: '48px', fontWeight: '900', color: '#ef4444', margin: '0 0 16px 0', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+              REMOVED FROM SQUAD
+            </h1>
+            <p style={{ fontSize: '18px', color: '#94a3b8', lineHeight: '1.6', margin: '0' }}>
+              The host has removed you from the game session.
+              <br/>
+              <br/>
+              You can rejoin using the same lobby code if the host allows it.
+            </p>
+          </div>
+
+          <button
+            onClick={() => {
+              clearWasKicked();
+              dispatch(actions.setPhase('MENU'));
+            }}
             style={{
               width: '100%',
               padding: '20px',
@@ -2362,6 +2536,7 @@ function HelldiversRogueliteApp() {
         canAffordChoice={canAffordChoice}
         formatOutcome={formatOutcome}
         formatOutcomes={formatOutcomes}
+        connectedPlayerIndices={isMultiplayer ? getConnectedPlayerIndices() : null}
         onPlayerChoice={(choice) => dispatch(actions.setEventPlayerChoice(choice))}
         onEventChoice={handleEventChoice}
         onAutoContinue={handleAutoContinue}
@@ -3013,8 +3188,6 @@ function HelldiversRogueliteApp() {
           {/* Filter out any null/undefined items that may have been stripped during sync */}
           {(() => {
             const validCards = (draftState.roundCards || []).filter(item => item && (item.id || item.name || item.passive));
-            console.log('[Draft Render] Round cards:', draftState.roundCards);
-            console.log('[Draft Render] Valid cards:', validCards);
             return (
               <div style={{ 
                 display: 'grid', 
@@ -3159,6 +3332,19 @@ function HelldiversRogueliteApp() {
             const { getSlotLockCost, MAX_LOCKED_SLOTS } = require('./constants/balancingConfig');
             // In multiplayer, only allow the current player to lock their own slots
             const isCurrentPlayer = !isMultiplayer || (playerSlot === index);
+            // Get connection status from lobby data if in multiplayer
+            const lobbyPlayer = isMultiplayer && lobbyData?.players 
+              ? Object.values(lobbyData.players).find(p => p.slot === index)
+              : null;
+            // Player is connected if: not multiplayer, or lobby player exists and is connected
+            const isConnected = !isMultiplayer || (lobbyPlayer && lobbyPlayer.connected !== false);
+            
+            // In multiplayer, hide loadouts for players not in the lobby (kicked)
+            // Only hide if we have lobbyData.players (so we know they're actually kicked, not just loading)
+            if (isMultiplayer && lobbyData?.players && !lobbyPlayer) {
+              return null;
+            }
+            
             return (
               <LoadoutDisplay 
                 key={player.id} 
@@ -3171,6 +3357,8 @@ function HelldiversRogueliteApp() {
                 maxLockedSlots={MAX_LOCKED_SLOTS}
                 onLockSlot={isCurrentPlayer ? handleLockSlot : undefined}
                 onUnlockSlot={isCurrentPlayer ? handleUnlockSlot : undefined}
+                isConnected={isConnected}
+                isMultiplayer={isMultiplayer}
               />
             );
           })}

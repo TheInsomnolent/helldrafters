@@ -1,5 +1,5 @@
 import React from 'react';
-import { Lock, Unlock } from 'lucide-react';
+import { Lock, Unlock, Wifi, WifiOff } from 'lucide-react';
 import { getFactionColors } from '../constants/theme';
 import { TYPE } from '../constants/types';
 
@@ -15,7 +15,9 @@ export default function LoadoutDisplay({
   slotLockCost,
   maxLockedSlots,
   onLockSlot,
-  onUnlockSlot 
+  onUnlockSlot,
+  isConnected = true,
+  isMultiplayer = false
 }) {
   const factionColors = getFactionColors(faction);
   
@@ -32,7 +34,7 @@ export default function LoadoutDisplay({
       </div>
     );
   }
-  
+ 
   // Get the equipped armor
   const equippedArmor = getItemById(player.loadout.armor);
   
@@ -103,10 +105,28 @@ export default function LoadoutDisplay({
   };
   
   return (
-    <div style={{ backgroundColor: '#283548', borderRadius: '8px', border: '1px solid rgba(100, 116, 139, 0.5)', overflow: 'hidden' }}>
+    <div style={{ 
+      backgroundColor: '#283548', 
+      borderRadius: '8px', 
+      border: `1px solid ${!isConnected && isMultiplayer ? 'rgba(239, 68, 68, 0.5)' : 'rgba(100, 116, 139, 0.5)'}`, 
+      overflow: 'hidden',
+      opacity: !isConnected && isMultiplayer ? 0.7 : 1
+    }}>
       <div style={{ backgroundColor: '#1f2937', padding: '12px', borderBottom: '1px solid rgba(100, 116, 139, 0.5)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-        <h3 style={{ fontWeight: 'bold', color: '#cbd5e1', textTransform: 'uppercase', letterSpacing: '1px', margin: 0 }}>{player.name}</h3>
-        <span style={{ fontSize: '12px', color: '#64748b' }}>Loadout Active</span>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+          <h3 style={{ fontWeight: 'bold', color: '#cbd5e1', textTransform: 'uppercase', letterSpacing: '1px', margin: 0 }}>{player.name}</h3>
+          {/* Connection status indicator for multiplayer */}
+          {isMultiplayer && (
+            isConnected ? (
+              <Wifi size={14} style={{ color: '#22c55e' }} title="Connected" />
+            ) : (
+              <WifiOff size={14} style={{ color: '#ef4444' }} title="Disconnected" />
+            )
+          )}
+        </div>
+        <span style={{ fontSize: '12px', color: !isConnected && isMultiplayer ? '#ef4444' : '#64748b' }}>
+          {!isConnected && isMultiplayer ? 'DISCONNECTED' : 'Loadout Active'}
+        </span>
       </div>
       <div style={{ padding: '16px', display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '16px' }}>
         {/* Primary */}

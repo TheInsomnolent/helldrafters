@@ -100,4 +100,58 @@ describe('LoadoutDisplay', () => {
     expect(mockOnLockSlot).not.toHaveBeenCalled();
     expect(mockOnUnlockSlot).not.toHaveBeenCalled();
   });
+
+  it('shows "Loadout Active" for connected players in multiplayer', () => {
+    render(
+      <LoadoutDisplay
+        player={mockPlayer}
+        getItemById={mockGetItemById}
+        getArmorComboDisplayName={mockGetArmorComboDisplayName}
+        faction={FACTION.BUGS}
+        requisition={10}
+        slotLockCost={2}
+        maxLockedSlots={3}
+        isConnected={true}
+        isMultiplayer={true}
+      />
+    );
+
+    expect(screen.getByText('Loadout Active')).toBeInTheDocument();
+  });
+
+  it('shows "DISCONNECTED" for disconnected players in multiplayer', () => {
+    render(
+      <LoadoutDisplay
+        player={mockPlayer}
+        getItemById={mockGetItemById}
+        getArmorComboDisplayName={mockGetArmorComboDisplayName}
+        faction={FACTION.BUGS}
+        requisition={10}
+        slotLockCost={2}
+        maxLockedSlots={3}
+        isConnected={false}
+        isMultiplayer={true}
+      />
+    );
+
+    expect(screen.getByText('DISCONNECTED')).toBeInTheDocument();
+  });
+
+  it('shows "Loadout Active" in solo mode regardless of isConnected', () => {
+    render(
+      <LoadoutDisplay
+        player={mockPlayer}
+        getItemById={mockGetItemById}
+        getArmorComboDisplayName={mockGetArmorComboDisplayName}
+        faction={FACTION.BUGS}
+        requisition={10}
+        slotLockCost={2}
+        maxLockedSlots={3}
+        isConnected={false}
+        isMultiplayer={false}
+      />
+    );
+
+    expect(screen.getByText('Loadout Active')).toBeInTheDocument();
+  });
 });

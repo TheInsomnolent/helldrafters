@@ -283,15 +283,26 @@ export function JoinGameScreen({ gameConfig, onJoinLobby, onBack }) {
     if (!lobbyInfo) return [];
     const totalSlots = 4; // Always allow up to 4 players in multiplayer (dynamic)
     const players = lobbyInfo.players || {};
-    const takenSlots = Object.values(players).map(p => p.slot);
     
+    // A slot is available if:
+    // 1. No player is in that slot, OR
+    // 2. The player in that slot is disconnected (connected === false)
     const available = [];
     for (let i = 0; i < totalSlots; i++) {
-      if (!takenSlots.includes(i)) {
+      const playerInSlot = Object.values(players).find(p => p.slot === i);
+      // Slot is available if no player or player is disconnected
+      if (!playerInSlot || playerInSlot.connected === false) {
         available.push(i);
       }
     }
     return available;
+  };
+  
+  // Get info about disconnected players by slot (for UI indication)
+  const getDisconnectedPlayerInSlot = (slot) => {
+    if (!lobbyInfo?.players) return null;
+    const player = Object.values(lobbyInfo.players).find(p => p.slot === slot && p.connected === false);
+    return player;
   };
 
   // Check if slot selection should be shown (only for loaded games)
@@ -456,25 +467,41 @@ export function JoinGameScreen({ gameConfig, onJoinLobby, onBack }) {
                 {availableSlots.length === 0 ? (
                   <p style={{ color: '#ef4444' }}>No slots available - lobby is full</p>
                 ) : (
-                  <div style={{ display: 'flex', gap: '12px' }}>
-                    {availableSlots.map(slot => (
-                      <button
-                        key={slot}
-                        onClick={() => setSelectedSlot(slot)}
-                        style={{
-                          padding: '16px 24px',
-                          backgroundColor: selectedSlot === slot ? factionColors.PRIMARY : COLORS.BG_MAIN,
-                          color: selectedSlot === slot ? 'black' : 'white',
-                          border: `2px solid ${selectedSlot === slot ? factionColors.PRIMARY : COLORS.CARD_BORDER}`,
-                          borderRadius: '4px',
-                          fontWeight: 'bold',
-                          cursor: 'pointer',
-                          transition: 'all 0.2s'
-                        }}
-                      >
-                        Slot {slot + 1}
-                      </button>
-                    ))}
+                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: '12px' }}>
+                    {availableSlots.map(slot => {
+                      const disconnectedPlayer = getDisconnectedPlayerInSlot(slot);
+                      return (
+                        <button
+                          key={slot}
+                          onClick={() => setSelectedSlot(slot)}
+                          style={{
+                            padding: '16px 24px',
+                            backgroundColor: selectedSlot === slot ? factionColors.PRIMARY : COLORS.BG_MAIN,
+                            color: selectedSlot === slot ? 'black' : 'white',
+                            border: `2px solid ${selectedSlot === slot ? factionColors.PRIMARY : disconnectedPlayer ? '#f59e0b' : COLORS.CARD_BORDER}`,
+                            borderRadius: '4px',
+                            fontWeight: 'bold',
+                            cursor: 'pointer',
+                            transition: 'all 0.2s',
+                            display: 'flex',
+                            flexDirection: 'column',
+                            alignItems: 'center',
+                            gap: '4px'
+                          }}
+                        >
+                          <span>Slot {slot + 1}</span>
+                          {disconnectedPlayer && (
+                            <span style={{ 
+                              fontSize: '10px', 
+                              color: selectedSlot === slot ? 'rgba(0,0,0,0.6)' : '#f59e0b',
+                              fontWeight: 'normal'
+                            }}>
+                              (Rejoin as {disconnectedPlayer.name})
+                            </span>
+                          )}
+                        </button>
+                      );
+                    })}
                   </div>
                 )}
               </div>
@@ -584,7 +611,8 @@ export function MultiplayerWaitingRoom({
     setTimeout(() => setCopied(false), 2000);
   };
 
-  const players = lobbyData?.players ? Object.values(lobbyData.players) : [];
+  const allPlayers = lobbyData?.players ? Object.values(lobbyData.players) : [];
+  const players = allPlayers.filter(p => p.connected !== false); // Only show connected players
   const maxPlayers = 4; // Always allow up to 4 players in multiplayer
   const canStart = players.length >= 1; // Can start with at least 1 player (the host)
 
@@ -899,7 +927,7 @@ export function MultiplayerWaitingRoom({
  * Displays lobby code, connected players, and host status
  */
 export function MultiplayerStatusBar({ gameConfig, onDisconnect }) {
-  const { isHost, lobbyId, connectedPlayers, playerSlot } = useMultiplayer();
+  const { isHost, lobbyId, connectedPlayers, playerSlot, kickPlayerFromLobby } = useMultiplayer();
   const [copied, setCopied] = useState(false);
   const [lobbyCodeVisible, setLobbyCodeVisible] = useState(false);
   const factionColors = getFactionColors(gameConfig?.faction || 'terminid');
@@ -912,7 +940,9 @@ export function MultiplayerStatusBar({ gameConfig, onDisconnect }) {
 
   // Format lobby ID for display (show first 8 chars)
   const displayLobbyId = lobbyId ? `${lobbyId.substring(0, 8)}...` : '';
-  const playerCount = Object.keys(connectedPlayers || {}).length;
+  // Count only actually connected players (not those who disconnected)
+  const actuallyConnected = (connectedPlayers || []).filter(p => p.connected !== false);
+  const playerCount = actuallyConnected.length;
   const expectedPlayers = gameConfig?.playerCount || 4;
 
   return (
@@ -1000,22 +1030,62 @@ export function MultiplayerStatusBar({ gameConfig, onDisconnect }) {
         {/* Connected Player Names */}
         <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
           {Object.values(connectedPlayers || {}).map((player, idx) => (
-            <span
+            <div
               key={player.id || idx}
               style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '4px',
                 fontSize: '11px',
                 padding: '2px 8px',
-                backgroundColor: player.isHost 
-                  ? `${factionColors.PRIMARY}20`
-                  : 'rgba(59, 130, 246, 0.2)',
-                color: player.isHost ? factionColors.PRIMARY : COLORS.ACCENT_BLUE,
+                backgroundColor: player.connected === false 
+                  ? 'rgba(239, 68, 68, 0.2)' 
+                  : player.isHost 
+                    ? `${factionColors.PRIMARY}20`
+                    : 'rgba(59, 130, 246, 0.2)',
+                color: player.connected === false 
+                  ? '#ef4444'
+                  : player.isHost ? factionColors.PRIMARY : COLORS.ACCENT_BLUE,
                 borderRadius: '4px',
-                fontWeight: player.id === connectedPlayers?.self?.id ? '900' : '600'
+                fontWeight: player.id === connectedPlayers?.self?.id ? '900' : '600',
+                opacity: player.connected === false ? 0.7 : 1
               }}
             >
-              {player.isHost && <Crown size={10} style={{ marginRight: '4px', verticalAlign: 'middle' }} />}
-              {player.name || `Player ${player.slot + 1}`}
-            </span>
+              {player.isHost && <Crown size={10} style={{ marginRight: '2px', verticalAlign: 'middle' }} />}
+              {player.connected === false && <WifiOff size={10} style={{ marginRight: '2px', verticalAlign: 'middle' }} />}
+              <span>{player.name || `Player ${(player.slot ?? 0) + 1}`}</span>
+              {/* Kick button for host (only shows for non-host players) */}
+              {isHost && !player.isHost && (
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    if (window.confirm(`Kick ${player.name || 'this player'}? They can rejoin with the lobby code.`)) {
+                      kickPlayerFromLobby(player.id);
+                    }
+                  }}
+                  style={{
+                    marginLeft: '4px',
+                    padding: '0 4px',
+                    backgroundColor: 'transparent',
+                    color: '#ef4444',
+                    border: 'none',
+                    borderRadius: '2px',
+                    fontSize: '10px',
+                    cursor: 'pointer',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    opacity: 0.6,
+                    transition: 'opacity 0.2s'
+                  }}
+                  onMouseEnter={(e) => e.currentTarget.style.opacity = '1'}
+                  onMouseLeave={(e) => e.currentTarget.style.opacity = '0.6'}
+                  title={`Kick ${player.name || 'player'}`}
+                >
+                  ✕
+                </button>
+              )}
+            </div>
           ))}
         </div>
 
