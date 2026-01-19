@@ -149,15 +149,20 @@ export const joinLobby = async (lobbyId, playerInfo, requestedSlot) => {
     }
     
     // If taking over a disconnected player's slot, remove the old player entry first
+    let removedDisconnectedPlayer = null;
     if (playerInSlot && playerInSlot.connected === false) {
       const oldPlayerRef = ref(db, `lobbies/${lobbyId}/players/${playerInSlot.id}`);
       const oldConnectedRef = ref(db, `lobbies/${lobbyId}/players/${playerInSlot.id}/connected`);
       await onDisconnect(oldConnectedRef).cancel();
       await remove(oldPlayerRef);
+      removedDisconnectedPlayer = playerInSlot;
     }
     
     // Check player count limit (only count connected players for the limit)
-    const connectedPlayerCount = Object.values(players).filter(p => p.connected !== false).length;
+    // Exclude the player we just removed (if any) from the count
+    const connectedPlayerCount = Object.values(players)
+      .filter(p => p.connected !== false && p.id !== removedDisconnectedPlayer?.id)
+      .length;
     if (connectedPlayerCount >= 4) {
       return { success: false, error: 'Lobby is full' };
     }
