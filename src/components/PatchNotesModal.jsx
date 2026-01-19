@@ -17,8 +17,10 @@ export default function PatchNotesModal({ isOpen, onClose, faction = 'Terminids'
       setLoading(true);
       setError(null);
       
-      // Try to fetch CHANGELOG.md from the public directory or root
-      fetch('/CHANGELOG.md')
+      // Try to fetch CHANGELOG.md from the public directory
+      // Use PUBLIC_URL for production builds with homepage setting
+      const changelogPath = `${process.env.PUBLIC_URL}/CHANGELOG.md`;
+      fetch(changelogPath)
         .then(response => {
           if (!response.ok) {
             throw new Error('Failed to load patch notes');
