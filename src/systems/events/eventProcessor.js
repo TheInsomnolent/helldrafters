@@ -33,6 +33,10 @@ export const processEventOutcome = (outcome, choice, state, selections = {}) => 
       updates.requisition = Math.max(0, requisition - outcome.value);
       break;
 
+    case OUTCOME_TYPES.LOSE_REQUISITION:
+      updates.requisition = Math.max(0, requisition - outcome.value);
+      break;
+
     case OUTCOME_TYPES.CHANGE_FACTION:
       const currentFaction = gameConfig?.faction;
       const allFactions = Object.values(FACTION);
