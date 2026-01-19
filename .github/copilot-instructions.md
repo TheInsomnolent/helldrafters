@@ -10,6 +10,32 @@ npm run lint
 
 This checks for ESLint errors and warnings. The build process treats warnings as errors in CI, so code must pass lint checks with zero warnings.
 
+## Release Notes
+
+When making changes to the codebase, **always update CHANGELOG.md** with a brief description of your changes:
+
+1. Add your changes under the `## [Unreleased]` section
+2. Categorize changes using these headers:
+   - `### Added` - New features
+   - `### Changed` - Changes to existing functionality
+   - `### Deprecated` - Features that will be removed in future versions
+   - `### Removed` - Features that have been removed
+   - `### Fixed` - Bug fixes
+   - `### Security` - Security-related changes
+
+Example:
+```markdown
+## [Unreleased]
+
+### Added
+- New event type for bonus requisition rewards
+
+### Fixed
+- Fixed issue where draft cards would sometimes be empty
+```
+
+This ensures that release notes are always up-to-date and automatically published with each deployment.
+
 ## Common Issues to Avoid
 
 1. **Unused imports** - Remove any imports that are not used in the file
