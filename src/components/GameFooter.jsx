@@ -1,5 +1,6 @@
 import React from 'react';
 import { Coffee, Bug } from 'lucide-react';
+import { COLORS } from '../constants/theme';
 
 /**
  * Game footer component with Ko-fi support link and bug reporting
@@ -29,8 +30,8 @@ export default function GameFooter() {
             gap: '8px',
             padding: '10px 20px',
             backgroundColor: 'rgba(100, 116, 139, 0.1)',
-            color: '#94a3b8',
-            border: '1px solid rgba(100, 116, 139, 0.3)',
+            color: COLORS.TEXT_MUTED,
+            border: `1px solid rgba(100, 116, 139, 0.3)`,
             borderRadius: '6px',
             fontSize: '13px',
             fontWeight: 'bold',
@@ -41,13 +42,13 @@ export default function GameFooter() {
           }}
           onMouseEnter={(e) => {
             e.currentTarget.style.backgroundColor = 'rgba(100, 116, 139, 0.2)';
-            e.currentTarget.style.borderColor = '#94a3b8';
-            e.currentTarget.style.color = '#cbd5e1';
+            e.currentTarget.style.borderColor = COLORS.TEXT_MUTED;
+            e.currentTarget.style.color = COLORS.TEXT_SECONDARY;
           }}
           onMouseLeave={(e) => {
             e.currentTarget.style.backgroundColor = 'rgba(100, 116, 139, 0.1)';
             e.currentTarget.style.borderColor = 'rgba(100, 116, 139, 0.3)';
-            e.currentTarget.style.color = '#94a3b8';
+            e.currentTarget.style.color = COLORS.TEXT_MUTED;
           }}
         >
           <Bug size={16} />
