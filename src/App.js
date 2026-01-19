@@ -571,14 +571,23 @@ function HelldiversRogueliteApp() {
   const handleDraftPick = (item) => {
     const currentPlayerIdx = draftState.activePlayerIndex;
     
+    console.log('[Draft] handleDraftPick called', { 
+      isMultiplayer, 
+      isHost, 
+      playerSlot, 
+      currentPlayerIdx,
+      item: item?.id || item?.name
+    });
+    
     // In multiplayer, only the player whose turn it is can draft
     if (isMultiplayer && playerSlot !== currentPlayerIdx) {
-      console.log('Not your turn to draft', { playerSlot, currentPlayerIdx });
+      console.log('[Draft] Not your turn to draft', { playerSlot, currentPlayerIdx });
       return;
     }
     
     // In multiplayer as client, send action to host instead of processing locally
     if (isMultiplayer && !isHost) {
+      console.log('[Draft] Client sending DRAFT_PICK action to host');
       sendAction({
         type: types.DRAFT_PICK,
         payload: {
@@ -589,6 +598,7 @@ function HelldiversRogueliteApp() {
       return;
     }
     
+    console.log('[Draft] Host processing draft pick locally');
     const updatedPlayers = [...players];
     const player = updatedPlayers[currentPlayerIdx];
 
@@ -695,12 +705,18 @@ function HelldiversRogueliteApp() {
     if (action.type === types.DRAFT_PICK) {
       const { playerIndex, item } = action.payload;
       
+      console.log('[Host] Processing DRAFT_PICK action', { 
+        playerIndex, 
+        itemId: item?.id || item?.name,
+        currentActivePlayerIndex: draftState.activePlayerIndex
+      });
+      
       // Process the draft pick for this player
       const updatedPlayers = [...players];
       const player = updatedPlayers[playerIndex];
       
       if (!player || !player.loadout) {
-        console.error('DRAFT_PICK: Invalid player', { playerIndex });
+        console.error('[Host] DRAFT_PICK: Invalid player', { playerIndex, playersLength: players.length });
         return true; // Consumed the action
       }
       
@@ -3202,7 +3218,12 @@ function HelldiversRogueliteApp() {
             const isConnected = !isMultiplayer || (lobbyPlayer && lobbyPlayer.connected !== false);
             
             // In multiplayer, hide loadouts for players not in the lobby (kicked)
-            if (isMultiplayer && !lobbyPlayer) {
+            // Only hide if we have lobbyData.players (so we know they're actually kicked, not just loading)
+            if (isMultiplayer && lobbyData?.players && !lobbyPlayer) {
+              console.log(`[Dashboard] Hiding loadout for player slot ${index} - not in lobby`, { 
+                playerSlots: Object.values(lobbyData.players).map(p => p.slot),
+                playerIndex: index
+              });
               return null;
             }
             

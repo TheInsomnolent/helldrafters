@@ -339,6 +339,8 @@ export function MultiplayerProvider({ children }) {
    * Disconnect from multiplayer (intentional disconnect by user)
    */
   const disconnect = useCallback(async () => {
+    console.log('[Multiplayer] disconnect() called', { isHost, lobbyId, playerId });
+    
     // Cleanup subscriptions
     if (lobbyUnsubscribeRef.current) {
       lobbyUnsubscribeRef.current();
@@ -356,8 +358,12 @@ export function MultiplayerProvider({ children }) {
     // Leave/close lobby
     if (lobbyId && playerId) {
       if (isHost) {
+        console.log('[Multiplayer] Host closing lobby', { lobbyId });
         await closeLobby(lobbyId);
+        // Host also needs to be returned to menu
+        setClientDisconnected(true);
       } else {
+        console.log('[Multiplayer] Client leaving lobby', { lobbyId, playerId });
         await leaveLobby(lobbyId, playerId);
         // Set flag that client intentionally disconnected (to trigger menu return)
         setClientDisconnected(true);
