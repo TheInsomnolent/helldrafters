@@ -15,6 +15,7 @@ export default function ContributorsModal({ isOpen, onClose, faction = 'Terminid
   const [contributors, setContributors] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [imageErrors, setImageErrors] = useState({});
   
   // Fetch contributors from Firebase
   useEffect(() => {
@@ -95,7 +96,7 @@ export default function ContributorsModal({ isOpen, onClose, faction = 'Terminid
     if (tier === 'Skull Admiral') {
       return {
         name: 'Skull Admiral',
-        image: 'Skull Admiral.png',
+        image: 'Skull Admiral.jpg',
         icon: <Crown size={16} style={{ color: '#fbbf24' }} />,
         color: '#fbbf24',
         borderColor: '#f59e0b'
@@ -103,7 +104,7 @@ export default function ContributorsModal({ isOpen, onClose, faction = 'Terminid
     } else if (tier === 'Space Cadet') {
       return {
         name: 'Space Cadet',
-        image: 'Space Cadet.png',
+        image: 'Space Cadet.jpg',
         icon: <Heart size={16} style={{ color: '#3b82f6' }} />,
         color: '#3b82f6',
         borderColor: '#2563eb'
@@ -237,51 +238,37 @@ export default function ContributorsModal({ isOpen, onClose, faction = 'Terminid
               <p style={{
                 color: '#cbd5e1',
                 fontSize: '14px',
-                marginBottom: '20px',
+                marginBottom: '30px',
                 textAlign: 'center'
               }}>
                 Thank you to all our wonderful supporters who help keep this project running!
               </p>
               
-              <div style={{
-                display: 'grid',
-                gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))',
-                gap: '16px'
-              }}>
-                {contributors.map((contributor) => {
-                  const badge = getTierBadge(contributor.tier);
-                  
-                  return (
-                    <div
-                      key={contributor.id}
-                      style={{
-                        background: 'rgba(15, 23, 42, 0.6)',
-                        border: `2px solid ${badge.borderColor}40`,
-                        borderRadius: '8px',
-                        padding: '16px',
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: '12px',
-                        transition: 'all 0.2s'
-                      }}
-                      onMouseEnter={(e) => {
-                        e.currentTarget.style.background = 'rgba(15, 23, 42, 0.8)';
-                        e.currentTarget.style.borderColor = badge.borderColor;
-                        e.currentTarget.style.transform = 'translateY(-2px)';
-                      }}
-                      onMouseLeave={(e) => {
-                        e.currentTarget.style.background = 'rgba(15, 23, 42, 0.6)';
-                        e.currentTarget.style.borderColor = `${badge.borderColor}40`;
-                        e.currentTarget.style.transform = 'translateY(0)';
-                      }}
-                    >
-                      {/* Tier Badge Image */}
-                      {badge.image && (
+              {/* Group contributors by tier */}
+              {['Skull Admiral', 'Space Cadet'].map((tierName) => {
+                const tierContributors = contributors.filter(c => c.tier === tierName);
+                if (tierContributors.length === 0) return null;
+                
+                const badge = getTierBadge(tierName);
+                
+                return (
+                  <div key={tierName} style={{ marginBottom: '40px' }}>
+                    {/* Tier Header */}
+                    <div style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '16px',
+                      marginBottom: '20px',
+                      paddingBottom: '12px',
+                      borderBottom: `2px solid ${badge.borderColor}40`
+                    }}>
+                      {/* Tier Image */}
+                      {badge.image && !imageErrors[tierName] ? (
                         <div style={{
-                          width: '48px',
-                          height: '48px',
-                          borderRadius: '8px',
-                          border: `2px solid ${badge.borderColor}`,
+                          width: '96px',
+                          height: '96px',
+                          borderRadius: '12px',
+                          border: `3px solid ${badge.borderColor}`,
                           background: 'rgba(0, 0, 0, 0.4)',
                           display: 'flex',
                           alignItems: 'center',
@@ -297,61 +284,98 @@ export default function ContributorsModal({ isOpen, onClose, faction = 'Terminid
                               height: '100%',
                               objectFit: 'cover'
                             }}
-                            onError={(e) => {
-                              // Fallback to icon if image fails to load
-                              e.currentTarget.style.display = 'none';
-                              e.currentTarget.parentElement.innerHTML = '';
-                              const iconContainer = document.createElement('div');
-                              iconContainer.style.cssText = 'display: flex; align-items: center; justify-content: center;';
-                              e.currentTarget.parentElement.appendChild(iconContainer);
+                            onError={() => {
+                              setImageErrors(prev => ({ ...prev, [tierName]: true }));
                             }}
                           />
                         </div>
-                      )}
-                      
-                      {/* Info */}
-                      <div style={{ flex: 1, minWidth: 0 }}>
+                      ) : (
                         <div style={{
+                          width: '96px',
+                          height: '96px',
+                          borderRadius: '12px',
+                          border: `3px solid ${badge.borderColor}`,
+                          background: 'rgba(0, 0, 0, 0.4)',
                           display: 'flex',
                           alignItems: 'center',
-                          gap: '6px',
-                          marginBottom: '4px'
+                          justifyContent: 'center',
+                          flexShrink: 0
                         }}>
-                          {badge.icon}
-                          <span style={{
-                            color: badge.color,
-                            fontSize: '12px',
-                            fontWeight: 'bold',
-                            textTransform: 'uppercase',
-                            letterSpacing: '0.5px'
-                          }}>
-                            {badge.name}
-                          </span>
+                          {React.cloneElement(badge.icon, { size: 48 })}
                         </div>
-                        
-                        <div style={{
-                          color: '#f1f5f9',
-                          fontSize: '16px',
+                      )}
+                      
+                      {/* Tier Name */}
+                      <div>
+                        <h3 style={{
+                          margin: 0,
+                          fontSize: '24px',
                           fontWeight: 'bold',
-                          marginBottom: '2px',
-                          overflow: 'hidden',
-                          textOverflow: 'ellipsis',
-                          whiteSpace: 'nowrap'
+                          color: badge.color,
+                          textTransform: 'uppercase',
+                          letterSpacing: '0.5px'
                         }}>
-                          {contributor.displayName}
-                        </div>
-                        
+                          {tierName}
+                        </h3>
                         <div style={{
+                          fontSize: '13px',
                           color: '#94a3b8',
-                          fontSize: '13px'
+                          marginTop: '4px'
                         }}>
-                          {contributor.monthsSubscribed} {contributor.monthsSubscribed === 1 ? 'month' : 'months'}
+                          {tierContributors.length} {tierContributors.length === 1 ? 'supporter' : 'supporters'}
                         </div>
                       </div>
                     </div>
-                  );
-                })}
-              </div>
+                    
+                    {/* Supporters List */}
+                    <div style={{
+                      display: 'flex',
+                      flexDirection: 'column',
+                      gap: '12px'
+                    }}>
+                      {tierContributors.map((contributor) => (
+                        <div
+                          key={contributor.id}
+                          style={{
+                            background: 'rgba(15, 23, 42, 0.6)',
+                            border: `2px solid ${badge.borderColor}20`,
+                            borderRadius: '8px',
+                            padding: '12px 16px',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'space-between',
+                            transition: 'all 0.2s'
+                          }}
+                          onMouseEnter={(e) => {
+                            e.currentTarget.style.background = 'rgba(15, 23, 42, 0.8)';
+                            e.currentTarget.style.borderColor = `${badge.borderColor}60`;
+                          }}
+                          onMouseLeave={(e) => {
+                            e.currentTarget.style.background = 'rgba(15, 23, 42, 0.6)';
+                            e.currentTarget.style.borderColor = `${badge.borderColor}20`;
+                          }}
+                        >
+                          <div style={{
+                            color: '#f1f5f9',
+                            fontSize: '16px',
+                            fontWeight: 'bold'
+                          }}>
+                            {contributor.displayName}
+                          </div>
+                          
+                          <div style={{
+                            color: badge.color,
+                            fontSize: '14px',
+                            fontWeight: 'bold'
+                          }}>
+                            {contributor.monthsSubscribed} {contributor.monthsSubscribed === 1 ? 'month' : 'months'}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                );
+              })}
             </>
           )}
         </div>
