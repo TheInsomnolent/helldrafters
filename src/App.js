@@ -1,5 +1,5 @@
 import React, { useReducer, useEffect } from 'react';
-import { RefreshCw, CheckCircle, XCircle, Users } from 'lucide-react';
+import { RefreshCw, CheckCircle, XCircle, Users, Bug } from 'lucide-react';
 import { selectRandomEvent, EVENT_TYPES, EVENTS } from './systems/events/events';
 import { RARITY, TYPE } from './constants/types';
 import { MASTER_DB } from './data/itemsByWarbond';
@@ -1479,6 +1479,46 @@ function HelldiversRogueliteApp() {
               >
                 <span style={{ fontSize: '16px' }}>📖</span> How to Play
               </button>
+            </div>
+            
+            {/* Report Bug/Feedback Button */}
+            <div style={{ marginTop: '12px' }}>
+              <a
+                href="https://github.com/TheInsomnolent/helldrafters/issues"
+                target="_blank"
+                rel="noopener noreferrer"
+                style={{
+                  width: '100%',
+                  padding: '12px',
+                  fontSize: '14px',
+                  letterSpacing: '0.1em',
+                  borderRadius: '4px',
+                  border: `1px solid ${COLORS.CARD_BORDER}`,
+                  backgroundColor: 'transparent',
+                  color: COLORS.TEXT_MUTED,
+                  fontWeight: '700',
+                  textTransform: 'uppercase',
+                  cursor: 'pointer',
+                  transition: 'all 0.2s',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: '8px',
+                  textDecoration: 'none'
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.borderColor = COLORS.TEXT_SECONDARY;
+                  e.currentTarget.style.color = COLORS.TEXT_SECONDARY;
+                  e.currentTarget.style.backgroundColor = 'rgba(100, 116, 139, 0.1)';
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.borderColor = COLORS.CARD_BORDER;
+                  e.currentTarget.style.color = COLORS.TEXT_MUTED;
+                  e.currentTarget.style.backgroundColor = 'transparent';
+                }}
+              >
+                <Bug size={16} /> Report Bug/Feedback
+              </a>
             </div>
 
             {/* Build Info */}
