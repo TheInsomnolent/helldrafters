@@ -20,11 +20,6 @@ import {
 } from 'firebase/database';
 import { getFirebaseDatabase } from './firebaseConfig';
 
-// Debug logging helper
-const debugLog = (context, message, data = {}) => {
-  console.log(`[Lobby:${context}]`, message, data);
-};
-
 /**
  * Generate a new lobby ID (UUIDv4)
  * The UUID serves as both identifier and access control
@@ -41,7 +36,6 @@ export const generateLobbyId = () => {
  * @returns {Promise<Object>} Lobby data
  */
 export const createLobby = async (lobbyId, hostInfo, gameConfig) => {
-  debugLog('createLobby', 'Creating lobby', { lobbyId, hostId: hostInfo.id, hostName: hostInfo.name });
   const db = getFirebaseDatabase();
   const lobbyRef = ref(db, `lobbies/${lobbyId}`);
   
@@ -68,7 +62,6 @@ export const createLobby = async (lobbyId, hostInfo, gameConfig) => {
   };
   
   await set(lobbyRef, lobbyData);
-  debugLog('createLobby', 'Lobby created, setting up onDisconnect', { lobbyId });
   
   // Set up disconnect handler to mark host as disconnected
   const playerRef = ref(db, `lobbies/${lobbyId}/players/${hostInfo.id}/connected`);
@@ -122,7 +115,6 @@ export const checkLobby = async (lobbyId) => {
  * @returns {Promise<Object>} Result with success status and data
  */
 export const joinLobby = async (lobbyId, playerInfo, requestedSlot) => {
-  debugLog('joinLobby', 'Attempting to join lobby', { lobbyId, playerId: playerInfo.id, playerName: playerInfo.name, requestedSlot });
   const db = getFirebaseDatabase();
   const lobbyRef = ref(db, `lobbies/${lobbyId}`);
   
@@ -130,29 +122,20 @@ export const joinLobby = async (lobbyId, playerInfo, requestedSlot) => {
     // Get current lobby state
     const snapshot = await get(lobbyRef);
     if (!snapshot.exists()) {
-      debugLog('joinLobby', 'Lobby not found', { lobbyId });
       return { success: false, error: 'Lobby not found' };
     }
     
     const lobby = snapshot.val();
-    debugLog('joinLobby', 'Lobby state retrieved', { 
-      lobbyId, 
-      status: lobby.status, 
-      playerCount: Object.keys(lobby.players || {}).length,
-      players: Object.values(lobby.players || {}).map(p => ({ id: p.id, name: p.name, slot: p.slot, connected: p.connected }))
-    });
     
     // Allow joining in both 'waiting' and 'in-game' states (hot-join support)
     // Only reject if lobby is 'completed'
     if (lobby.status === 'completed') {
-      debugLog('joinLobby', 'Game already completed', { lobbyId });
       return { success: false, error: 'Game has already completed' };
     }
     
     // Check if player already exists in lobby (avoid overwriting) before slot validation
     const players = lobby.players || {};
     if (players[playerInfo.id]) {
-      debugLog('joinLobby', 'Player ID conflict - player already in lobby', { lobbyId, playerId: playerInfo.id });
       return { success: false, error: 'Player is already in this lobby', errorCode: 'PLAYER_ID_CONFLICT' };
     }
     
@@ -162,20 +145,17 @@ export const joinLobby = async (lobbyId, playerInfo, requestedSlot) => {
     const playerInSlot = Object.values(players).find(p => p.slot === requestedSlot);
     const slotTakenByConnectedPlayer = playerInSlot && playerInSlot.connected !== false;
     if (slotTakenByConnectedPlayer) {
-      debugLog('joinLobby', 'Slot taken by connected player', { lobbyId, requestedSlot, playerInSlot });
       return { success: false, error: 'Slot is already taken by an active player' };
     }
     
     // If taking over a disconnected player's slot, remove the old player entry first
     let removedDisconnectedPlayer = null;
     if (playerInSlot && playerInSlot.connected === false) {
-      debugLog('joinLobby', 'Taking over disconnected player slot', { lobbyId, oldPlayerId: playerInSlot.id, slot: requestedSlot });
       const oldPlayerRef = ref(db, `lobbies/${lobbyId}/players/${playerInSlot.id}`);
       const oldConnectedRef = ref(db, `lobbies/${lobbyId}/players/${playerInSlot.id}/connected`);
       await onDisconnect(oldConnectedRef).cancel();
       await remove(oldPlayerRef);
       removedDisconnectedPlayer = playerInSlot;
-      debugLog('joinLobby', 'Removed disconnected player', { oldPlayerId: playerInSlot.id });
     }
     
     // Check player count limit (only count connected players for the limit)
@@ -184,12 +164,10 @@ export const joinLobby = async (lobbyId, playerInfo, requestedSlot) => {
       .filter(p => p.connected !== false && p.id !== removedDisconnectedPlayer?.id)
       .length;
     if (connectedPlayerCount >= 4) {
-      debugLog('joinLobby', 'Lobby full', { lobbyId, connectedPlayerCount });
       return { success: false, error: 'Lobby is full' };
     }
     
     // Add player to lobby
-    debugLog('joinLobby', 'Adding player to lobby', { lobbyId, playerId: playerInfo.id, slot: requestedSlot });
     const playerRef = ref(db, `lobbies/${lobbyId}/players/${playerInfo.id}`);
     await set(playerRef, {
       id: playerInfo.id,
@@ -203,7 +181,6 @@ export const joinLobby = async (lobbyId, playerInfo, requestedSlot) => {
     // Set up disconnect handler
     const connectedRef = ref(db, `lobbies/${lobbyId}/players/${playerInfo.id}/connected`);
     onDisconnect(connectedRef).set(false);
-    debugLog('joinLobby', 'Player added successfully, onDisconnect handler set', { lobbyId, playerId: playerInfo.id });
     
     return { 
       success: true, 
@@ -222,7 +199,6 @@ export const joinLobby = async (lobbyId, playerInfo, requestedSlot) => {
       }
     };
   } catch (error) {
-    debugLog('joinLobby', 'Error joining lobby', { lobbyId, error: error.message });
     console.error('Error joining lobby:', error);
     return { success: false, error: error.message };
   }
@@ -234,7 +210,6 @@ export const joinLobby = async (lobbyId, playerInfo, requestedSlot) => {
  * @param {string} playerId - The player ID leaving
  */
 export const leaveLobby = async (lobbyId, playerId) => {
-  debugLog('leaveLobby', 'Player leaving lobby', { lobbyId, playerId });
   const db = getFirebaseDatabase();
   const playerRef = ref(db, `lobbies/${lobbyId}/players/${playerId}`);
   const connectedRef = ref(db, `lobbies/${lobbyId}/players/${playerId}/connected`);
@@ -242,13 +217,9 @@ export const leaveLobby = async (lobbyId, playerId) => {
   try {
     // Cancel the onDisconnect handler BEFORE removing the player
     // This prevents the handler from creating a partial entry after removal
-    debugLog('leaveLobby', 'Canceling onDisconnect handler', { lobbyId, playerId });
     await onDisconnect(connectedRef).cancel();
-    debugLog('leaveLobby', 'Removing player entry', { lobbyId, playerId });
     await remove(playerRef);
-    debugLog('leaveLobby', 'Player removed successfully', { lobbyId, playerId });
   } catch (error) {
-    debugLog('leaveLobby', 'Error leaving lobby', { lobbyId, playerId, error: error.message });
     console.error('Error leaving lobby:', error);
   }
 };
@@ -262,21 +233,16 @@ export const leaveLobby = async (lobbyId, playerId) => {
  * @returns {Promise<Object>} Result with success status
  */
 export const kickPlayer = async (lobbyId, playerId) => {
-  debugLog('kickPlayer', 'Kicking player from lobby', { lobbyId, playerId });
   const db = getFirebaseDatabase();
   const playerRef = ref(db, `lobbies/${lobbyId}/players/${playerId}`);
   const connectedRef = ref(db, `lobbies/${lobbyId}/players/${playerId}/connected`);
   
   try {
     // Cancel the onDisconnect handler to prevent partial entry creation
-    debugLog('kickPlayer', 'Canceling onDisconnect handler', { lobbyId, playerId });
     await onDisconnect(connectedRef).cancel();
-    debugLog('kickPlayer', 'Removing player entry', { lobbyId, playerId });
     await remove(playerRef);
-    debugLog('kickPlayer', 'Player kicked successfully', { lobbyId, playerId });
     return { success: true };
   } catch (error) {
-    debugLog('kickPlayer', 'Error kicking player', { lobbyId, playerId, error: error.message });
     console.error('Error kicking player:', error);
     return { success: false, error: error.message };
   }
@@ -287,7 +253,6 @@ export const kickPlayer = async (lobbyId, playerId) => {
  * @param {string} lobbyId - The lobby ID to close
  */
 export const closeLobby = async (lobbyId) => {
-  debugLog('closeLobby', 'Closing lobby', { lobbyId });
   const db = getFirebaseDatabase();
   const lobbyRef = ref(db, `lobbies/${lobbyId}`);
   
@@ -358,25 +323,16 @@ export const changePlayerSlot = async (lobbyId, playerId, newSlot) => {
  * @returns {Function} Unsubscribe function
  */
 export const subscribeLobby = (lobbyId, callback) => {
-  debugLog('subscribeLobby', 'Subscribing to lobby updates', { lobbyId });
   const db = getFirebaseDatabase();
   const lobbyRef = ref(db, `lobbies/${lobbyId}`);
   
   const unsubscribe = onValue(lobbyRef, (snapshot) => {
     if (snapshot.exists()) {
-      const data = snapshot.val();
-      debugLog('subscribeLobby', 'Lobby update received', { 
-        lobbyId, 
-        playerCount: Object.keys(data.players || {}).length,
-        players: Object.values(data.players || {}).map(p => ({ id: p.id?.substring(0,8), name: p.name, slot: p.slot, connected: p.connected }))
-      });
-      callback(data);
+      callback(snapshot.val());
     } else {
-      debugLog('subscribeLobby', 'Lobby no longer exists', { lobbyId });
       callback(null);
     }
   }, (error) => {
-    debugLog('subscribeLobby', 'Subscription error', { lobbyId, error: error.message });
     console.error('Lobby subscription error:', error);
     callback(null, error);
   });

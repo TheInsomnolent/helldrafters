@@ -74,20 +74,18 @@ function HelldiversRogueliteApp() {
     setDispatch(dispatch);
   }, [dispatch, setDispatch]);
   
-  // Handle host disconnect - show game over for clients
+  // Handle host disconnect - return all clients to main menu
   useEffect(() => {
-    const currentPhase = state.phase;
-    if (hostDisconnected && !isHost && currentPhase !== 'MENU' && currentPhase !== 'GAMEOVER') {
-      // Host disconnected during an active game - show game over
-      dispatch(actions.setPhase('GAMEOVER'));
+    if (hostDisconnected && !isHost) {
+      // Host disconnected/closed the lobby - return to main menu
+      dispatch(actions.setPhase('MENU'));
       setMultiplayerMode(null);
       clearHostDisconnected();
-    } else if (hostDisconnected) {
-      // Host disconnected during lobby/menu - just clear and return to menu
-      setMultiplayerMode(null);
+    } else if (hostDisconnected && isHost) {
+      // This shouldn't happen (host set their own flag), but clear it anyway
       clearHostDisconnected();
     }
-  }, [hostDisconnected, isHost, state.phase, clearHostDisconnected]);
+  }, [hostDisconnected, isHost, clearHostDisconnected]);
 
   // Handle client intentional disconnect - return to menu
   useEffect(() => {
@@ -571,23 +569,13 @@ function HelldiversRogueliteApp() {
   const handleDraftPick = (item) => {
     const currentPlayerIdx = draftState.activePlayerIndex;
     
-    console.log('[Draft] handleDraftPick called', { 
-      isMultiplayer, 
-      isHost, 
-      playerSlot, 
-      currentPlayerIdx,
-      item: item?.id || item?.name
-    });
-    
     // In multiplayer, only the player whose turn it is can draft
     if (isMultiplayer && playerSlot !== currentPlayerIdx) {
-      console.log('[Draft] Not your turn to draft', { playerSlot, currentPlayerIdx });
       return;
     }
     
     // In multiplayer as client, send action to host instead of processing locally
     if (isMultiplayer && !isHost) {
-      console.log('[Draft] Client sending DRAFT_PICK action to host');
       sendAction({
         type: types.DRAFT_PICK,
         payload: {
@@ -598,7 +586,6 @@ function HelldiversRogueliteApp() {
       return;
     }
     
-    console.log('[Draft] Host processing draft pick locally');
     const updatedPlayers = [...players];
     const player = updatedPlayers[currentPlayerIdx];
 
@@ -705,18 +692,12 @@ function HelldiversRogueliteApp() {
     if (action.type === types.DRAFT_PICK) {
       const { playerIndex, item } = action.payload;
       
-      console.log('[Host] Processing DRAFT_PICK action', { 
-        playerIndex, 
-        itemId: item?.id || item?.name,
-        currentActivePlayerIndex: draftState.activePlayerIndex
-      });
-      
       // Process the draft pick for this player
       const updatedPlayers = [...players];
       const player = updatedPlayers[playerIndex];
       
       if (!player || !player.loadout) {
-        console.error('[Host] DRAFT_PICK: Invalid player', { playerIndex, playersLength: players.length });
+        console.error('DRAFT_PICK: Invalid player', { playerIndex, playersLength: players.length });
         return true; // Consumed the action
       }
       
@@ -3064,8 +3045,6 @@ function HelldiversRogueliteApp() {
           {/* Filter out any null/undefined items that may have been stripped during sync */}
           {(() => {
             const validCards = (draftState.roundCards || []).filter(item => item && (item.id || item.name || item.passive));
-            console.log('[Draft Render] Round cards:', draftState.roundCards);
-            console.log('[Draft Render] Valid cards:', validCards);
             return (
               <div style={{ 
                 display: 'grid', 
@@ -3220,10 +3199,6 @@ function HelldiversRogueliteApp() {
             // In multiplayer, hide loadouts for players not in the lobby (kicked)
             // Only hide if we have lobbyData.players (so we know they're actually kicked, not just loading)
             if (isMultiplayer && lobbyData?.players && !lobbyPlayer) {
-              console.log(`[Dashboard] Hiding loadout for player slot ${index} - not in lobby`, { 
-                playerSlots: Object.values(lobbyData.players).map(p => p.slot),
-                playerIndex: index
-              });
               return null;
             }
             

@@ -182,9 +182,30 @@ export function MultiplayerProvider({ children }) {
           // Check if current player has been kicked (no longer in players list)
           const stillInLobby = lobby.players && Object.keys(lobby.players).includes(playerId);
           if (!stillInLobby) {
-            // Player was kicked
+            // Player was kicked - cleanup subscriptions but don't set clientDisconnected
+            // (so the kicked screen shows instead of going straight to menu)
+            if (lobbyUnsubscribeRef.current) {
+              lobbyUnsubscribeRef.current();
+              lobbyUnsubscribeRef.current = null;
+            }
+            if (stateUnsubscribeRef.current) {
+              stateUnsubscribeRef.current();
+              stateUnsubscribeRef.current = null;
+            }
+            if (actionsUnsubscribeRef.current) {
+              actionsUnsubscribeRef.current();
+              actionsUnsubscribeRef.current = null;
+            }
+            // Reset multiplayer state
+            setIsMultiplayer(false);
+            setIsHost(false);
+            setLobbyId(null);
+            setLobbyData(null);
+            setPlayerSlot(null);
+            setConnectionStatus('disconnected');
+            setError(null);
+            // Set kicked flag LAST so the kicked screen appears
             setWasKicked(true);
-            if (disconnectRef.current) disconnectRef.current();
           } else {
             setLobbyData(lobby);
           }
@@ -339,8 +360,6 @@ export function MultiplayerProvider({ children }) {
    * Disconnect from multiplayer (intentional disconnect by user)
    */
   const disconnect = useCallback(async () => {
-    console.log('[Multiplayer] disconnect() called', { isHost, lobbyId, playerId });
-    
     // Cleanup subscriptions
     if (lobbyUnsubscribeRef.current) {
       lobbyUnsubscribeRef.current();
@@ -358,12 +377,10 @@ export function MultiplayerProvider({ children }) {
     // Leave/close lobby
     if (lobbyId && playerId) {
       if (isHost) {
-        console.log('[Multiplayer] Host closing lobby', { lobbyId });
         await closeLobby(lobbyId);
         // Host also needs to be returned to menu
         setClientDisconnected(true);
       } else {
-        console.log('[Multiplayer] Client leaving lobby', { lobbyId, playerId });
         await leaveLobby(lobbyId, playerId);
         // Set flag that client intentionally disconnected (to trigger menu return)
         setClientDisconnected(true);
