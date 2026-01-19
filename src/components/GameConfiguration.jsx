@@ -174,7 +174,20 @@ export default function GameConfiguration({
               style={{ width: '20px', height: '20px', cursor: 'pointer' }}
             />
             <div>
-              <div style={{ color: factionColors.PRIMARY, fontWeight: 'bold', fontSize: '14px' }}>Enable Events</div>
+              <div style={{ color: factionColors.PRIMARY, fontWeight: 'bold', fontSize: '14px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                Enable Events
+                <span style={{ 
+                  fontSize: '9px', 
+                  fontWeight: 'bold', 
+                  padding: '2px 6px', 
+                  backgroundColor: '#f59e0b', 
+                  color: '#000', 
+                  borderRadius: '3px',
+                  letterSpacing: '0.5px'
+                }}>
+                  BETA
+                </span>
+              </div>
               <div style={{ color: '#94a3b8', fontSize: '11px', marginTop: '4px' }}>Random high-risk, high-reward events between missions</div>
             </div>
           </label>

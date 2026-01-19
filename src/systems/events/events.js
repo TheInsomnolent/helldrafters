@@ -334,7 +334,6 @@ export const EVENTS = [
         text: 'Surrender Equipment',
         outcomes: [
           { type: OUTCOME_TYPES.REMOVE_ITEM, targetPlayer: 'choose' },
-          { type: OUTCOME_TYPES.ADD_REQUISITION, value: 2 }
         ]
       }
     ]

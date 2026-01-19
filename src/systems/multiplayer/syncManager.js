@@ -30,6 +30,7 @@ export const CLIENT_ALLOWED_ACTIONS = [
   'DRAFT_REROLL',         // Reroll draft hand
   'DRAFT_BURN',           // Burn a card
   'SKIP_DRAFT',           // Skip the current draft turn
+  'REMOVE_CARD',          // Remove a card from draft hand
   
   // Slot locking
   'LOCK_PLAYER_DRAFT_SLOT',

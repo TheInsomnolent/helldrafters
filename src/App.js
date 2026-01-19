@@ -848,6 +848,81 @@ function HelldiversRogueliteApp() {
       return true;
     }
     
+    // Handle remove card from clients
+    if (action.type === 'REMOVE_CARD') {
+      const { cardToRemove } = action.payload;
+      const player = players[draftState.activePlayerIndex];
+      const playerLockedSlots = player?.lockedSlots || [];
+      const pool = getWeightedPool(player, currentDiff, gameConfig, burnedCards, players, playerLockedSlots);
+      
+      // Check if the card to remove is an armor combo
+      const isRemovingArmorCombo = cardToRemove && cardToRemove.items && cardToRemove.passive;
+      
+      // Filter out cards already in the current hand
+      const availablePool = pool.filter(poolEntry => {
+        if (poolEntry.isArmorCombo) {
+          return !draftState.roundCards.some(card => 
+            card.passive === poolEntry.armorCombo.passive && 
+            card.armorClass === poolEntry.armorCombo.armorClass
+          );
+        } else {
+          return !draftState.roundCards.some(card => 
+            card.id === poolEntry.item?.id || 
+            (card.items && card.items.some(armor => armor.id === poolEntry.item?.id))
+          );
+        }
+      });
+      
+      if (availablePool.length === 0) {
+        return true; // No cards available, action consumed
+      }
+      
+      // Pick a new random card
+      const totalWeight = availablePool.reduce((sum, c) => sum + c.weight, 0);
+      let randomNum = Math.random() * totalWeight;
+      let newCard = null;
+      
+      for (let j = 0; j < availablePool.length; j++) {
+        const poolItem = availablePool[j];
+        if (!poolItem) continue;
+        
+        randomNum -= poolItem.weight;
+        if (randomNum <= 0) {
+          newCard = poolItem.isArmorCombo ? poolItem.armorCombo : poolItem.item;
+          break;
+        }
+      }
+      
+      if (newCard) {
+        // Add to burned cards if burn mode enabled
+        if (gameConfig.burnCards) {
+          if (newCard.items && newCard.passive) {
+            newCard.items.forEach(armor => dispatch(actions.addBurnedCard(armor.id)));
+          } else {
+            dispatch(actions.addBurnedCard(newCard.id));
+          }
+        }
+        
+        // Replace the card
+        dispatch(actions.updateDraftState({
+          roundCards: draftState.roundCards.map(card => {
+            if (isRemovingArmorCombo) {
+              if (card.passive === cardToRemove.passive && card.armorClass === cardToRemove.armorClass) {
+                return newCard;
+              }
+            } else {
+              if (card.id === cardToRemove.id) {
+                return newCard;
+              }
+            }
+            return card;
+          })
+        }));
+      }
+      
+      return true; // Action handled
+    }
+    
     return false; // Action not handled
   };
 
@@ -946,6 +1021,18 @@ function HelldiversRogueliteApp() {
     // Close modal and clear pending card
     setShowRemoveCardConfirm(false);
     setPendingCardRemoval(null);
+
+    // In multiplayer as client, send action to host instead of processing locally
+    if (isMultiplayer && !isHost) {
+      sendAction({
+        type: 'REMOVE_CARD',
+        payload: {
+          playerIndex: draftState.activePlayerIndex,
+          cardToRemove: cardToRemove
+        }
+      });
+      return;
+    }
 
     // Remove single card and replace it with a new one
     const player = players[draftState.activePlayerIndex];
@@ -3770,6 +3857,17 @@ function HelldiversRogueliteApp() {
 
         {/* CONTROLS */}
         <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '16px' }}>
+          {/* Mission Objective Header */}
+          <div style={{ width: '100%', maxWidth: '800px', backgroundColor: factionColors.PRIMARY + '20', padding: '20px', borderRadius: '8px', border: `2px solid ${factionColors.PRIMARY}`, textAlign: 'center' }}>
+            <h2 style={{ fontSize: '24px', fontWeight: 'bold', color: factionColors.PRIMARY, textTransform: 'uppercase', margin: 0, letterSpacing: '1px' }}>
+              📍 Current Objective
+            </h2>
+            <p style={{ fontSize: '16px', color: 'white', margin: '12px 0 0 0', fontWeight: 'bold' }}>
+              Complete a mission at Difficulty {currentDiff}
+              {gameConfig.enduranceMode && ` (Operation: ${currentMission}/${getMissionsForDifficulty(currentDiff)})`}
+            </p>
+          </div>
+
           <div style={{ width: '100%', maxWidth: '800px', backgroundColor: '#283548', padding: '24px', borderRadius: '12px', border: '1px solid rgba(100, 116, 139, 0.5)', textAlign: 'center' }}>
             <h2 style={{ fontSize: '20px', fontWeight: 'bold', color: 'white', textTransform: 'uppercase', marginBottom: '8px' }}>Mission Status Report</h2>
             {gameConfig.enduranceMode && (
