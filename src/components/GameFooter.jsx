@@ -1,8 +1,8 @@
 import React from 'react';
-import { Coffee } from 'lucide-react';
+import { Coffee, Bug } from 'lucide-react';
 
 /**
- * Game footer component with Ko-fi support link
+ * Game footer component with Ko-fi support link and bug reporting
  */
 export default function GameFooter() {
   return (
@@ -15,8 +15,44 @@ export default function GameFooter() {
         margin: '0 auto',
         display: 'flex',
         justifyContent: 'center',
-        alignItems: 'center'
+        alignItems: 'center',
+        gap: '12px',
+        flexWrap: 'wrap'
       }}>
+        <a
+          href="https://github.com/TheInsomnolent/helldrafters/issues"
+          target="_blank"
+          rel="noopener noreferrer"
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: '8px',
+            padding: '10px 20px',
+            backgroundColor: 'rgba(100, 116, 139, 0.1)',
+            color: '#94a3b8',
+            border: '1px solid rgba(100, 116, 139, 0.3)',
+            borderRadius: '6px',
+            fontSize: '13px',
+            fontWeight: 'bold',
+            textDecoration: 'none',
+            textTransform: 'uppercase',
+            transition: 'all 0.2s',
+            letterSpacing: '0.5px'
+          }}
+          onMouseEnter={(e) => {
+            e.currentTarget.style.backgroundColor = 'rgba(100, 116, 139, 0.2)';
+            e.currentTarget.style.borderColor = '#94a3b8';
+            e.currentTarget.style.color = '#cbd5e1';
+          }}
+          onMouseLeave={(e) => {
+            e.currentTarget.style.backgroundColor = 'rgba(100, 116, 139, 0.1)';
+            e.currentTarget.style.borderColor = 'rgba(100, 116, 139, 0.3)';
+            e.currentTarget.style.color = '#94a3b8';
+          }}
+        >
+          <Bug size={16} />
+          Report Bug/Feedback
+        </a>
         <a
           href="https://ko-fi.com/theinsomnolent"
           target="_blank"
