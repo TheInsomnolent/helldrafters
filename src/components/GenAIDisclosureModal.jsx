@@ -165,7 +165,7 @@ export default function GenAIDisclosureModal({ isOpen, onClose, faction = 'Termi
             </p>
             <p style={{ color: '#64748b', fontSize: '12px', margin: 0 }}>
               Developer & Helldiver
-            </p>>
+            </p>
             <p style={{ color: '#64748b', fontSize: '12px', margin: 0 }}>
               o7
             </p>

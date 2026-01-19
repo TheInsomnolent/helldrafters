@@ -116,6 +116,7 @@ const sanitizeForFirebase = (obj) => {
 export const syncGameState = async (lobbyId, gameState) => {
   const db = getFirebaseDatabase();
   const stateRef = ref(db, `lobbies/${lobbyId}/gameState`);
+  const lastUpdatedRef = ref(db, `lobbies/${lobbyId}/lastUpdated`);
   
   try {
     // Sanitize state to prevent Firebase from stripping undefined values or mangling arrays
@@ -128,7 +129,10 @@ export const syncGameState = async (lobbyId, gameState) => {
       _version: (gameState._version || 0) + 1
     };
     
-    await set(stateRef, stateWithTimestamp);
+    await Promise.all([
+      set(stateRef, stateWithTimestamp),
+      set(lastUpdatedRef, serverTimestamp())
+    ]);
   } catch (error) {
     console.error('Error syncing game state:', error);
     throw error;
@@ -168,16 +172,20 @@ export const subscribeGameState = (lobbyId, callback) => {
 export const sendClientAction = async (lobbyId, playerId, action) => {
   const db = getFirebaseDatabase();
   const actionsRef = ref(db, `lobbies/${lobbyId}/clientActions`);
+  const lastUpdatedRef = ref(db, `lobbies/${lobbyId}/lastUpdated`);
   
   try {
     // Push a new action to the queue
     const newActionRef = push(actionsRef);
-    await set(newActionRef, {
-      playerId,
-      action,
-      timestamp: serverTimestamp(),
-      id: newActionRef.key
-    });
+    await Promise.all([
+      set(newActionRef, {
+        playerId,
+        action,
+        timestamp: serverTimestamp(),
+        id: newActionRef.key
+      }),
+      set(lastUpdatedRef, serverTimestamp())
+    ]);
     
     return newActionRef.key;
   } catch (error) {

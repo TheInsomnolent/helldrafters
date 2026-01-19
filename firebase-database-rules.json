@@ -1,0 +1,49 @@
+{
+  "rules": {
+    "lobbies": {
+      ".read": false,
+      ".write": false,
+      
+      "$lobbyId": {
+        ".read": true,
+        ".write": "!data.exists()",
+        
+        "status": {
+          ".write": "data.parent().child('hostId').val() === auth.uid || auth == null"
+        },
+        "config": {
+          ".write": "data.parent().child('hostId').val() === auth.uid || auth == null"
+        },
+        
+        "hostId": {
+          ".write": "!data.exists()"
+        },
+        
+        "lastUpdated": {
+          ".write": true
+        },
+        
+        "players": {
+          "$playerId": {
+            ".write": "$playerId === auth.uid || auth == null",
+            ".read": true
+          }
+        },
+        
+        "gameState": {
+          ".write": "data.parent().child('hostId').val() === auth.uid || auth == null",
+          ".read": true
+        },
+        
+        "clientActions": {
+          ".read": true,
+          
+          "$actionId": {
+            ".write": true,
+            ".validate": "newData.hasChildren(['playerId', 'action', 'timestamp'])"
+          }
+        }
+      }
+    }
+  }
+}

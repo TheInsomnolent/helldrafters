@@ -10,6 +10,10 @@ All notable changes to Helldrafters will be documented in this file.
 - Patch notes modal on main menu to display release notes
 - Automatic release note generation in CI workflow
 - Instructions in copilot-instructions.md for maintaining CHANGELOG.md
+- Firebase Cloud Function to automatically clean up inactive lobbies older than 6 hours
+- `lastUpdated` timestamp tracking on all lobby operations for cleanup detection
+- Scheduled daily lobby cleanup task (runs at 3:00 AM UTC)
+- Automated Firebase Functions deployment in CI/CD pipeline alongside GitHub Pages
 - Initial release of Helldrafters
 - Roguelite draft system for Helldivers 2
 - Support for 1-4 players

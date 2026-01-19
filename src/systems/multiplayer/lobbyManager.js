@@ -43,6 +43,7 @@ export const createLobby = async (lobbyId, hostInfo, gameConfig) => {
     id: lobbyId,
     hostId: hostInfo.id,
     createdAt: serverTimestamp(),
+    lastUpdated: serverTimestamp(),
     status: 'waiting', // waiting, in-game, completed
     config: gameConfig,
     players: {
@@ -178,6 +179,10 @@ export const joinLobby = async (lobbyId, playerInfo, requestedSlot) => {
       joinedAt: serverTimestamp()
     });
     
+    // Update lobby's lastUpdated timestamp
+    const lastUpdatedRef = ref(db, `lobbies/${lobbyId}/lastUpdated`);
+    await set(lastUpdatedRef, serverTimestamp());
+    
     // Set up disconnect handler
     const connectedRef = ref(db, `lobbies/${lobbyId}/players/${playerInfo.id}/connected`);
     onDisconnect(connectedRef).set(false);
@@ -271,9 +276,13 @@ export const closeLobby = async (lobbyId) => {
 export const updateLobbyStatus = async (lobbyId, status) => {
   const db = getFirebaseDatabase();
   const statusRef = ref(db, `lobbies/${lobbyId}/status`);
+  const lastUpdatedRef = ref(db, `lobbies/${lobbyId}/lastUpdated`);
   
   try {
-    await set(statusRef, status);
+    await Promise.all([
+      set(statusRef, status),
+      set(lastUpdatedRef, serverTimestamp())
+    ]);
   } catch (error) {
     console.error('Error updating lobby status:', error);
   }
@@ -307,7 +316,11 @@ export const changePlayerSlot = async (lobbyId, playerId, newSlot) => {
     
     // Update slot
     const slotRef = ref(db, `lobbies/${lobbyId}/players/${playerId}/slot`);
-    await set(slotRef, newSlot);
+    const lastUpdatedRef = ref(db, `lobbies/${lobbyId}/lastUpdated`);
+    await Promise.all([
+      set(slotRef, newSlot),
+      set(lastUpdatedRef, serverTimestamp())
+    ]);
     
     return { success: true };
   } catch (error) {
@@ -412,6 +425,10 @@ export const updatePlayerConfig = async (lobbyId, playerId, config) => {
       const readyRef = ref(db, `lobbies/${lobbyId}/players/${playerId}/ready`);
       updates.push(set(readyRef, config.ready));
     }
+    
+    // Also update lobby's lastUpdated timestamp
+    const lastUpdatedRef = ref(db, `lobbies/${lobbyId}/lastUpdated`);
+    updates.push(set(lastUpdatedRef, serverTimestamp()));
     
     await Promise.all(updates);
     return { success: true };
