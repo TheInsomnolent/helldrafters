@@ -119,20 +119,3 @@ exports.cleanupOldLobbies = onSchedule({
     throw error; // Re-throw to trigger retry
   }
 });
-
-/**
- * Manual cleanup trigger (for testing or emergency cleanup)
- * 
- * This function can be called manually from the Firebase console
- * or via HTTP request for testing purposes.
- * 
- * Example: firebase functions:call cleanupOldLobbiesManual
- */
-exports.cleanupOldLobbiesManual = onSchedule({
-  schedule: "every 24 hours", // This won't actually run on schedule
-  timeZone: "UTC",
-}, async (event) => {
-  logger.info("Manual lobby cleanup triggered");
-  // Reuse the same cleanup logic
-  return exports.cleanupOldLobbies.run(event);
-});
