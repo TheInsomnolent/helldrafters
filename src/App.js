@@ -148,9 +148,9 @@ function HelldiversRogueliteApp() {
     }
   }, [state, phase]);
 
-  // Scroll to top whenever phase changes
+  // Scroll to top whenever phase changes (with smooth behavior for accessibility)
   useEffect(() => {
-    window.scrollTo(0, 0);
+    window.scrollTo({ top: 0, behavior: 'smooth' });
   }, [phase]);
 
   // --- SAVE/LOAD FUNCTIONS ---
