@@ -59,6 +59,10 @@ function HelldiversRogueliteApp() {
     setDispatch,
     hostDisconnected,
     clearHostDisconnected,
+    wasKicked,
+    clearWasKicked,
+    clientDisconnected,
+    clearClientDisconnected,
     playerSlot,
     sendAction,
     setActionHandler,
@@ -84,6 +88,23 @@ function HelldiversRogueliteApp() {
       clearHostDisconnected();
     }
   }, [hostDisconnected, isHost, state.phase, clearHostDisconnected]);
+
+  // Handle client intentional disconnect - return to menu
+  useEffect(() => {
+    if (clientDisconnected) {
+      dispatch(actions.setPhase('MENU'));
+      setMultiplayerMode(null);
+      clearClientDisconnected();
+    }
+  }, [clientDisconnected, clearClientDisconnected]);
+
+  // Handle being kicked - show kicked screen
+  useEffect(() => {
+    if (wasKicked) {
+      dispatch(actions.setPhase('KICKED'));
+      setMultiplayerMode(null);
+    }
+  }, [wasKicked]);
   
   // Destructure commonly used state values for easier access
   const {
@@ -130,6 +151,61 @@ function HelldiversRogueliteApp() {
       syncState(state);
     }
   }, [isMultiplayer, isHost, state, phase, syncState]);
+
+  // Handle new player joining mid-game (host only)
+  // When a new player joins into a slot that doesn't have a loadout, create one for them
+  useEffect(() => {
+    if (!isMultiplayer || !isHost || !lobbyData?.players) return;
+    
+    // Only handle mid-game joins (not during lobby or menu)
+    if (phase === 'MENU' || phase === 'LOBBY' || !players || players.length === 0) return;
+    
+    // Get currently connected players from lobby
+    const lobbyPlayers = Object.values(lobbyData.players).filter(p => p.connected !== false);
+    
+    // Check if any connected lobby player doesn't have a corresponding game player
+    const newPlayersNeeded = lobbyPlayers.filter(lobbyPlayer => {
+      const existingGamePlayer = players.find(p => p.id === lobbyPlayer.slot + 1);
+      return !existingGamePlayer;
+    });
+    
+    if (newPlayersNeeded.length > 0) {
+      // Add new players with default loadouts
+      const updatedPlayers = [...players];
+      
+      newPlayersNeeded.forEach(lobbyPlayer => {
+        const newPlayer = {
+          id: lobbyPlayer.slot + 1,
+          name: lobbyPlayer.name || `Helldiver ${lobbyPlayer.slot + 1}`,
+          loadout: { 
+            primary: STARTING_LOADOUT.primary,
+            secondary: STARTING_LOADOUT.secondary,
+            grenade: STARTING_LOADOUT.grenade,
+            armor: STARTING_LOADOUT.armor,
+            booster: STARTING_LOADOUT.booster,
+            stratagems: [...STARTING_LOADOUT.stratagems]
+          },
+          inventory: Object.values(STARTING_LOADOUT).flat().filter(id => id !== null),
+          warbonds: [],
+          includeSuperstore: false,
+          excludedItems: [],
+          weaponRestricted: false,
+          lockedSlots: [],
+          extracted: true
+        };
+        updatedPlayers.push(newPlayer);
+      });
+      
+      // Sort by player id to maintain order
+      updatedPlayers.sort((a, b) => a.id - b.id);
+      
+      dispatch(actions.setPlayers(updatedPlayers));
+      dispatch(actions.updateGameConfig({ playerCount: updatedPlayers.length }));
+      
+      // Sync the updated state to all clients
+      syncState(state);
+    }
+  }, [isMultiplayer, isHost, lobbyData, phase, players, syncState, state, dispatch]);
 
   // Save game state to localStorage whenever it changes (for crash recovery)
   useEffect(() => {
@@ -1285,6 +1361,53 @@ function HelldiversRogueliteApp() {
 
           <button
             onClick={() => dispatch(actions.setPhase('MENU'))}
+            style={{
+              width: '100%',
+              padding: '20px',
+              backgroundColor: factionColors.PRIMARY,
+              color: 'black',
+              border: 'none',
+              borderRadius: '4px',
+              fontWeight: '900',
+              fontSize: '18px',
+              textTransform: 'uppercase',
+              letterSpacing: '0.2em',
+              cursor: 'pointer',
+              transition: 'all 0.2s'
+            }}
+            onMouseEnter={(e) => e.currentTarget.style.backgroundColor = factionColors.PRIMARY_HOVER}
+            onMouseLeave={(e) => e.currentTarget.style.backgroundColor = factionColors.PRIMARY}
+          >
+            Return to Menu
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  // Kicked screen - shown when host kicks the player
+  if (phase === 'KICKED') {
+    return (
+      <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', backgroundColor: '#0f1419', padding: '24px' }}>
+        <div style={{ maxWidth: '500px', textAlign: 'center' }}>
+          <div style={{ marginBottom: '40px' }}>
+            <div style={{ fontSize: '80px', marginBottom: '16px' }}>🚫</div>
+            <h1 style={{ fontSize: '48px', fontWeight: '900', color: '#ef4444', margin: '0 0 16px 0', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+              REMOVED FROM SQUAD
+            </h1>
+            <p style={{ fontSize: '18px', color: '#94a3b8', lineHeight: '1.6', margin: '0' }}>
+              The host has removed you from the game session.
+              <br/>
+              <br/>
+              You can rejoin using the same lobby code if the host allows it.
+            </p>
+          </div>
+
+          <button
+            onClick={() => {
+              clearWasKicked();
+              dispatch(actions.setPhase('MENU'));
+            }}
             style={{
               width: '100%',
               padding: '20px',

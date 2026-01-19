@@ -584,7 +584,8 @@ export function MultiplayerWaitingRoom({
     setTimeout(() => setCopied(false), 2000);
   };
 
-  const players = lobbyData?.players ? Object.values(lobbyData.players) : [];
+  const allPlayers = lobbyData?.players ? Object.values(lobbyData.players) : [];
+  const players = allPlayers.filter(p => p.connected !== false); // Only show connected players
   const maxPlayers = 4; // Always allow up to 4 players in multiplayer
   const canStart = players.length >= 1; // Can start with at least 1 player (the host)
 
@@ -912,7 +913,9 @@ export function MultiplayerStatusBar({ gameConfig, onDisconnect }) {
 
   // Format lobby ID for display (show first 8 chars)
   const displayLobbyId = lobbyId ? `${lobbyId.substring(0, 8)}...` : '';
-  const playerCount = Object.keys(connectedPlayers || {}).length;
+  // Count only actually connected players (not those who disconnected)
+  const actuallyConnected = (connectedPlayers || []).filter(p => p.connected !== false);
+  const playerCount = actuallyConnected.length;
   const expectedPlayers = gameConfig?.playerCount || 4;
 
   return (
