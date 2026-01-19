@@ -129,6 +129,10 @@ export const syncGameState = async (lobbyId, gameState) => {
     };
     
     await set(stateRef, stateWithTimestamp);
+    
+    // Update lobby's lastUpdatedAt timestamp for cleanup function
+    const timestampRef = ref(db, `lobbies/${lobbyId}/lastUpdatedAt`);
+    await set(timestampRef, serverTimestamp());
   } catch (error) {
     console.error('Error syncing game state:', error);
     throw error;

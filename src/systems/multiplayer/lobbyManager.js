@@ -179,6 +179,9 @@ export const joinLobby = async (lobbyId, playerInfo, requestedSlot) => {
       joinedAt: serverTimestamp()
     });
     
+    // Update lobby timestamp
+    await updateLastUpdatedAt(lobbyId);
+    
     // Set up disconnect handler
     const connectedRef = ref(db, `lobbies/${lobbyId}/players/${playerInfo.id}/connected`);
     onDisconnect(connectedRef).set(false);
@@ -216,6 +219,7 @@ export const leaveLobby = async (lobbyId, playerId) => {
   
   try {
     await remove(playerRef);
+    await updateLastUpdatedAt(lobbyId);
   } catch (error) {
     console.error('Error leaving lobby:', error);
   }
@@ -235,6 +239,7 @@ export const kickPlayer = async (lobbyId, playerId) => {
   
   try {
     await remove(playerRef);
+    await updateLastUpdatedAt(lobbyId);
     return { success: true };
   } catch (error) {
     console.error('Error kicking player:', error);
@@ -268,6 +273,7 @@ export const updateLobbyStatus = async (lobbyId, status) => {
   
   try {
     await set(statusRef, status);
+    await updateLastUpdatedAt(lobbyId);
   } catch (error) {
     console.error('Error updating lobby status:', error);
   }
@@ -302,6 +308,8 @@ export const changePlayerSlot = async (lobbyId, playerId, newSlot) => {
     // Update slot
     const slotRef = ref(db, `lobbies/${lobbyId}/players/${playerId}/slot`);
     await set(slotRef, newSlot);
+    
+    await updateLastUpdatedAt(lobbyId);
     
     return { success: true };
   } catch (error) {
@@ -368,6 +376,7 @@ export const updatePlayerConnection = async (lobbyId, playerId, connected) => {
   
   try {
     await set(connectedRef, connected);
+    await updateLastUpdatedAt(lobbyId);
   } catch (error) {
     console.error('Error updating connection status:', error);
   }
@@ -408,6 +417,7 @@ export const updatePlayerConfig = async (lobbyId, playerId, config) => {
     }
     
     await Promise.all(updates);
+    await updateLastUpdatedAt(lobbyId);
     return { success: true };
   } catch (error) {
     console.error('Error updating player config:', error);
@@ -428,6 +438,7 @@ export const setPlayerReady = async (lobbyId, playerId, ready) => {
   
   try {
     await set(readyRef, ready);
+    await updateLastUpdatedAt(lobbyId);
     return { success: true };
   } catch (error) {
     console.error('Error setting ready state:', error);

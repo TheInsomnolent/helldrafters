@@ -5,6 +5,8 @@ All notable changes to Helldrafters will be documented in this file.
 ## 2026-01-19
 
 ### Added
+- Firebase Cloud Function for automatic cleanup of stale lobbies (older than 6 hours)
+- `lastUpdatedAt` timestamp tracking on all lobby mutations for cleanup eligibility
 - Second "Ready Up" button at the bottom of the warbonds page for improved UX
 - Automatic scroll-to-top when navigating between game phases
 - Patch notes modal on main menu to display release notes
