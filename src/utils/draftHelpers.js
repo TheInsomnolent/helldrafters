@@ -4,6 +4,13 @@ import { getRareWeightMultiplier } from '../constants/balancingConfig';
 import { MASTER_DB } from '../data/itemsByWarbond';
 
 /**
+ * Diversity penalty multiplier for draft hand generation
+ * Each occurrence of a type beyond the first reduces weight by this factor
+ * Lower values create stronger diversity (0.1 = 90% reduction per occurrence)
+ */
+const DIVERSITY_PENALTY_MULTIPLIER = 0.1;
+
+/**
  * Generate a randomized order for draft picks
  * @param {number} playerCount - Number of players in the game
  * @returns {number[]} Array of player indices in randomized order
@@ -217,13 +224,31 @@ export const generateDraftHand = (
   console.log(`[Draft] Pool composition: ${armorCombos.length} armor combos, ${regularItems.length} regular items`);
 
   const hand = [];
+  const typeCount = {}; // Track how many of each type we've drafted
+  
   for (let i = 0; i < handSize; i++) {
     if (pool.length === 0) {
       console.warn(`[Draft] Pool exhausted after ${i} cards`);
       break;
     }
 
-    const totalWeight = pool.reduce((sum, c) => sum + c.weight, 0);
+    // Apply diversity penalty: reduce weight of types that already appear in hand
+    // This prevents drafts with all items of the same type (e.g., 4 armors)
+    const adjustedPool = pool.map(poolItem => {
+      const itemType = poolItem.isArmorCombo ? TYPE.ARMOR : poolItem.item.type;
+      const countOfType = typeCount[itemType] || 0;
+      
+      // For hand sizes of 3+, apply penalties to prevent more than 2 of same type
+      // Penalty: reduce weight by 90% for each occurrence beyond the first
+      let adjustedWeight = poolItem.weight;
+      if (handSize >= 3 && countOfType > 0) {
+        adjustedWeight = Math.max(1, poolItem.weight * Math.pow(DIVERSITY_PENALTY_MULTIPLIER, countOfType));
+      }
+      
+      return { ...poolItem, adjustedWeight };
+    });
+
+    const totalWeight = adjustedPool.reduce((sum, c) => sum + c.adjustedWeight, 0);
 
     // Safety check: if total weight is 0, we can't select anything
     if (totalWeight === 0) {
@@ -232,9 +257,10 @@ export const generateDraftHand = (
     }
 
     let randomNum = Math.random() * totalWeight;
+    let selectedPoolIndex = -1;
 
-    for (let j = 0; j < pool.length; j++) {
-      const poolItem = pool[j];
+    for (let j = 0; j < adjustedPool.length; j++) {
+      const poolItem = adjustedPool[j];
       
       // Safety check: ensure pool item exists and has valid structure
       if (!poolItem) {
@@ -242,22 +268,28 @@ export const generateDraftHand = (
         continue;
       }
 
-      randomNum -= poolItem.weight;
+      randomNum -= poolItem.adjustedWeight;
       if (randomNum <= 0) {
+        selectedPoolIndex = j;
+        
         // Add either item or armor combo to hand
         if (poolItem.isArmorCombo) {
           console.log(`[Draft] Selected armor combo: ${poolItem.armorCombo.passive} (${poolItem.armorCombo.armorClass})`, {
             itemCount: poolItem.armorCombo.items?.length,
-            weight: poolItem.weight
+            weight: poolItem.weight,
+            adjustedWeight: poolItem.adjustedWeight
           });
           hand.push(poolItem.armorCombo);
+          typeCount[TYPE.ARMOR] = (typeCount[TYPE.ARMOR] || 0) + 1;
         } else {
           console.log(`[Draft] Selected item: ${poolItem.item?.name || 'Unknown'}`, {
             id: poolItem.item?.id,
             type: poolItem.item?.type,
-            weight: poolItem.weight
+            weight: poolItem.weight,
+            adjustedWeight: poolItem.adjustedWeight
           });
           hand.push(poolItem.item);
+          typeCount[poolItem.item.type] = (typeCount[poolItem.item.type] || 0) + 1;
         }
         
         // Burn card if enabled (for armor combos, burn the first item as representative)
@@ -269,10 +301,13 @@ export const generateDraftHand = (
           }
         }
         
-        // Remove from pool to avoid duplicates in same hand
-        pool.splice(j, 1);
         break;
       }
+    }
+    
+    // Remove selected item from pool to avoid duplicates in same hand
+    if (selectedPoolIndex !== -1) {
+      pool.splice(selectedPoolIndex, 1);
     }
   }
   

@@ -1,5 +1,5 @@
 import React, { useReducer, useEffect } from 'react';
-import { RefreshCw, CheckCircle, XCircle, Users } from 'lucide-react';
+import { RefreshCw, CheckCircle, XCircle, Users, Bug } from 'lucide-react';
 import { selectRandomEvent, EVENT_TYPES, EVENTS } from './systems/events/events';
 import { RARITY, TYPE } from './constants/types';
 import { MASTER_DB } from './data/itemsByWarbond';
@@ -21,6 +21,7 @@ import GameConfiguration from './components/GameConfiguration';
 import RarityWeightDebug from './components/RarityWeightDebug';
 import ExplainerModal from './components/ExplainerModal';
 import PatchNotesModal from './components/PatchNotesModal';
+import GenAIDisclosureModal from './components/GenAIDisclosureModal';
 import { MultiplayerModeSelect, JoinGameScreen, MultiplayerWaitingRoom, MultiplayerStatusBar } from './components/MultiplayerLobby';
 import { MultiplayerProvider, useMultiplayer } from './systems/multiplayer';
 import { gameReducer, initialState } from './state/gameReducer';
@@ -121,6 +122,7 @@ function HelldiversRogueliteApp() {
   const [multiplayerMode, setMultiplayerMode] = React.useState(null); // null, 'select', 'host', 'join', 'waiting'
   const [showExplainer, setShowExplainer] = React.useState(false); // For explainer modal
   const [showPatchNotes, setShowPatchNotes] = React.useState(false); // For patch notes modal
+  const [showGenAIDisclosure, setShowGenAIDisclosure] = React.useState(false); // For Gen AI disclosure modal
   
   // Ref for the hidden file input
   const fileInputRef = React.useRef(null);
@@ -1519,6 +1521,83 @@ function HelldiversRogueliteApp() {
                 <span style={{ fontSize: '16px' }}>📝</span> Patch Notes
               </button>
             </div>
+            
+            {/* Report Bug/Feedback Button */}
+            <div style={{ marginTop: '12px' }}>
+              <a
+                href="https://github.com/TheInsomnolent/helldrafters/issues"
+                target="_blank"
+                rel="noopener noreferrer"
+                style={{
+                  width: '100%',
+                  padding: '12px',
+                  fontSize: '14px',
+                  letterSpacing: '0.1em',
+                  borderRadius: '4px',
+                  border: `1px solid ${COLORS.CARD_BORDER}`,
+                  backgroundColor: 'transparent',
+                  color: COLORS.TEXT_MUTED,
+                  fontWeight: '700',
+                  textTransform: 'uppercase',
+                  cursor: 'pointer',
+                  transition: 'all 0.2s',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: '8px',
+                  textDecoration: 'none'
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.borderColor = COLORS.TEXT_SECONDARY;
+                  e.currentTarget.style.color = COLORS.TEXT_SECONDARY;
+                  e.currentTarget.style.backgroundColor = 'rgba(100, 116, 139, 0.1)';
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.borderColor = COLORS.CARD_BORDER;
+                  e.currentTarget.style.color = COLORS.TEXT_MUTED;
+                  e.currentTarget.style.backgroundColor = 'transparent';
+                }}
+              >
+                <Bug size={16} /> Report Bug/Feedback
+              </a>
+            </div>
+
+            {/* Gen AI Disclosure Button */}
+            <div style={{ marginTop: '12px' }}>
+              <button 
+                onClick={() => setShowGenAIDisclosure(true)}
+                style={{
+                  width: '100%',
+                  padding: '12px',
+                  fontSize: '14px',
+                  letterSpacing: '0.1em',
+                  borderRadius: '4px',
+                  border: `1px solid ${COLORS.CARD_BORDER}`,
+                  backgroundColor: 'transparent',
+                  color: COLORS.TEXT_MUTED,
+                  fontWeight: '700',
+                  textTransform: 'uppercase',
+                  cursor: 'pointer',
+                  transition: 'all 0.2s',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: '8px'
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.borderColor = factionColors.PRIMARY;
+                  e.currentTarget.style.color = factionColors.PRIMARY;
+                  e.currentTarget.style.backgroundColor = `${factionColors.PRIMARY}10`;
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.borderColor = COLORS.CARD_BORDER;
+                  e.currentTarget.style.color = COLORS.TEXT_MUTED;
+                  e.currentTarget.style.backgroundColor = 'transparent';
+                }}
+              >
+                <span style={{ fontSize: '16px' }}>✨</span> Gen AI Disclosure
+              </button>
+            </div>
 
             {/* Build Info */}
             <div style={{ marginTop: '24px', paddingTop: '24px', borderTop: '1px solid rgba(100, 116, 139, 0.3)', textAlign: 'center' }}>
@@ -1558,6 +1637,13 @@ function HelldiversRogueliteApp() {
         <PatchNotesModal
           isOpen={showPatchNotes}
           onClose={() => setShowPatchNotes(false)}
+          faction={gameConfig.faction}
+        />
+        
+        {/* Gen AI Disclosure Modal */}
+        <GenAIDisclosureModal 
+          isOpen={showGenAIDisclosure} 
+          onClose={() => setShowGenAIDisclosure(false)}
           faction={gameConfig.faction}
         />
       </div>

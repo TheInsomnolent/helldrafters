@@ -134,7 +134,7 @@ export const WARBONDS = {
 
   // Legendary Warbonds
   OBEDIENT_DEMOCRACY: {
-    id: 'obedient_democracy',
+    id: 'obedient_democracy_support_troopers',
     name: 'Obedient Democracy Support Troopers',
     type: WARBOND_TYPE.LEGENDARY,
     order: 18,
