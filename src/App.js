@@ -22,6 +22,7 @@ import RarityWeightDebug from './components/RarityWeightDebug';
 import ExplainerModal from './components/ExplainerModal';
 import PatchNotesModal from './components/PatchNotesModal';
 import GenAIDisclosureModal from './components/GenAIDisclosureModal';
+import ContributorsModal from './components/ContributorsModal';
 import { MultiplayerModeSelect, JoinGameScreen, MultiplayerWaitingRoom, MultiplayerStatusBar } from './components/MultiplayerLobby';
 import { MultiplayerProvider, useMultiplayer } from './systems/multiplayer';
 import { gameReducer, initialState } from './state/gameReducer';
@@ -150,6 +151,9 @@ function HelldiversRogueliteApp() {
   const [showExplainer, setShowExplainer] = React.useState(false); // For explainer modal
   const [showPatchNotes, setShowPatchNotes] = React.useState(false); // For patch notes modal
   const [showGenAIDisclosure, setShowGenAIDisclosure] = React.useState(false); // For Gen AI disclosure modal
+  const [showContributors, setShowContributors] = React.useState(false); // For contributors modal
+  const [showRemoveCardConfirm, setShowRemoveCardConfirm] = React.useState(false); // For remove card confirmation modal
+  const [pendingCardRemoval, setPendingCardRemoval] = React.useState(null); // Card pending removal
   const [missionSuccessDebouncing, setMissionSuccessDebouncing] = React.useState(false); // Debounce for mission success button
   
   // Ref for the hidden file input
@@ -930,6 +934,19 @@ function HelldiversRogueliteApp() {
   };
 
   const removeCardFromDraft = (cardToRemove) => {
+    // Show confirmation modal first
+    setPendingCardRemoval(cardToRemove);
+    setShowRemoveCardConfirm(true);
+  };
+
+  const confirmRemoveCardFromDraft = () => {
+    const cardToRemove = pendingCardRemoval;
+    if (!cardToRemove) return;
+
+    // Close modal and clear pending card
+    setShowRemoveCardConfirm(false);
+    setPendingCardRemoval(null);
+
     // Remove single card and replace it with a new one
     const player = players[draftState.activePlayerIndex];
     const playerLockedSlots = player.lockedSlots || [];
@@ -1007,6 +1024,9 @@ function HelldiversRogueliteApp() {
           return card;
         })
       }));
+      
+      // State sync to other players happens automatically through the useEffect
+      // that watches state changes and calls syncState(state)
     }
   };
 
@@ -1812,6 +1832,47 @@ function HelldiversRogueliteApp() {
               </button>
             </div>
 
+            {/* Contributors Button */}
+            <div style={{ marginTop: '12px' }}>
+              <button 
+                onClick={() => {
+                  console.log('Contributors button clicked, showContributors:', showContributors);
+                  setShowContributors(true);
+                  console.log('setShowContributors(true) called');
+                }}
+                style={{
+                  width: '100%',
+                  padding: '12px',
+                  fontSize: '14px',
+                  letterSpacing: '0.1em',
+                  borderRadius: '4px',
+                  border: `1px solid ${COLORS.CARD_BORDER}`,
+                  backgroundColor: 'transparent',
+                  color: COLORS.TEXT_MUTED,
+                  fontWeight: '700',
+                  textTransform: 'uppercase',
+                  cursor: 'pointer',
+                  transition: 'all 0.2s',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: '8px'
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.borderColor = '#ff5e5b';
+                  e.currentTarget.style.color = '#ff5e5b';
+                  e.currentTarget.style.backgroundColor = 'rgba(255, 94, 91, 0.1)';
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.borderColor = COLORS.CARD_BORDER;
+                  e.currentTarget.style.color = COLORS.TEXT_MUTED;
+                  e.currentTarget.style.backgroundColor = 'transparent';
+                }}
+              >
+                <span style={{ fontSize: '16px' }}>❤️</span> Community Supporters
+              </button>
+            </div>
+
             {/* Build Info */}
             <div style={{ marginTop: '24px', paddingTop: '24px', borderTop: '1px solid rgba(100, 116, 139, 0.3)', textAlign: 'center' }}>
               <div style={{ fontSize: '10px', color: '#475569', fontFamily: 'monospace' }}>
@@ -1839,15 +1900,166 @@ function HelldiversRogueliteApp() {
         {/* FOOTER */}
         <GameFooter />
         
-        {/* Explainer Modal */}
-        <ExplainerModal 
-          isOpen={showExplainer} 
-          onClose={() => setShowExplainer(false)}
-          faction={gameConfig.faction}
-        />
+      {/* Remove Card Confirmation Modal */}
+      {showRemoveCardConfirm && (
+        <div style={{
+          position: 'fixed',
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          backgroundColor: 'rgba(0, 0, 0, 0.85)',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          zIndex: 2000,
+          padding: '24px'
+        }}>
+          <div style={{
+            backgroundColor: '#283548',
+            borderRadius: '12px',
+            border: '3px solid #f59e0b',
+            padding: '32px',
+            maxWidth: '600px',
+            width: '100%',
+            boxShadow: '0 8px 32px rgba(0, 0, 0, 0.5)'
+          }}>
+            <h2 style={{ 
+              color: '#f59e0b', 
+              fontSize: '28px', 
+              fontWeight: 'bold', 
+              textAlign: 'center', 
+              marginBottom: '24px',
+              textTransform: 'uppercase',
+              letterSpacing: '0.05em'
+            }}>
+              ⚠️ Remove Card
+            </h2>
+            
+            <div style={{
+              backgroundColor: '#1f2937',
+              padding: '20px',
+              borderRadius: '8px',
+              marginBottom: '24px',
+              border: '1px solid rgba(245, 158, 11, 0.3)'
+            }}>
+              <p style={{ 
+                color: '#cbd5e1', 
+                fontSize: '16px', 
+                lineHeight: '1.6',
+                marginBottom: '16px'
+              }}>
+                <strong style={{ color: '#f59e0b' }}>⚠️ Important Notice:</strong>
+              </p>
+              <p style={{ 
+                color: '#cbd5e1', 
+                fontSize: '15px', 
+                lineHeight: '1.6',
+                marginBottom: '12px'
+              }}>
+                This feature should <strong style={{ color: '#fbbf24' }}>only be used</strong> if you misconfigured your warbonds and do not have access to an item that appeared in your draft.
+              </p>
+              <p style={{ 
+                color: '#94a3b8', 
+                fontSize: '14px', 
+                lineHeight: '1.6',
+                fontStyle: 'italic'
+              }}>
+                The card will be replaced with a new random card from your pool. This action cannot be undone.
+              </p>
+            </div>
+
+            {pendingCardRemoval && (
+              <div style={{
+                backgroundColor: '#1f2937',
+                padding: '16px',
+                borderRadius: '8px',
+                marginBottom: '24px',
+                textAlign: 'center'
+              }}>
+                <p style={{ color: '#94a3b8', fontSize: '14px', marginBottom: '8px' }}>Removing:</p>
+                <p style={{ color: '#F5C642', fontSize: '18px', fontWeight: 'bold' }}>
+                  {pendingCardRemoval.name || getArmorComboDisplayName(pendingCardRemoval)}
+                </p>
+              </div>
+            )}
+
+            <div style={{ display: 'flex', gap: '12px' }}>
+              <button
+                onClick={() => {
+                  setShowRemoveCardConfirm(false);
+                  setPendingCardRemoval(null);
+                }}
+                style={{
+                  flex: 1,
+                  padding: '14px 24px',
+                  fontSize: '16px',
+                  fontWeight: 'bold',
+                  textTransform: 'uppercase',
+                  letterSpacing: '0.05em',
+                  borderRadius: '6px',
+                  border: '2px solid #64748b',
+                  backgroundColor: 'transparent',
+                  color: '#cbd5e1',
+                  cursor: 'pointer',
+                  transition: 'all 0.2s'
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.backgroundColor = 'rgba(100, 116, 139, 0.2)';
+                  e.currentTarget.style.borderColor = '#94a3b8';
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.backgroundColor = 'transparent';
+                  e.currentTarget.style.borderColor = '#64748b';
+                }}
+              >
+                Cancel
+              </button>
+              <button
+                onClick={confirmRemoveCardFromDraft}
+                style={{
+                  flex: 1,
+                  padding: '14px 24px',
+                  fontSize: '16px',
+                  fontWeight: 'bold',
+                  textTransform: 'uppercase',
+                  letterSpacing: '0.05em',
+                  borderRadius: '6px',
+                  border: '2px solid #f59e0b',
+                  backgroundColor: '#f59e0b',
+                  color: '#1f2937',
+                  cursor: 'pointer',
+                  transition: 'all 0.2s'
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.backgroundColor = '#d97706';
+                  e.currentTarget.style.borderColor = '#d97706';
+                  e.currentTarget.style.transform = 'translateY(-1px)';
+                  e.currentTarget.style.boxShadow = '0 4px 12px rgba(245, 158, 11, 0.4)';
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.backgroundColor = '#f59e0b';
+                  e.currentTarget.style.borderColor = '#f59e0b';
+                  e.currentTarget.style.transform = 'translateY(0)';
+                  e.currentTarget.style.boxShadow = 'none';
+                }}
+              >
+                Confirm Remove
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+      
+      {/* Explainer Modal */}
+      <ExplainerModal 
+        isOpen={showExplainer} 
+        onClose={() => setShowExplainer(false)}
+        faction={gameConfig.faction}
+      />
         
-        {/* Patch Notes Modal */}
-        <PatchNotesModal
+      {/* Patch Notes Modal */}
+      <PatchNotesModal
           isOpen={showPatchNotes}
           onClose={() => setShowPatchNotes(false)}
           faction={gameConfig.faction}
@@ -1857,6 +2069,13 @@ function HelldiversRogueliteApp() {
         <GenAIDisclosureModal 
           isOpen={showGenAIDisclosure} 
           onClose={() => setShowGenAIDisclosure(false)}
+          faction={gameConfig.faction}
+        />
+        
+        {/* Contributors Modal */}
+        <ContributorsModal 
+          isOpen={showContributors} 
+          onClose={() => setShowContributors(false)}
           faction={gameConfig.faction}
         />
       </div>
@@ -3329,6 +3548,157 @@ function HelldiversRogueliteApp() {
           </div>
         </div>
         </div>
+        
+        {/* Remove Card Confirmation Modal */}
+        {showRemoveCardConfirm && (
+          <div style={{
+            position: 'fixed',
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            backgroundColor: 'rgba(0, 0, 0, 0.85)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            zIndex: 2000,
+            padding: '24px'
+          }}>
+            <div style={{
+              backgroundColor: '#283548',
+              borderRadius: '12px',
+              border: '3px solid #f59e0b',
+              padding: '32px',
+              maxWidth: '600px',
+              width: '100%',
+              boxShadow: '0 8px 32px rgba(0, 0, 0, 0.5)'
+            }}>
+              <h2 style={{ 
+                color: '#f59e0b', 
+                fontSize: '28px', 
+                fontWeight: 'bold', 
+                textAlign: 'center', 
+                marginBottom: '24px',
+                textTransform: 'uppercase',
+                letterSpacing: '0.05em'
+              }}>
+                ⚠️ Remove Card
+              </h2>
+              
+              <div style={{
+                backgroundColor: '#1f2937',
+                padding: '20px',
+                borderRadius: '8px',
+                marginBottom: '24px',
+                border: '1px solid rgba(245, 158, 11, 0.3)'
+              }}>
+                <p style={{ 
+                  color: '#cbd5e1', 
+                  fontSize: '16px', 
+                  lineHeight: '1.6',
+                  marginBottom: '16px'
+                }}>
+                  <strong style={{ color: '#f59e0b' }}>⚠️ Important Notice:</strong>
+                </p>
+                <p style={{ 
+                  color: '#cbd5e1', 
+                  fontSize: '15px', 
+                  lineHeight: '1.6',
+                  marginBottom: '12px'
+                }}>
+                  This feature should <strong style={{ color: '#fbbf24' }}>only be used</strong> if you misconfigured your warbonds and do not have access to an item that appeared in your draft.
+                </p>
+                <p style={{ 
+                  color: '#94a3b8', 
+                  fontSize: '14px', 
+                  lineHeight: '1.6',
+                  fontStyle: 'italic'
+                }}>
+                  The card will be replaced with a new random card from your pool. This action cannot be undone.
+                </p>
+              </div>
+
+              {pendingCardRemoval && (
+                <div style={{
+                  backgroundColor: '#1f2937',
+                  padding: '16px',
+                  borderRadius: '8px',
+                  marginBottom: '24px',
+                  textAlign: 'center'
+                }}>
+                  <p style={{ color: '#94a3b8', fontSize: '14px', marginBottom: '8px' }}>Removing:</p>
+                  <p style={{ color: '#F5C642', fontSize: '18px', fontWeight: 'bold' }}>
+                    {pendingCardRemoval.name || getArmorComboDisplayName(pendingCardRemoval)}
+                  </p>
+                </div>
+              )}
+
+              <div style={{ display: 'flex', gap: '12px' }}>
+                <button
+                  onClick={() => {
+                    setShowRemoveCardConfirm(false);
+                    setPendingCardRemoval(null);
+                  }}
+                  style={{
+                    flex: 1,
+                    padding: '14px 24px',
+                    fontSize: '16px',
+                    fontWeight: 'bold',
+                    textTransform: 'uppercase',
+                    letterSpacing: '0.05em',
+                    borderRadius: '6px',
+                    border: '2px solid #64748b',
+                    backgroundColor: 'transparent',
+                    color: '#cbd5e1',
+                    cursor: 'pointer',
+                    transition: 'all 0.2s'
+                  }}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.backgroundColor = 'rgba(100, 116, 139, 0.2)';
+                    e.currentTarget.style.borderColor = '#94a3b8';
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.backgroundColor = 'transparent';
+                    e.currentTarget.style.borderColor = '#64748b';
+                  }}
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={confirmRemoveCardFromDraft}
+                  style={{
+                    flex: 1,
+                    padding: '14px 24px',
+                    fontSize: '16px',
+                    fontWeight: 'bold',
+                    textTransform: 'uppercase',
+                    letterSpacing: '0.05em',
+                    borderRadius: '6px',
+                    border: '2px solid #f59e0b',
+                    backgroundColor: '#f59e0b',
+                    color: '#1f2937',
+                    cursor: 'pointer',
+                    transition: 'all 0.2s'
+                  }}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.backgroundColor = '#d97706';
+                    e.currentTarget.style.borderColor = '#d97706';
+                    e.currentTarget.style.transform = 'translateY(-1px)';
+                    e.currentTarget.style.boxShadow = '0 4px 12px rgba(245, 158, 11, 0.4)';
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.backgroundColor = '#f59e0b';
+                    e.currentTarget.style.borderColor = '#f59e0b';
+                    e.currentTarget.style.transform = 'translateY(0)';
+                    e.currentTarget.style.boxShadow = 'none';
+                  }}
+                >
+                  Confirm Remove
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     );
   }
@@ -3960,6 +4330,13 @@ function HelldiversRogueliteApp() {
       <ExplainerModal 
         isOpen={showExplainer} 
         onClose={() => setShowExplainer(false)}
+        faction={gameConfig.faction}
+      />
+      
+      {/* Contributors Modal */}
+      <ContributorsModal 
+        isOpen={showContributors} 
+        onClose={() => setShowContributors(false)}
         faction={gameConfig.faction}
       />
     </div>

@@ -44,6 +44,17 @@
           }
         }
       }
+    },
+    
+    "contributors": {
+      ".read": true,
+      ".write": false,
+      
+      "$contributorId": {
+        ".read": true,
+        ".write": false,
+        ".validate": "newData.hasChildren(['displayName', 'tier', 'monthsSubscribed', 'isPublic'])"
+      }
     }
   }
 }
