@@ -149,6 +149,7 @@ function HelldiversRogueliteApp() {
   const [showExplainer, setShowExplainer] = React.useState(false); // For explainer modal
   const [showPatchNotes, setShowPatchNotes] = React.useState(false); // For patch notes modal
   const [showGenAIDisclosure, setShowGenAIDisclosure] = React.useState(false); // For Gen AI disclosure modal
+  const [missionSuccessDebouncing, setMissionSuccessDebouncing] = React.useState(false); // Debounce for mission success button
   
   // Ref for the hidden file input
   const fileInputRef = React.useRef(null);
@@ -3367,7 +3368,12 @@ function HelldiversRogueliteApp() {
         {/* CONTROLS */}
         <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '16px' }}>
           <div style={{ width: '100%', maxWidth: '800px', backgroundColor: '#283548', padding: '24px', borderRadius: '12px', border: '1px solid rgba(100, 116, 139, 0.5)', textAlign: 'center' }}>
-            <h2 style={{ fontSize: '20px', fontWeight: 'bold', color: 'white', textTransform: 'uppercase', marginBottom: '24px' }}>Mission Status Report</h2>
+            <h2 style={{ fontSize: '20px', fontWeight: 'bold', color: 'white', textTransform: 'uppercase', marginBottom: '8px' }}>Mission Status Report</h2>
+            {gameConfig.enduranceMode && (
+              <div style={{ fontSize: '12px', color: factionColors.PRIMARY, fontFamily: 'monospace', marginBottom: '16px', fontWeight: 'bold' }}>
+                Operation Status: Mission {currentMission}/{getMissionsForDifficulty(currentDiff)}
+              </div>
+            )}
             
             {/* Star Rating Selection */}
             <div style={{ marginBottom: '32px', opacity: (!isMultiplayer || isHost) ? 1 : 0.6 }}>
@@ -3647,6 +3653,16 @@ function HelldiversRogueliteApp() {
 
                   <button 
                     onClick={() => {
+                  // Debounce: prevent multiple clicks
+                  if (missionSuccessDebouncing) return;
+                  
+                  // Set debounce state
+                  setMissionSuccessDebouncing(true);
+                  setTimeout(() => setMissionSuccessDebouncing(false), 3000); // 3 second debounce
+                  
+                  // Scroll to top of page
+                  window.scrollTo({ top: 0, behavior: 'smooth' });
+                  
                   // Collect samples from input fields
                   const commonSamples = parseInt(document.getElementById('commonSamples')?.value || '0', 10);
                   const rareSamples = parseInt(document.getElementById('rareSamples')?.value || '0', 10);
@@ -3776,6 +3792,7 @@ function HelldiversRogueliteApp() {
                     }
                   }
                 }}
+                disabled={missionSuccessDebouncing}
                 style={{
                   ...BUTTON_STYLES.PRIMARY,
                   display: 'flex',
@@ -3784,19 +3801,26 @@ function HelldiversRogueliteApp() {
                   padding: '16px 32px',
                   border: 'none',
                   borderRadius: '4px',
-                  letterSpacing: '2px'
+                  letterSpacing: '2px',
+                  opacity: missionSuccessDebouncing ? 0.5 : 1,
+                  cursor: missionSuccessDebouncing ? 'not-allowed' : 'pointer',
+                  pointerEvents: missionSuccessDebouncing ? 'none' : 'auto'
                 }}
                 onMouseEnter={(e) => {
-                  e.currentTarget.style.backgroundColor = COLORS.PRIMARY_HOVER;
-                  e.currentTarget.style.boxShadow = SHADOWS.BUTTON_PRIMARY_HOVER;
+                  if (!missionSuccessDebouncing) {
+                    e.currentTarget.style.backgroundColor = COLORS.PRIMARY_HOVER;
+                    e.currentTarget.style.boxShadow = SHADOWS.BUTTON_PRIMARY_HOVER;
+                  }
                 }}
                 onMouseLeave={(e) => {
-                  e.currentTarget.style.backgroundColor = COLORS.PRIMARY;
-                  e.currentTarget.style.boxShadow = SHADOWS.BUTTON_PRIMARY;
+                  if (!missionSuccessDebouncing) {
+                    e.currentTarget.style.backgroundColor = COLORS.PRIMARY;
+                    e.currentTarget.style.boxShadow = SHADOWS.BUTTON_PRIMARY;
+                  }
                 }}
               >
                 <CheckCircle />
-                Mission Success
+                {missionSuccessDebouncing ? 'Processing...' : 'Mission Success'}
               </button>
                 </div>
             
