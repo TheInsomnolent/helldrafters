@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React from 'react';
 import { EVENT_TYPES, OUTCOME_TYPES } from '../systems/events/events';
 import { MASTER_DB } from '../data/itemsByWarbond';
 import { getSubfactionsForFaction, SUBFACTION_CONFIG } from '../constants/balancingConfig';
@@ -25,6 +25,7 @@ export default function EventDisplay({
   eventStratagemSelection,
   eventTargetPlayerSelection,
   eventTargetStratagemSelection,
+  eventSelectedChoiceIndex, // Index of choice selected that needs selection dialogue (synced in multiplayer)
   eventBoosterDraft,
   eventBoosterSelection,
   eventSpecialDraft,
@@ -37,6 +38,7 @@ export default function EventDisplay({
   onStratagemSelection,
   onTargetPlayerSelection,
   onTargetStratagemSelection,
+  onSelectedChoiceIndexChange, // Callback to update the selected choice index (for syncing in multiplayer)
   onBoosterSelection,
   onSubfactionSelection,
   onConfirmSubfaction,
@@ -98,12 +100,17 @@ export default function EventDisplay({
     );
   };
 
-  // Track which choice was selected and needs selections
-  const [selectedChoice, setSelectedChoice] = useState(null);
+  // Get the selected choice from the synced index (for multiplayer sync)
+  const selectedChoice = eventSelectedChoiceIndex !== null && currentEvent?.choices 
+    ? currentEvent.choices[eventSelectedChoiceIndex] 
+    : null;
   
-  const handleChoiceClick = (choice) => {
+  const handleChoiceClick = (choice, choiceIndex) => {
     if (needsSelectionDialogue(choice)) {
-      setSelectedChoice(choice);
+      // Update the synced state instead of local state
+      if (onSelectedChoiceIndexChange) {
+        onSelectedChoiceIndexChange(choiceIndex);
+      }
     } else {
       onEventChoice(choice);
     }
@@ -112,12 +119,18 @@ export default function EventDisplay({
   const handleConfirmSelections = () => {
     if (selectedChoice) {
       onConfirmSelections(selectedChoice);
-      setSelectedChoice(null);
+      // Clear the synced state
+      if (onSelectedChoiceIndexChange) {
+        onSelectedChoiceIndexChange(null);
+      }
     }
   };
 
   const handleCancelSelections = () => {
-    setSelectedChoice(null);
+    // Clear the synced state
+    if (onSelectedChoiceIndexChange) {
+      onSelectedChoiceIndexChange(null);
+    }
     onStratagemSelection(null);
     onTargetPlayerSelection(null);
     onTargetStratagemSelection(null);
@@ -394,6 +407,22 @@ export default function EventDisplay({
                 padding: '24px',
                 marginBottom: '16px'
               }}>
+                {/* Read-only indicator for clients */}
+                {!isHost && (
+                  <div style={{ 
+                    textAlign: 'center', 
+                    marginBottom: '16px',
+                    padding: '12px 24px',
+                    backgroundColor: 'rgba(100, 116, 139, 0.2)',
+                    border: '1px solid rgba(100, 116, 139, 0.4)',
+                    borderRadius: '4px'
+                  }}>
+                    <div style={{ color: '#94a3b8', fontSize: '14px' }}>
+                      Waiting for host to make selections...
+                    </div>
+                  </div>
+                )}
+                
                 {selectedChoice.outcomes.some(o => o.type === OUTCOME_TYPES.DUPLICATE_STRATAGEM_TO_ANOTHER_HELLDIVER) && (
                   <div style={{ fontSize: '18px', marginBottom: '16px', color: '#F5C642', textAlign: 'center' }}>
                     Select a stratagem to duplicate and a player to receive it:
@@ -406,18 +435,19 @@ export default function EventDisplay({
                 )}
 
                 {/* Stratagem Selection */}
-                <div style={{ marginBottom: '20px' }}>
+                <div style={{ marginBottom: '20px', opacity: isHost ? 1 : 0.6 }}>
                   <div style={{ fontSize: '14px', marginBottom: '8px', color: '#b0b0b0' }}>
                     Your Stratagems:
                   </div>
-                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '8px' }}>
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '8px', pointerEvents: isHost ? 'auto' : 'none' }}>
                     {availableStratagems.map((strat, idx) => (
                       <button
                         key={idx}
-                        onClick={() => onStratagemSelection({
+                        onClick={() => isHost && onStratagemSelection({
                           stratagemId: strat.stratagemId,
                           stratagemSlotIndex: strat.stratagemSlotIndex
                         })}
+                        disabled={!isHost}
                         style={{
                           padding: '12px',
                           fontSize: '14px',
@@ -425,7 +455,7 @@ export default function EventDisplay({
                           color: eventStratagemSelection?.stratagemId === strat.stratagemId ? '#0f1419' : '#e0e0e0',
                           border: '2px solid ' + (eventStratagemSelection?.stratagemId === strat.stratagemId ? '#F5C642' : '#555'),
                           borderRadius: '4px',
-                          cursor: 'pointer',
+                          cursor: isHost ? 'pointer' : 'not-allowed',
                           fontWeight: eventStratagemSelection?.stratagemId === strat.stratagemId ? 'bold' : 'normal',
                           transition: 'all 0.2s',
                           textAlign: 'left'
@@ -438,10 +468,10 @@ export default function EventDisplay({
                 </div>
 
                 {/* Target Player Selection */}
-                <div style={{ marginBottom: '20px' }}>
+                <div style={{ marginBottom: '20px', opacity: isHost ? 1 : 0.6 }}>
                   <div style={{ fontSize: '14px', marginBottom: '8px', color: '#b0b0b0', display: 'flex', alignItems: 'center', gap: '12px' }}>
                     <span>Target Helldiver:</span>
-                    {eventTargetPlayerSelection !== null && (
+                    {eventTargetPlayerSelection !== null && isHost && (
                       <button
                         onClick={() => {
                           onTargetPlayerSelection(null);
@@ -465,11 +495,12 @@ export default function EventDisplay({
                       </button>
                     )}
                   </div>
-                  <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', justifyContent: 'center' }}>
+                  <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', justifyContent: 'center', pointerEvents: isHost ? 'auto' : 'none' }}>
                     {otherPlayers.map(({ player, idx }) => (
                       <button
                         key={idx}
-                        onClick={() => onTargetPlayerSelection(idx)}
+                        onClick={() => isHost && onTargetPlayerSelection(idx)}
+                        disabled={!isHost}
                         style={{
                           padding: '12px 24px',
                           fontSize: '14px',
@@ -478,7 +509,7 @@ export default function EventDisplay({
                           color: eventTargetPlayerSelection === idx ? '#0f1419' : '#e0e0e0',
                           border: '2px solid ' + (eventTargetPlayerSelection === idx ? '#F5C642' : '#555'),
                           borderRadius: '4px',
-                          cursor: 'pointer',
+                          cursor: isHost ? 'pointer' : 'not-allowed',
                           transition: 'all 0.2s'
                         }}
                       >
@@ -491,20 +522,21 @@ export default function EventDisplay({
                 {/* Target Player Stratagem Selection (for swap OR duplicate with overwrite) */}
                 {((isSwapChoice(selectedChoice) && eventTargetPlayerSelection !== null && targetPlayerStratagems.length > 0) ||
                   (isDuplicateChoice(selectedChoice) && needsOverwriteForDuplicate && targetPlayerStratagems.length > 0)) && (
-                  <div style={{ marginBottom: '20px' }}>
+                  <div style={{ marginBottom: '20px', opacity: isHost ? 1 : 0.6 }}>
                     <div style={{ fontSize: '14px', marginBottom: '8px', color: '#b0b0b0' }}>
                       {isSwapChoice(selectedChoice) 
                         ? "Target Helldiver's Stratagems (select one to swap):" 
                         : "Target Helldiver's Stratagems (select one to overwrite):"}
                     </div>
-                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '8px' }}>
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '8px', pointerEvents: isHost ? 'auto' : 'none' }}>
                       {targetPlayerStratagems.map((strat, idx) => (
                         <button
                           key={idx}
-                          onClick={() => onTargetStratagemSelection({
+                          onClick={() => isHost && onTargetStratagemSelection({
                             stratagemId: strat.stratagemId,
                             stratagemSlotIndex: strat.stratagemSlotIndex
                           })}
+                          disabled={!isHost}
                           style={{
                             padding: '12px',
                             fontSize: '14px',
@@ -512,7 +544,7 @@ export default function EventDisplay({
                             color: eventTargetStratagemSelection?.stratagemId === strat.stratagemId ? '#0f1419' : '#e0e0e0',
                             border: '2px solid ' + (eventTargetStratagemSelection?.stratagemId === strat.stratagemId ? '#4ade80' : '#555'),
                             borderRadius: '4px',
-                            cursor: 'pointer',
+                            cursor: isHost ? 'pointer' : 'not-allowed',
                             fontWeight: eventTargetStratagemSelection?.stratagemId === strat.stratagemId ? 'bold' : 'normal',
                             transition: 'all 0.2s',
                             textAlign: 'left'
@@ -525,46 +557,48 @@ export default function EventDisplay({
                   </div>
                 )}
 
-                {/* Confirm/Cancel Buttons */}
-                <div style={{ display: 'flex', gap: '12px', justifyContent: 'center' }}>
-                  <button
-                    onClick={handleConfirmSelections}
-                    disabled={!canConfirm}
-                    style={{
-                      padding: '12px 32px',
-                      fontSize: '16px',
-                      fontWeight: 'bold',
-                      backgroundColor: canConfirm ? '#4ade80' : '#555',
-                      color: canConfirm ? '#0f1419' : '#888',
-                      border: 'none',
-                      borderRadius: '4px',
-                      cursor: canConfirm ? 'pointer' : 'not-allowed',
-                      transition: 'all 0.2s'
-                    }}
-                    onMouseEnter={(e) => canConfirm && (e.target.style.backgroundColor = '#22c55e')}
-                    onMouseLeave={(e) => canConfirm && (e.target.style.backgroundColor = '#4ade80')}
-                  >
-                    CONFIRM
-                  </button>
-                  <button
-                    onClick={handleCancelSelections}
-                    style={{
-                      padding: '12px 32px',
-                      fontSize: '16px',
-                      fontWeight: 'bold',
-                      backgroundColor: '#ef4444',
-                      color: '#fff',
-                      border: 'none',
-                      borderRadius: '4px',
-                      cursor: 'pointer',
-                      transition: 'all 0.2s'
-                    }}
-                    onMouseEnter={(e) => e.target.style.backgroundColor = '#dc2626'}
-                    onMouseLeave={(e) => e.target.style.backgroundColor = '#ef4444'}
-                  >
-                    CANCEL
-                  </button>
-                </div>
+                {/* Confirm/Cancel Buttons - Only visible to host */}
+                {isHost && (
+                  <div style={{ display: 'flex', gap: '12px', justifyContent: 'center' }}>
+                    <button
+                      onClick={handleConfirmSelections}
+                      disabled={!canConfirm}
+                      style={{
+                        padding: '12px 32px',
+                        fontSize: '16px',
+                        fontWeight: 'bold',
+                        backgroundColor: canConfirm ? '#4ade80' : '#555',
+                        color: canConfirm ? '#0f1419' : '#888',
+                        border: 'none',
+                        borderRadius: '4px',
+                        cursor: canConfirm ? 'pointer' : 'not-allowed',
+                        transition: 'all 0.2s'
+                      }}
+                      onMouseEnter={(e) => canConfirm && (e.target.style.backgroundColor = '#22c55e')}
+                      onMouseLeave={(e) => canConfirm && (e.target.style.backgroundColor = '#4ade80')}
+                    >
+                      CONFIRM
+                    </button>
+                    <button
+                      onClick={handleCancelSelections}
+                      style={{
+                        padding: '12px 32px',
+                        fontSize: '16px',
+                        fontWeight: 'bold',
+                        backgroundColor: '#ef4444',
+                        color: '#fff',
+                        border: 'none',
+                        borderRadius: '4px',
+                        cursor: 'pointer',
+                        transition: 'all 0.2s'
+                      }}
+                      onMouseEnter={(e) => e.target.style.backgroundColor = '#dc2626'}
+                      onMouseLeave={(e) => e.target.style.backgroundColor = '#ef4444'}
+                    >
+                      CANCEL
+                    </button>
+                  </div>
+                )}
               </div>
             </div>
           )}
@@ -960,7 +994,7 @@ export default function EventDisplay({
                 return (
                   <button
                     key={idx}
-                    onClick={() => canSelect && handleChoiceClick(choice)}
+                    onClick={() => canSelect && handleChoiceClick(choice, idx)}
                     disabled={!canSelect}
                     style={{
                       padding: '16px',

@@ -90,6 +90,11 @@ export const setEventTargetStratagemSelection = (selection) => ({
   payload: selection
 });
 
+export const setEventSelectedChoiceIndex = (index) => ({
+  type: types.SET_EVENT_SELECTED_CHOICE_INDEX,
+  payload: index
+});
+
 export const setEventBoosterDraft = (boosters) => ({
   type: types.SET_EVENT_BOOSTER_DRAFT,
   payload: boosters

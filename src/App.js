@@ -132,6 +132,7 @@ function HelldiversRogueliteApp() {
     eventStratagemSelection,
     eventTargetPlayerSelection,
     eventTargetStratagemSelection,
+    eventSelectedChoiceIndex,
     eventBoosterDraft,
     eventBoosterSelection,
     eventSpecialDraft,
@@ -2859,6 +2860,7 @@ function HelldiversRogueliteApp() {
         eventStratagemSelection={eventStratagemSelection}
         eventTargetPlayerSelection={eventTargetPlayerSelection}
         eventTargetStratagemSelection={eventTargetStratagemSelection}
+        eventSelectedChoiceIndex={eventSelectedChoiceIndex}
         eventBoosterDraft={eventBoosterDraft}
         eventBoosterSelection={eventBoosterSelection}
         eventSpecialDraft={eventSpecialDraft}
@@ -2883,6 +2885,7 @@ function HelldiversRogueliteApp() {
         onStratagemSelection={(selection) => dispatch(actions.setEventStratagemSelection(selection))}
         onTargetPlayerSelection={(playerIndex) => dispatch(actions.setEventTargetPlayerSelection(playerIndex))}
         onTargetStratagemSelection={(selection) => dispatch(actions.setEventTargetStratagemSelection(selection))}
+        onSelectedChoiceIndexChange={(index) => dispatch(actions.setEventSelectedChoiceIndex(index))}
         onBoosterSelection={(boosterId) => dispatch(actions.setEventBoosterSelection(boosterId))}
         onSubfactionSelection={(subfaction) => dispatch(actions.setPendingSubfactionSelection(subfaction))}
         onConfirmSubfaction={() => {

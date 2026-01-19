@@ -66,6 +66,7 @@ export const initialState = {
   eventStratagemSelection: null, // { sourcePlayerIndex, stratagemSlotIndex, stratagemId }
   eventTargetPlayerSelection: null, // targetPlayerIndex
   eventTargetStratagemSelection: null, // { stratagemSlotIndex, stratagemId }
+  eventSelectedChoiceIndex: null, // Index of choice selected that needs selection dialogue (for multiplayer sync)
   eventBoosterDraft: null, // Array of booster IDs to choose from
   eventBoosterSelection: null, // Selected booster ID
   eventSpecialDraft: null, // Array of item objects for special draft selection
@@ -405,6 +406,9 @@ export function gameReducer(state, action) {
     case types.SET_EVENT_TARGET_STRATAGEM_SELECTION:
       return { ...state, eventTargetStratagemSelection: action.payload };
 
+    case types.SET_EVENT_SELECTED_CHOICE_INDEX:
+      return { ...state, eventSelectedChoiceIndex: action.payload };
+
     case types.SET_EVENT_BOOSTER_DRAFT:
       return { ...state, eventBoosterDraft: action.payload };
 
@@ -447,6 +451,7 @@ export function gameReducer(state, action) {
         eventStratagemSelection: null,
         eventTargetPlayerSelection: null,
         eventTargetStratagemSelection: null,
+        eventSelectedChoiceIndex: null,
         eventBoosterDraft: null,
         eventBoosterSelection: null,
         eventSpecialDraft: null,
