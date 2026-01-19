@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { X, Heart, Crown } from 'lucide-react';
 import { getFactionColors } from '../constants/theme';
-import { ref, onValue, off } from 'firebase/database';
+import { ref, onValue } from 'firebase/database';
 import { getFirebaseDatabase, isFirebaseConfigured } from '../systems/multiplayer/firebaseConfig';
 
 /**
