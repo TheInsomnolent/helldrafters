@@ -2,18 +2,12 @@
 
 All notable changes to Helldrafters will be documented in this file.
 
-The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
-
-## [Unreleased]
+## 2026-01-19
 
 ### Added
 - Patch notes modal on main menu to display release notes
 - Automatic release note generation in CI workflow
 - Instructions in copilot-instructions.md for maintaining CHANGELOG.md
-
-## [0.1.0] - 2026-01-19
-
-### Added
 - Initial release of Helldrafters
 - Roguelite draft system for Helldivers 2
 - Support for 1-4 players

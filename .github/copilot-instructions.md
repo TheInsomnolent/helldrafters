@@ -14,8 +14,10 @@ This checks for ESLint errors and warnings. The build process treats warnings as
 
 When making changes to the codebase, **always update CHANGELOG.md** with a brief description of your changes:
 
-1. Add your changes under the `## [Unreleased]` section
-2. Categorize changes using these headers:
+1. Check if today's date (YYYY-MM-DD format) exists as a heading in CHANGELOG.md
+2. If the date heading exists, add your changes under it
+3. If the date heading doesn't exist, create it as `## YYYY-MM-DD` at the top of the file (after the title)
+4. Categorize changes using these headers:
    - `### Added` - New features
    - `### Changed` - Changes to existing functionality
    - `### Deprecated` - Features that will be removed in future versions
@@ -25,7 +27,7 @@ When making changes to the codebase, **always update CHANGELOG.md** with a brief
 
 Example:
 ```markdown
-## [Unreleased]
+## 2026-01-19
 
 ### Added
 - New event type for bonus requisition rewards
@@ -34,7 +36,7 @@ Example:
 - Fixed issue where draft cards would sometimes be empty
 ```
 
-This ensures that release notes are always up-to-date and automatically published with each deployment.
+This ensures that release notes are always up-to-date and automatically published with each deployment. Multiple releases on the same day will be grouped under the same date heading.
 
 ## Common Issues to Avoid
 
