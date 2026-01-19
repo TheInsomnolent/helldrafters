@@ -152,7 +152,8 @@ export default function PatchNotesModal({ isOpen, onClose, faction = 'Terminids'
       // Regular paragraph text
       else {
         flushListItems();
-        // Skip links in square brackets format
+        // Skip markdown link reference lines (e.g., [Keep a Changelog]: https://keepachangelog.com...)
+        // This is for display filtering only, not URL validation/sanitization
         if (!line.startsWith('[') && !line.includes('keepachangelog.com')) {
           elements.push(
             <p key={`p-${idx}`} style={{
