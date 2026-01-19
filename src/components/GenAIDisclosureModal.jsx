@@ -161,10 +161,13 @@ export default function GenAIDisclosureModal({ isOpen, onClose, faction = 'Termi
             textAlign: 'center'
           }}>
             <p style={{ color: '#94a3b8', fontSize: '14px', fontWeight: 'bold', margin: '0 0 4px 0' }}>
-              — Griff
+              Griff
             </p>
             <p style={{ color: '#64748b', fontSize: '12px', margin: 0 }}>
               Developer & Helldiver
+            </p>>
+            <p style={{ color: '#64748b', fontSize: '12px', margin: 0 }}>
+              o7
             </p>
           </div>
         </div>
