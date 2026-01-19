@@ -20,6 +20,7 @@ import GameLobby from './components/GameLobby';
 import GameConfiguration from './components/GameConfiguration';
 import RarityWeightDebug from './components/RarityWeightDebug';
 import ExplainerModal from './components/ExplainerModal';
+import PatchNotesModal from './components/PatchNotesModal';
 import GenAIDisclosureModal from './components/GenAIDisclosureModal';
 import { MultiplayerModeSelect, JoinGameScreen, MultiplayerWaitingRoom, MultiplayerStatusBar } from './components/MultiplayerLobby';
 import { MultiplayerProvider, useMultiplayer } from './systems/multiplayer';
@@ -120,6 +121,7 @@ function HelldiversRogueliteApp() {
   const [selectedPlayer, setSelectedPlayer] = React.useState(0); // For custom setup phase
   const [multiplayerMode, setMultiplayerMode] = React.useState(null); // null, 'select', 'host', 'join', 'waiting'
   const [showExplainer, setShowExplainer] = React.useState(false); // For explainer modal
+  const [showPatchNotes, setShowPatchNotes] = React.useState(false); // For patch notes modal
   const [showGenAIDisclosure, setShowGenAIDisclosure] = React.useState(false); // For Gen AI disclosure modal
   
   // Ref for the hidden file input
@@ -1483,6 +1485,43 @@ function HelldiversRogueliteApp() {
               </button>
             </div>
             
+            {/* Patch Notes Button */}
+            <div style={{ marginTop: '12px' }}>
+              <button 
+                onClick={() => setShowPatchNotes(true)}
+                style={{
+                  width: '100%',
+                  padding: '12px',
+                  fontSize: '14px',
+                  letterSpacing: '0.1em',
+                  borderRadius: '4px',
+                  border: `1px solid ${COLORS.CARD_BORDER}`,
+                  backgroundColor: 'transparent',
+                  color: COLORS.TEXT_MUTED,
+                  fontWeight: '700',
+                  textTransform: 'uppercase',
+                  cursor: 'pointer',
+                  transition: 'all 0.2s',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: '8px'
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.borderColor = factionColors.PRIMARY;
+                  e.currentTarget.style.color = factionColors.PRIMARY;
+                  e.currentTarget.style.backgroundColor = `${factionColors.PRIMARY}10`;
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.borderColor = COLORS.CARD_BORDER;
+                  e.currentTarget.style.color = COLORS.TEXT_MUTED;
+                  e.currentTarget.style.backgroundColor = 'transparent';
+                }}
+              >
+                <span style={{ fontSize: '16px' }}>📝</span> Patch Notes
+              </button>
+            </div>
+            
             {/* Report Bug/Feedback Button */}
             <div style={{ marginTop: '12px' }}>
               <a
@@ -1591,6 +1630,13 @@ function HelldiversRogueliteApp() {
         <ExplainerModal 
           isOpen={showExplainer} 
           onClose={() => setShowExplainer(false)}
+          faction={gameConfig.faction}
+        />
+        
+        {/* Patch Notes Modal */}
+        <PatchNotesModal
+          isOpen={showPatchNotes}
+          onClose={() => setShowPatchNotes(false)}
           faction={gameConfig.faction}
         />
         

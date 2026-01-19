@@ -25,6 +25,11 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
+      - name: Copy CHANGELOG to build
+        run: |
+          echo "Copying CHANGELOG.md to public folder for deployment"
+          cp CHANGELOG.md public/CHANGELOG.md
+
       - name: Build application
         run: npm run build
         env:
