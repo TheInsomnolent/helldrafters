@@ -370,29 +370,44 @@ export const processEventOutcome = (outcome, choice, state, selections = {}) => 
       // Give all players random light armor and trigger throwable draft
       if (players && players.length > 0) {
         const newPlayers = [...players];
-        const lightArmors = MASTER_DB.filter(item => 
-          item.type === TYPE.ARMOR && 
-          item.armorClass === ARMOR_CLASS.LIGHT &&
-          !burnedCards.includes(item.id)
-        );
         
-        if (lightArmors.length > 0) {
-          // Give each player random light armor
-          newPlayers.forEach(player => {
+        // Give each player random light armor (filtered by their warbond/superstore config)
+        newPlayers.forEach(player => {
+          const lightArmors = MASTER_DB.filter(item => {
+            if (item.type !== TYPE.ARMOR || item.armorClass !== ARMOR_CLASS.LIGHT) {
+              return false;
+            }
+            if (burnedCards.includes(item.id)) {
+              return false;
+            }
+            // Filter by player's enabled warbonds and superstore access
+            if (player.warbonds && player.warbonds.length > 0) {
+              if (item.warbond && player.warbonds.includes(item.warbond)) {
+                return true;
+              }
+              if (item.superstore && player.includeSuperstore) {
+                return true;
+              }
+              return !item.warbond && !item.superstore;
+            }
+            return true;
+          });
+          
+          if (lightArmors.length > 0) {
             const randomArmor = lightArmors[Math.floor(Math.random() * lightArmors.length)];
             player.loadout.armor = randomArmor.id;
             // Add armor to inventory if not already present
             if (!player.inventory.includes(randomArmor.id)) {
               player.inventory.push(randomArmor.id);
             }
-          });
-          
-          updates.players = newPlayers;
-          
-          // Trigger throwable draft for all players
-          updates.needsSpecialDraft = true;
-          updates.specialDraftType = 'throwable';
-        }
+          }
+      });
+        
+        updates.players = newPlayers;
+        
+        // Trigger throwable draft for all players
+        updates.needsSpecialDraft = true;
+        updates.specialDraftType = 'throwable';
       }
       break;
 
@@ -400,29 +415,44 @@ export const processEventOutcome = (outcome, choice, state, selections = {}) => 
       // Give all players random heavy armor and trigger secondary draft
       if (players && players.length > 0) {
         const newPlayers = [...players];
-        const heavyArmors = MASTER_DB.filter(item => 
-          item.type === TYPE.ARMOR && 
-          item.armorClass === ARMOR_CLASS.HEAVY &&
-          !burnedCards.includes(item.id)
-        );
         
-        if (heavyArmors.length > 0) {
-          // Give each player random heavy armor
-          newPlayers.forEach(player => {
+        // Give each player random heavy armor (filtered by their warbond/superstore config)
+        newPlayers.forEach(player => {
+          const heavyArmors = MASTER_DB.filter(item => {
+            if (item.type !== TYPE.ARMOR || item.armorClass !== ARMOR_CLASS.HEAVY) {
+              return false;
+            }
+            if (burnedCards.includes(item.id)) {
+              return false;
+            }
+            // Filter by player's enabled warbonds and superstore access
+            if (player.warbonds && player.warbonds.length > 0) {
+              if (item.warbond && player.warbonds.includes(item.warbond)) {
+                return true;
+              }
+              if (item.superstore && player.includeSuperstore) {
+                return true;
+              }
+              return !item.warbond && !item.superstore;
+            }
+            return true;
+          });
+          
+          if (heavyArmors.length > 0) {
             const randomArmor = heavyArmors[Math.floor(Math.random() * heavyArmors.length)];
             player.loadout.armor = randomArmor.id;
             // Add armor to inventory if not already present
             if (!player.inventory.includes(randomArmor.id)) {
               player.inventory.push(randomArmor.id);
             }
-          });
-          
-          updates.players = newPlayers;
-          
-          // Trigger secondary draft for all players
-          updates.needsSpecialDraft = true;
-          updates.specialDraftType = 'secondary';
-        }
+          }
+      });
+        
+        updates.players = newPlayers;
+        
+        // Trigger secondary draft for all players
+        updates.needsSpecialDraft = true;
+        updates.specialDraftType = 'secondary';
       }
       break;
 

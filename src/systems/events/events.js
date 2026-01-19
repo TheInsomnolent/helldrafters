@@ -93,6 +93,7 @@ export const EVENTS = [
     choices: [
       {
         text: 'Hold the Line',
+        requiresRequisition: 2,
         outcomes: [
           { type: OUTCOME_TYPES.LOSE_REQUISITION, value: 2 }
         ]
@@ -175,7 +176,7 @@ export const EVENTS = [
         text: 'Accept the Deal',
         outcomes: [
           { type: OUTCOME_TYPES.RESTRICT_TO_SINGLE_WEAPON, targetPlayer: 'choose' },
-          { type: OUTCOME_TYPES.EXTRA_DRAFT, value: 2, targetPlayer: 'choose' }
+          { type: OUTCOME_TYPES.EXTRA_DRAFT, value: 1, targetPlayer: 'choose' }
         ]
       },
       {
@@ -409,6 +410,7 @@ export const EVENTS = [
       },
       {
         text: 'Volunteer for Extra Training',
+        requiresRequisition: 2,
         outcomes: [
           { type: OUTCOME_TYPES.SPEND_REQUISITION, value: 2 },
           { type: OUTCOME_TYPES.EXTRA_DRAFT, value: 1, targetPlayer: 'choose' }
@@ -430,6 +432,7 @@ export const EVENTS = [
     choices: [
       {
         text: 'Carry the Standard',
+        requiresRequisition: 2,
         outcomes: [
           { type: OUTCOME_TYPES.LOSE_REQUISITION, value: 2 },
           { type: OUTCOME_TYPES.EXTRA_DRAFT, value: 2, targetPlayer: 'choose' }
@@ -437,6 +440,7 @@ export const EVENTS = [
       },
       {
         text: 'March in the Parade',
+        requiresRequisition: 1,
         outcomes: [
           { type: OUTCOME_TYPES.LOSE_REQUISITION, value: 1 },
           { type: OUTCOME_TYPES.EXTRA_DRAFT, value: 1, targetPlayer: 'choose' }
@@ -481,7 +485,7 @@ export const EVENTS = [
   {
     id: 'training_accident',
     name: 'Training Exercise Gone Wrong',
-    description: 'A live-fire training exercise has gone catastrophically wrong. The instructor barks: "This is what happens when you don\'t follow protocol! You can pay for medical treatment, or you can prove your worth by accepting additional training with a randomly assigned booster."',
+    description: 'A live-fire training exercise has gone catastrophically wrong. The medic assesses the squad: "Everyone\'s banged up but combat-ready. However, I\'ve got experimental performance enhancers available - top-shelf stuff from R&D. Costs requisition credits, but you\'ll each get a tactical booster. Or we can skip it and get back to standard operations."',
     type: EVENT_TYPES.CHOICE,
     minDifficulty: 1,
     maxDifficulty: 6,
@@ -489,15 +493,15 @@ export const EVENTS = [
     targetPlayer: 'all',
     choices: [
       {
-        text: 'Pay for Medical Treatment',
+        text: 'Purchase Performance Enhancers',
         requiresRequisition: 2,
-        outcomes: []
-      },
-      {
-        text: 'Accept Additional Training',
         outcomes: [
           { type: OUTCOME_TYPES.GAIN_BOOSTER, targetPlayer: 'random' }
         ]
+      },
+      {
+        text: 'Return to Standard Operations',
+        outcomes: []
       }
     ]
   },
@@ -720,12 +724,12 @@ export function getAvailableEvents(difficulty, isMultiplayer, seenEvents = [], p
       return false;
     }
     
-    // Check if event requires stratagems (teamwork_training) - need at least one player with a stratagem
+    // Check if event requires stratagems (teamwork_training) - need at least two players with stratagems
     if (event.id === 'teamwork_training') {
-      const anyPlayerHasStratagem = players.some(player => 
+      const playersWithStratagems = players.filter(player => 
         player.loadout?.stratagems?.some(s => s !== null)
       );
-      if (!anyPlayerHasStratagem) {
+      if (playersWithStratagems.length < 2) {
         return false;
       }
     }

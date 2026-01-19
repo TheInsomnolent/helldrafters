@@ -384,7 +384,26 @@ export function gameReducer(state, action) {
 
     // Events
     case types.SET_CURRENT_EVENT:
-      return { ...state, currentEvent: action.payload };
+      // When setting a new event, always reset all event selections to ensure clean state
+      // This prevents stale selections from previous events affecting the new event UI
+      return { 
+        ...state, 
+        currentEvent: action.payload,
+        // Reset all event selections atomically with setting the new event
+        eventPlayerChoice: null,
+        eventSelectedChoice: null,
+        eventSourcePlayerSelection: null,
+        eventStratagemSelection: null,
+        eventTargetPlayerSelection: null,
+        eventTargetStratagemSelection: null,
+        eventBoosterDraft: null,
+        eventBoosterSelection: null,
+        eventSpecialDraft: null,
+        eventSpecialDraftType: null,
+        eventSpecialDraftSelections: null,
+        pendingFaction: null,
+        pendingSubfactionSelection: null
+      };
 
     case types.SET_EVENT_PLAYER_CHOICE:
       return { ...state, eventPlayerChoice: action.payload };

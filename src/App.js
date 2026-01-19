@@ -2069,7 +2069,7 @@ function HelldiversRogueliteApp() {
               }}>
                 <p style={{ color: '#94a3b8', fontSize: '14px', marginBottom: '8px' }}>Removing:</p>
                 <p style={{ color: '#F5C642', fontSize: '18px', fontWeight: 'bold' }}>
-                  {pendingCardRemoval.name || (pendingCardRemoval.passive && pendingCardRemoval.armorClass ? getArmorComboDisplayName(pendingCardRemoval.passive, pendingCardRemoval.armorClass, players[draftState.activePlayerIndex]?.inventory) : 'Unknown Item')}
+                  {pendingCardRemoval.name || (pendingCardRemoval.passive && pendingCardRemoval.armorClass ? getArmorComboDisplayName(pendingCardRemoval.passive, pendingCardRemoval.armorClass, null) : 'Unknown Item')}
                 </p>
               </div>
             )}
@@ -2842,6 +2842,13 @@ function HelldiversRogueliteApp() {
       dispatch(actions.setPhase('DASHBOARD'));
     };
 
+    const handleSkipEvent = () => {
+      // Emergency skip for beta testing - helps escape soft-locks
+      dispatch(actions.setCurrentEvent(null));
+      dispatch(actions.resetEventSelections());
+      dispatch(actions.setPhase('DASHBOARD'));
+    };
+
     return (
       <div style={{ minHeight: '100vh' }}>
         {/* MULTIPLAYER STATUS BAR */}
@@ -2881,6 +2888,7 @@ function HelldiversRogueliteApp() {
         onPlayerChoice={(choice) => dispatch(actions.setEventPlayerChoice(choice))}
         onEventChoice={handleEventChoice}
         onAutoContinue={handleAutoContinue}
+        onSkipEvent={handleSkipEvent}
         onSourcePlayerSelection={(playerIndex) => dispatch(actions.setEventSourcePlayerSelection(playerIndex))}
         onStratagemSelection={(selection) => dispatch(actions.setEventStratagemSelection(selection))}
         onTargetPlayerSelection={(playerIndex) => dispatch(actions.setEventTargetPlayerSelection(playerIndex))}
@@ -3725,7 +3733,7 @@ function HelldiversRogueliteApp() {
                 }}>
                   <p style={{ color: '#94a3b8', fontSize: '14px', marginBottom: '8px' }}>Removing:</p>
                   <p style={{ color: '#F5C642', fontSize: '18px', fontWeight: 'bold' }}>
-                    {pendingCardRemoval.name || (pendingCardRemoval.passive && pendingCardRemoval.armorClass ? getArmorComboDisplayName(pendingCardRemoval.passive, pendingCardRemoval.armorClass, players[draftState.activePlayerIndex]?.inventory) : 'Unknown Item')}
+                    {pendingCardRemoval.name || (pendingCardRemoval.passive && pendingCardRemoval.armorClass ? getArmorComboDisplayName(pendingCardRemoval.passive, pendingCardRemoval.armorClass, null) : 'Unknown Item')}
                   </p>
                 </div>
               )}
@@ -4337,7 +4345,6 @@ function HelldiversRogueliteApp() {
             
                 <p style={{ marginTop: '16px', fontSize: '12px', color: '#64748b', fontFamily: 'monospace', margin: '16px 0 0 0' }}>
                   Report success to earn Requisition & proceed to draft.
-                  <br/>Reporting failure consumes 1 Life.
                 </p>
               </>
             ) : (

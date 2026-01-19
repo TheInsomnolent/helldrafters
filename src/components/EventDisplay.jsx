@@ -22,6 +22,7 @@ export default function EventDisplay({
   onPlayerChoice,
   onEventChoice,
   onAutoContinue,
+  onSkipEvent,
   eventSourcePlayerSelection,
   eventStratagemSelection,
   eventTargetPlayerSelection,
@@ -294,6 +295,43 @@ export default function EventDisplay({
           EVENT - DIFFICULTY {currentDiff}
         </div>
         <div style={{ display: 'flex', gap: '16px', alignItems: 'center' }}>
+          {isHost && (
+            <button
+              onClick={() => {
+                const confirmed = window.confirm(
+                  '⚠️ BETA FEATURE - EMERGENCY SKIP ⚠️\n\n' +
+                  'This feature is only intended to help you escape from soft-locks during beta testing.\n\n' +
+                  'If you are using this button, please report the bug:\n' +
+                  '• What event was active?\n' +
+                  '• What was the game state?\n' +
+                  '• What steps led to the soft-lock?\n\n' +
+                  'Skip this event for all players?'
+                );
+                if (confirmed && onSkipEvent) {
+                  onSkipEvent();
+                }
+              }}
+              style={{
+                padding: '8px 16px',
+                backgroundColor: '#dc2626',
+                color: 'white',
+                border: '2px solid #991b1b',
+                borderRadius: '4px',
+                fontSize: '14px',
+                fontWeight: 'bold',
+                cursor: 'pointer',
+                transition: 'all 0.2s'
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.backgroundColor = '#b91c1c';
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.backgroundColor = '#dc2626';
+              }}
+            >
+              🛑 BETA: Skip Event
+            </button>
+          )}
           <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
             <img 
               src="https://helldivers.wiki.gg/images/Requisition_Slip.svg" 
