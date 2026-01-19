@@ -125,6 +125,17 @@ export default function GenAIDisclosureModal({ isOpen, onClose, faction = 'Termi
             padding: '24px',
             marginBottom: '24px'
           }}>
+            <h3 style={{
+              color: factionColors.PRIMARY,
+              fontSize: '18px',
+              fontWeight: 'bold',
+              marginTop: 0,
+              marginBottom: '16px',
+              textTransform: 'uppercase',
+              letterSpacing: '0.05em'
+            }}>
+              Development Transparency
+            </h3>
             <p style={{ color: '#cbd5e1', lineHeight: '1.8', fontSize: '15px', marginBottom: '16px' }}>
               As a full-time developer and a fan of Helldivers 2, I built this tool to enhance our community's experience. I want to be transparent that <strong>Generative AI was used to assist in the creation of this project.</strong>
             </p>
@@ -137,19 +148,29 @@ export default function GenAIDisclosureModal({ isOpen, onClose, faction = 'Termi
               This project is, and will always be, <strong>a free gift to the community.</strong> My goal isn't to replace human creativity, but to use these new tools to provide a little more joy for our squads. Thank you for understanding and for your support.
             </p>
             
-            <p style={{ 
-              color: factionColors.PRIMARY, 
-              lineHeight: '1.8', 
-              fontSize: '16px', 
-              fontWeight: 'bold',
-              textAlign: 'center',
-              marginTop: '24px',
-              marginBottom: 0,
-              textTransform: 'uppercase',
-              letterSpacing: '0.1em'
-            }}>
-              Let's spread some managed democracy.
+            <p style={{ color: '#cbd5e1', lineHeight: '1.8', fontSize: '15px', marginBottom: '16px' }}>
+              While some Generative AI tools are used to maintain this project, they are largely used for <strong>bugfixes and icon generation</strong>. This is a one-man, currently self-funded show, and I am not an artist.
             </p>
+            
+            <p style={{ color: '#cbd5e1', lineHeight: '1.8', fontSize: '15px', marginBottom: '16px' }}>
+              However, I <em>am</em> a full stack developer, and the vast majority of the <strong>feature prototyping, hosting, infrastructure work, design work, testing, project management, and code-review of GenAI-developed tasks</strong> is all done by me.
+            </p>
+            
+            <p style={{ color: '#cbd5e1', lineHeight: '1.8', fontSize: '15px', marginBottom: '16px' }}>
+              It is a personal goal of mine to prevent this from being AI shovelware, hence my commitment to transparency on this matter. If you would like to explore the development process further and examine what kind of jobs the GenAI has been used for, you are free to visit the <a 
+                href="https://github.com/TheInsomnolent/helldrafters/issues?q=is%3Aissue" 
+                target="_blank" 
+                rel="noopener noreferrer"
+                style={{ 
+                  color: factionColors.PRIMARY, 
+                  textDecoration: 'underline',
+                  fontWeight: 'bold'
+                }}
+              >
+                issue management board
+              </a> where I have started to tag all human vs. AI tasks as an effort to increase transparency.
+            </p>
+            
           </div>
           
           {/* Footer */}
@@ -160,6 +181,19 @@ export default function GenAIDisclosureModal({ isOpen, onClose, faction = 'Termi
             border: '1px solid rgba(100, 116, 139, 0.3)',
             textAlign: 'center'
           }}>
+            <p style={{ 
+              color: factionColors.PRIMARY, 
+              lineHeight: '1.8', 
+              fontSize: '16px', 
+              fontWeight: 'bold',
+              textAlign: 'center',
+              marginTop: '24px',
+              marginBottom: '24px',
+              textTransform: 'uppercase',
+              letterSpacing: '0.1em'
+            }}>
+              Let's spread some managed democracy.
+            </p>
             <img 
               src={`${process.env.PUBLIC_URL}/griff.jpg`}
               alt="Griff"
