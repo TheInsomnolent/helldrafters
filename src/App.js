@@ -77,24 +77,30 @@ function HelldiversRogueliteApp() {
   // Handle host disconnect - return all clients to main menu
   useEffect(() => {
     if (hostDisconnected && !isHost) {
-      // Host disconnected/closed the lobby - return to main menu
-      dispatch(actions.setPhase('MENU'));
-      setMultiplayerMode(null);
+      // Don't override if player was kicked - let them see the kicked screen
+      if (!wasKicked) {
+        // Host disconnected/closed the lobby - return to main menu
+        dispatch(actions.setPhase('MENU'));
+        setMultiplayerMode(null);
+      }
       clearHostDisconnected();
     } else if (hostDisconnected && isHost) {
       // This shouldn't happen (host set their own flag), but clear it anyway
       clearHostDisconnected();
     }
-  }, [hostDisconnected, isHost, clearHostDisconnected]);
+  }, [hostDisconnected, isHost, wasKicked, clearHostDisconnected]);
 
   // Handle client intentional disconnect - return to menu
   useEffect(() => {
     if (clientDisconnected) {
-      dispatch(actions.setPhase('MENU'));
-      setMultiplayerMode(null);
+      // Don't override if player was kicked - let them see the kicked screen
+      if (!wasKicked) {
+        dispatch(actions.setPhase('MENU'));
+        setMultiplayerMode(null);
+      }
       clearClientDisconnected();
     }
-  }, [clientDisconnected, clearClientDisconnected]);
+  }, [clientDisconnected, wasKicked, clearClientDisconnected]);
 
   // Handle being kicked - show kicked screen
   useEffect(() => {
