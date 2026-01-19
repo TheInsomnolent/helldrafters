@@ -575,6 +575,103 @@ export default function GameLobby({
           </div>
         </div>
 
+        {/* Action Buttons - Bottom (duplicate of top buttons) */}
+        <div style={{ display: 'flex', justifyContent: 'space-between', gap: '16px', marginTop: '32px' }}>
+          {/* Exit/Back Button */}
+          <button
+            onClick={handleExitLobby}
+            style={{
+              padding: '16px 32px',
+              backgroundColor: 'rgba(239, 68, 68, 0.1)',
+              color: '#ef4444',
+              border: '2px solid #7f1d1d',
+              borderRadius: '4px',
+              fontWeight: '900',
+              fontSize: '14px',
+              textTransform: 'uppercase',
+              letterSpacing: '0.1em',
+              cursor: 'pointer',
+              transition: 'all 0.2s',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '8px'
+            }}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.backgroundColor = 'rgba(239, 68, 68, 0.2)';
+              e.currentTarget.style.borderColor = '#ef4444';
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.backgroundColor = 'rgba(239, 68, 68, 0.1)';
+              e.currentTarget.style.borderColor = '#7f1d1d';
+            }}
+          >
+            <LogOut size={18} />
+            {isMultiplayer ? 'EXIT LOBBY' : 'BACK TO MENU'}
+          </button>
+
+          {/* Ready / Start Button */}
+          {isMultiplayer ? (
+            <button
+              onClick={handleReadyToggle}
+              style={{
+                ...BUTTON_STYLES.PRIMARY,
+                padding: '16px 48px',
+                borderRadius: '4px',
+                fontSize: '16px',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '12px',
+                backgroundColor: isReady ? '#22c55e' : factionColors.PRIMARY,
+                color: isReady ? 'white' : 'black'
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.transform = 'translateY(-2px)';
+                e.currentTarget.style.boxShadow = isReady ? SHADOWS.GLOW_GREEN : factionColors.SHADOW_HOVER;
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.transform = 'translateY(0)';
+                e.currentTarget.style.boxShadow = 'none';
+              }}
+            >
+              {isReady ? (
+                <>
+                  <CheckCircle size={20} />
+                  READY! (CLICK TO UNREADY)
+                </>
+              ) : (
+                <>
+                  READY UP <CheckCircle size={20} />
+                </>
+              )}
+            </button>
+          ) : (
+            <button
+              onClick={handleSoloStart}
+              style={{
+                ...BUTTON_STYLES.PRIMARY,
+                padding: '16px 48px',
+                borderRadius: '4px',
+                fontSize: '16px',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '12px'
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.backgroundColor = factionColors.PRIMARY_HOVER;
+                e.currentTarget.style.transform = 'translateY(-2px)';
+                e.currentTarget.style.boxShadow = factionColors.SHADOW_HOVER;
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.backgroundColor = factionColors.PRIMARY;
+                e.currentTarget.style.transform = 'translateY(0)';
+                e.currentTarget.style.boxShadow = factionColors.SHADOW;
+              }}
+            >
+              START RUN <CheckCircle size={20} />
+            </button>
+          )}
+        </div>
+
         {/* Item Selection Modal */}
         {itemSelectionModal && (
           <ItemSelectionModal

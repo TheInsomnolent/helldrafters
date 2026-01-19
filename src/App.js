@@ -148,6 +148,11 @@ function HelldiversRogueliteApp() {
     }
   }, [state, phase]);
 
+  // Scroll to top whenever phase changes
+  useEffect(() => {
+    window.scrollTo(0, 0);
+  }, [phase]);
+
   // --- SAVE/LOAD FUNCTIONS ---
 
   const exportGameState = () => {
