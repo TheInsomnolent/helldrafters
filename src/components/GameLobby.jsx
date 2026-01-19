@@ -6,6 +6,7 @@ import { useMultiplayer } from '../systems/multiplayer';
 import { MASTER_DB, SUPERSTORE_ITEMS } from '../data/itemsByWarbond';
 import { TYPE } from '../constants/types';
 import { getItemIconUrl } from '../utils/iconHelpers';
+import StratagemGame from './StratagemGame';
 
 // Local storage key for saving player configuration
 const STORAGE_KEY = 'helldrafters_player_config';
@@ -314,20 +315,9 @@ export default function GameLobby({
           )}
         </div>
 
-        {/* Multiplayer waiting message */}
+        {/* Stratagem Mini-Game - Show when player is ready and waiting */}
         {isMultiplayer && isReady && !allPlayersReady() && (
-          <div style={{ 
-            textAlign: 'center', 
-            marginBottom: '24px', 
-            padding: '16px', 
-            backgroundColor: 'rgba(34, 197, 94, 0.1)', 
-            borderRadius: '4px',
-            border: '1px solid rgba(34, 197, 94, 0.3)'
-          }}>
-            <p style={{ color: '#22c55e', margin: 0, fontWeight: 'bold' }}>
-              Waiting for all players to ready up...
-            </p>
-          </div>
+          <StratagemGame factionColors={factionColors} />
         )}
 
         {/* Multiplayer: Show all players' status in slot order */}
