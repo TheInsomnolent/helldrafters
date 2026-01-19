@@ -15,6 +15,7 @@ export {
   joinLobby,
   leaveLobby,
   kickPlayer,
+  kickAllPlayers,
   closeLobby,
   updateLobbyStatus,
   changePlayerSlot,

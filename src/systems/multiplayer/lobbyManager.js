@@ -64,9 +64,9 @@ export const createLobby = async (lobbyId, hostInfo, gameConfig) => {
   
   await set(lobbyRef, lobbyData);
   
-  // Set up disconnect handler to mark host as disconnected
-  const playerRef = ref(db, `lobbies/${lobbyId}/players/${hostInfo.id}/connected`);
-  onDisconnect(playerRef).set(false);
+  // Set up disconnect handler to remove the entire lobby when host disconnects
+  // This effectively kicks all players when the host closes the browser/tab
+  onDisconnect(lobbyRef).remove();
   
   return lobbyData;
 };
@@ -254,7 +254,38 @@ export const kickPlayer = async (lobbyId, playerId) => {
 };
 
 /**
+ * Kick all players from a lobby (host only)
+ * @param {string} lobbyId - The lobby ID
+ * @returns {Promise<void>}
+ */
+export const kickAllPlayers = async (lobbyId) => {
+  const db = getFirebaseDatabase();
+  const lobbyRef = ref(db, `lobbies/${lobbyId}`);
+  
+  try {
+    // Get current lobby state
+    const snapshot = await get(lobbyRef);
+    if (!snapshot.exists()) {
+      return;
+    }
+    
+    const lobby = snapshot.val();
+    const players = lobby.players || {};
+    
+    // Kick all non-host players
+    const kickPromises = Object.values(players)
+      .filter(player => !player.isHost)
+      .map(player => kickPlayer(lobbyId, player.id));
+    
+    await Promise.all(kickPromises);
+  } catch (error) {
+    console.error('Error kicking all players:', error);
+  }
+};
+
+/**
  * Close/delete a lobby (host only)
+ * Kicks all players before closing the lobby
  * @param {string} lobbyId - The lobby ID to close
  */
 export const closeLobby = async (lobbyId) => {
@@ -262,6 +293,10 @@ export const closeLobby = async (lobbyId) => {
   const lobbyRef = ref(db, `lobbies/${lobbyId}`);
   
   try {
+    // First kick all players
+    await kickAllPlayers(lobbyId);
+    
+    // Then remove the lobby
     await remove(lobbyRef);
   } catch (error) {
     console.error('Error closing lobby:', error);

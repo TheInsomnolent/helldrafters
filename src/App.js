@@ -68,7 +68,8 @@ function HelldiversRogueliteApp() {
     playerSlot,
     sendAction,
     setActionHandler,
-    lobbyData
+    lobbyData,
+    firebaseReady
   } = multiplayer;
   
   // Register dispatch with multiplayer context
@@ -248,11 +249,43 @@ function HelldiversRogueliteApp() {
       const loadedState = await parseSaveFile(file);
       const normalizedState = normalizeLoadedState(loadedState);
 
-      // Restore all state
-      dispatch(actions.loadGameState(normalizedState));
-      setSelectedPlayer(normalizedState.selectedPlayer || 0);
+      // Check if this is a multiplayer game (more than 1 player)
+      const isMultiplayerGame = normalizedState.gameConfig?.playerCount > 1;
 
-      alert('Game loaded successfully!');
+      if (isMultiplayerGame && firebaseReady) {
+        // Create a multiplayer lobby for loaded multiplayer game
+        const hostName = prompt('Enter your name for multiplayer:', 'Host') || 'Host';
+        const newLobbyId = await hostGame(hostName, normalizedState.gameConfig);
+        
+        if (newLobbyId) {
+          // Start the multiplayer game (this sets up action subscription)
+          await startMultiplayerGame();
+          
+          // Load the game state
+          dispatch(actions.loadGameState(normalizedState));
+          setSelectedPlayer(normalizedState.selectedPlayer || 0);
+          
+          // Sync the loaded state to all clients
+          await syncState(normalizedState);
+          
+          alert(`Multiplayer game loaded! Share this lobby ID with other players:\n${newLobbyId}\n\nOther players can join mid-game.`);
+        } else {
+          alert('Failed to create multiplayer lobby. Loading as solo game instead.');
+          // Fall back to solo loading
+          dispatch(actions.loadGameState(normalizedState));
+          setSelectedPlayer(normalizedState.selectedPlayer || 0);
+        }
+      } else {
+        // Single player game or Firebase not ready - load normally
+        dispatch(actions.loadGameState(normalizedState));
+        setSelectedPlayer(normalizedState.selectedPlayer || 0);
+        
+        if (isMultiplayerGame && !firebaseReady) {
+          alert('Game loaded successfully!\n\nNote: This is a multiplayer save but Firebase is not configured. Loading as solo game.');
+        } else {
+          alert('Game loaded successfully!');
+        }
+      }
     } catch (error) {
       console.error('Failed to load game:', error);
       alert(error.message || 'Failed to load save file. File may be corrupted.');
