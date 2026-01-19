@@ -170,7 +170,7 @@ export default function ExplainerModal({ isOpen, onClose, faction = 'Terminids' 
             </h4>
             <ul style={{ color: '#cbd5e1', lineHeight: '1.8', paddingLeft: '20px', marginBottom: '12px' }}>
               <li><strong>Pick a Card:</strong> Click on a card to add it to your inventory and auto-equip it</li>
-              <li><strong>Remove a Card:</strong> Click the × on a card to replace just that card (free)</li>
+              <li><strong>Remove a Card:</strong> Click the × on a card to replace just that card (free). This should only be done to correct a mistake when you don't have access to the drafted item for some reason.</li>
               <li><strong>Reroll All:</strong> Spend 1 Requisition to get a completely new hand</li>
               <li><strong>Skip Draft:</strong> Pass on drafting if nothing appeals to you</li>
               <li><strong>Slot Locking:</strong> Spend Requisition to prevent certain item types from appearing</li>
