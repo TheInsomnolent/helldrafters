@@ -21,6 +21,22 @@ import {
 import { getFirebaseDatabase } from './firebaseConfig';
 
 /**
+ * Update the lastUpdatedAt timestamp for a lobby
+ * This is used by the cleanup function to identify stale lobbies
+ * @param {string} lobbyId - The lobby ID
+ */
+const updateLastUpdatedAt = async (lobbyId) => {
+  const db = getFirebaseDatabase();
+  const timestampRef = ref(db, `lobbies/${lobbyId}/lastUpdatedAt`);
+  try {
+    await set(timestampRef, serverTimestamp());
+  } catch (error) {
+    // Silently fail - this is not critical functionality
+    console.warn('Failed to update lastUpdatedAt:', error);
+  }
+};
+
+/**
  * Generate a new lobby ID (UUIDv4)
  * The UUID serves as both identifier and access control
  */
@@ -43,6 +59,7 @@ export const createLobby = async (lobbyId, hostInfo, gameConfig) => {
     id: lobbyId,
     hostId: hostInfo.id,
     createdAt: serverTimestamp(),
+    lastUpdatedAt: serverTimestamp(), // Used by cleanup function to delete stale lobbies
     status: 'waiting', // waiting, in-game, completed
     config: gameConfig,
     players: {
