@@ -160,6 +160,18 @@ export default function GenAIDisclosureModal({ isOpen, onClose, faction = 'Termi
             border: '1px solid rgba(100, 116, 139, 0.3)',
             textAlign: 'center'
           }}>
+            <img 
+              src={`${process.env.PUBLIC_URL}/griff.jpg`}
+              alt="Griff"
+              style={{
+                width: '80px',
+                height: '80px',
+                borderRadius: '50%',
+                objectFit: 'cover',
+                border: `3px solid ${factionColors.PRIMARY}`,
+                marginBottom: '12px'
+              }}
+            />
             <p style={{ color: '#94a3b8', fontSize: '14px', fontWeight: 'bold', margin: '0 0 4px 0' }}>
               Griff
             </p>
