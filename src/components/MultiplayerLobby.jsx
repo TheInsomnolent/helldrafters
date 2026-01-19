@@ -899,7 +899,7 @@ export function MultiplayerWaitingRoom({
  * Displays lobby code, connected players, and host status
  */
 export function MultiplayerStatusBar({ gameConfig, onDisconnect }) {
-  const { isHost, lobbyId, connectedPlayers, playerSlot } = useMultiplayer();
+  const { isHost, lobbyId, connectedPlayers, playerSlot, kickPlayerFromLobby } = useMultiplayer();
   const [copied, setCopied] = useState(false);
   const [lobbyCodeVisible, setLobbyCodeVisible] = useState(false);
   const factionColors = getFactionColors(gameConfig?.faction || 'terminid');
@@ -1000,22 +1000,62 @@ export function MultiplayerStatusBar({ gameConfig, onDisconnect }) {
         {/* Connected Player Names */}
         <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
           {Object.values(connectedPlayers || {}).map((player, idx) => (
-            <span
+            <div
               key={player.id || idx}
               style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '4px',
                 fontSize: '11px',
                 padding: '2px 8px',
-                backgroundColor: player.isHost 
-                  ? `${factionColors.PRIMARY}20`
-                  : 'rgba(59, 130, 246, 0.2)',
-                color: player.isHost ? factionColors.PRIMARY : COLORS.ACCENT_BLUE,
+                backgroundColor: player.connected === false 
+                  ? 'rgba(239, 68, 68, 0.2)' 
+                  : player.isHost 
+                    ? `${factionColors.PRIMARY}20`
+                    : 'rgba(59, 130, 246, 0.2)',
+                color: player.connected === false 
+                  ? '#ef4444'
+                  : player.isHost ? factionColors.PRIMARY : COLORS.ACCENT_BLUE,
                 borderRadius: '4px',
-                fontWeight: player.id === connectedPlayers?.self?.id ? '900' : '600'
+                fontWeight: player.id === connectedPlayers?.self?.id ? '900' : '600',
+                opacity: player.connected === false ? 0.7 : 1
               }}
             >
-              {player.isHost && <Crown size={10} style={{ marginRight: '4px', verticalAlign: 'middle' }} />}
-              {player.name || `Player ${player.slot + 1}`}
-            </span>
+              {player.isHost && <Crown size={10} style={{ marginRight: '2px', verticalAlign: 'middle' }} />}
+              {player.connected === false && <WifiOff size={10} style={{ marginRight: '2px', verticalAlign: 'middle' }} />}
+              <span>{player.name || `Player ${(player.slot ?? 0) + 1}`}</span>
+              {/* Kick button for host (only shows for non-host players) */}
+              {isHost && !player.isHost && (
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    if (window.confirm(`Kick ${player.name || 'this player'}? They can rejoin with the lobby code.`)) {
+                      kickPlayerFromLobby(player.id);
+                    }
+                  }}
+                  style={{
+                    marginLeft: '4px',
+                    padding: '0 4px',
+                    backgroundColor: 'transparent',
+                    color: '#ef4444',
+                    border: 'none',
+                    borderRadius: '2px',
+                    fontSize: '10px',
+                    cursor: 'pointer',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    opacity: 0.6,
+                    transition: 'opacity 0.2s'
+                  }}
+                  onMouseEnter={(e) => e.currentTarget.style.opacity = '1'}
+                  onMouseLeave={(e) => e.currentTarget.style.opacity = '0.6'}
+                  title={`Kick ${player.name || 'player'}`}
+                >
+                  ✕
+                </button>
+              )}
+            </div>
           ))}
         </div>
 

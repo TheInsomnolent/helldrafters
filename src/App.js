@@ -6,7 +6,7 @@ import { MASTER_DB } from './data/itemsByWarbond';
 import { STARTING_LOADOUT, DIFFICULTY_CONFIG, getMissionsForDifficulty } from './constants/gameConfig';
 import { ARMOR_PASSIVE_DESCRIPTIONS } from './constants/armorPassives';
 import { getItemById } from './utils/itemHelpers';
-import { getDraftHandSize, getWeightedPool, generateDraftHand, generateRandomDraftOrder } from './utils/draftHelpers';
+import { getDraftHandSize, getWeightedPool, generateDraftHand } from './utils/draftHelpers';
 import { areStratagemSlotsFull, getFirstEmptyStratagemSlot } from './utils/loadoutHelpers';
 import { getArmorComboDisplayName } from './utils/itemHelpers';
 import { getItemIconUrl } from './utils/iconHelpers';
@@ -61,7 +61,8 @@ function HelldiversRogueliteApp() {
     clearHostDisconnected,
     playerSlot,
     sendAction,
-    setActionHandler
+    setActionHandler,
+    lobbyData
   } = multiplayer;
   
   // Register dispatch with multiplayer context
@@ -256,6 +257,26 @@ function HelldiversRogueliteApp() {
 
   // --- CORE LOGIC: THE DRAFT DIRECTOR ---
 
+  // Helper to check if a player at a given index is connected in multiplayer
+  const isPlayerConnected = (playerIdx) => {
+    if (!isMultiplayer) return true;
+    if (!lobbyData?.players) return true;
+    const lobbyPlayer = Object.values(lobbyData.players).find(p => p.slot === playerIdx);
+    return lobbyPlayer?.connected !== false;
+  };
+
+  // Get indices of connected players for draft order
+  const getConnectedPlayerIndices = () => {
+    if (!isMultiplayer) {
+      return Array.from({ length: gameConfig.playerCount }, (_, i) => i);
+    }
+    if (!lobbyData?.players) {
+      return Array.from({ length: gameConfig.playerCount }, (_, i) => i);
+    }
+    return Array.from({ length: gameConfig.playerCount }, (_, i) => i)
+      .filter(idx => isPlayerConnected(idx));
+  };
+
   const generateDraftHandForPlayer = (playerIdx) => {
     if (!players || !players[playerIdx]) {
       return [];
@@ -304,8 +325,18 @@ function HelldiversRogueliteApp() {
       dispatch(actions.setPlayers(updatedPlayers));
     }
     
-    // Generate randomized draft order for this round
-    const draftOrder = generateRandomDraftOrder(gameConfig.playerCount);
+    // Generate randomized draft order for this round, filtering out disconnected players in multiplayer
+    const connectedIndices = getConnectedPlayerIndices();
+    
+    // If no players are connected, skip directly to dashboard
+    if (connectedIndices.length === 0) {
+      console.log('No connected players, skipping draft phase');
+      dispatch(actions.setPhase('DASHBOARD'));
+      return;
+    }
+    
+    // Randomize only connected players
+    const draftOrder = connectedIndices.sort(() => Math.random() - 0.5);
     const firstPlayerIdx = draftOrder[0];
     
     dispatch(actions.setDraftState({
@@ -406,13 +437,22 @@ function HelldiversRogueliteApp() {
       dispatch(actions.setPlayers(clearedPlayers));
     }
     
-    // Move to next player in draft order or complete
+    // Move to next connected player in draft order or complete
     const draftOrder = draftState.draftOrder || [];
     const currentPositionInOrder = draftOrder.indexOf(currentPlayerIdx);
     
-    if (currentPositionInOrder >= 0 && currentPositionInOrder < draftOrder.length - 1) {
-      // Move to next player in the draft order
-      const nextIdx = draftOrder[currentPositionInOrder + 1];
+    // Find next connected player in the draft order
+    let nextIdx = null;
+    for (let i = currentPositionInOrder + 1; i < draftOrder.length; i++) {
+      const candidateIdx = draftOrder[i];
+      if (isPlayerConnected(candidateIdx)) {
+        nextIdx = candidateIdx;
+        break;
+      }
+    }
+    
+    if (nextIdx !== null) {
+      // Move to next connected player in the draft order
       dispatch(actions.setDraftState({
         activePlayerIndex: nextIdx,
         roundCards: generateDraftHandForPlayer(nextIdx),
@@ -2225,6 +2265,7 @@ function HelldiversRogueliteApp() {
         canAffordChoice={canAffordChoice}
         formatOutcome={formatOutcome}
         formatOutcomes={formatOutcomes}
+        connectedPlayerIndices={isMultiplayer ? getConnectedPlayerIndices() : null}
         onPlayerChoice={(choice) => dispatch(actions.setEventPlayerChoice(choice))}
         onEventChoice={handleEventChoice}
         onAutoContinue={handleAutoContinue}
@@ -3022,6 +3063,11 @@ function HelldiversRogueliteApp() {
             const { getSlotLockCost, MAX_LOCKED_SLOTS } = require('./constants/balancingConfig');
             // In multiplayer, only allow the current player to lock their own slots
             const isCurrentPlayer = !isMultiplayer || (playerSlot === index);
+            // Get connection status from lobby data if in multiplayer
+            const lobbyPlayer = isMultiplayer && lobbyData?.players 
+              ? Object.values(lobbyData.players).find(p => p.slot === index)
+              : null;
+            const isConnected = !isMultiplayer || lobbyPlayer?.connected !== false;
             return (
               <LoadoutDisplay 
                 key={player.id} 
@@ -3034,6 +3080,8 @@ function HelldiversRogueliteApp() {
                 maxLockedSlots={MAX_LOCKED_SLOTS}
                 onLockSlot={isCurrentPlayer ? handleLockSlot : undefined}
                 onUnlockSlot={isCurrentPlayer ? handleUnlockSlot : undefined}
+                isConnected={isConnected}
+                isMultiplayer={isMultiplayer}
               />
             );
           })}
