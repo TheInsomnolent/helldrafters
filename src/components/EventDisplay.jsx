@@ -150,6 +150,7 @@ export default function EventDisplay({
     const sourcePlayerIndex = isSwapChoice(selectedChoice) ? eventSourcePlayerSelection : eventPlayerChoice;
     if (sourcePlayerIndex === null) return [];
     const player = players[sourcePlayerIndex];
+    if (!player || !player.loadout) return [];
     return player.loadout.stratagems
       .map((stratagemId, slotIndex) => ({
         stratagemId,
@@ -163,6 +164,7 @@ export default function EventDisplay({
   const targetPlayerHasStratagem = (targetPlayerIndex, stratagemId) => {
     if (targetPlayerIndex === null || targetPlayerIndex === undefined) return false;
     const player = players[targetPlayerIndex];
+    if (!player || !player.loadout) return false;
     return player.loadout.stratagems.includes(stratagemId);
   };
 
@@ -170,6 +172,7 @@ export default function EventDisplay({
   const targetPlayerHasFreeSlot = (targetPlayerIndex) => {
     if (targetPlayerIndex === null || targetPlayerIndex === undefined) return false;
     const player = players[targetPlayerIndex];
+    if (!player || !player.loadout) return false;
     return player.loadout.stratagems.some(s => s === null);
   };
 
