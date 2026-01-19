@@ -44,6 +44,8 @@ This will:
 
 This is your Firebase project ID.
 
+**IMPORTANT**: This secret is **required** for CI deployment. The workflow will automatically generate the correct `.firebaserc` file using this value.
+
 #### Find your project ID:
 
 Option A - From `.firebaserc`:
@@ -124,7 +126,48 @@ firebase login:ci
 ```
 Update the secret in GitHub with the new token.
 
-### Error: "Project not found"
+### Error: "Missing permissions required for functions deploy"
+
+**Full Error**: `Error: Missing permissions required for functions deploy. You must have permission iam.serviceAccounts.ActAs`
+
+**Problem**: The account that generated the `FIREBASE_TOKEN` doesn't have sufficient permissions to deploy Cloud Functions.
+
+**Solution**:
+
+1. **Option A - Add Service Account User Role** (Recommended):
+   ```bash
+   # Go to IAM admin in Google Cloud Console
+   https://console.cloud.google.com/iam-admin/iam?project=YOUR_PROJECT_ID
+   ```
+   - Find the user that generated the token
+   - Click "Edit" (pencil icon)
+   - Click "Add Another Role"
+   - Add "Service Account User" role
+   - Click "Save"
+   - Regenerate token: `firebase login:ci`
+   - Update GitHub secret with new token
+
+2. **Option B - Use Owner Account**:
+   ```bash
+   # Logout current user
+   firebase logout
+   
+   # Login with project owner account
+   firebase login:ci
+   ```
+   - Copy the new token
+   - Update `FIREBASE_TOKEN` secret in GitHub
+
+3. **Option C - Use Service Account** (Most Secure):
+   - Go to [Google Cloud Console](https://console.cloud.google.com/)
+   - Navigate to "IAM & Admin" → "Service Accounts"
+   - Create a new service account
+   - Grant roles: "Firebase Admin", "Service Account User"
+   - Generate JSON key
+   - Base64 encode the key: `cat key.json | base64`
+   - Use this as `FIREBASE_TOKEN` (requires workflow changes)
+
+### Error: "Project not found" or "your-project-id-here"
 
 **Problem**: The `FIREBASE_PROJECT_ID` doesn't match your Firebase project.
 

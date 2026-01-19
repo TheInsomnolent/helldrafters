@@ -17,6 +17,7 @@ All notable changes to Helldrafters will be documented in this file.
 
 ### Fixed
 - Added package-lock.json for Firebase Functions to enable faster CI builds
+- CI workflow now auto-generates .firebaserc from FIREBASE_PROJECT_ID secret
 - Initial release of Helldrafters
 - Roguelite draft system for Helldivers 2
 - Support for 1-4 players
