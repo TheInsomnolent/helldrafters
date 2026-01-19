@@ -22,7 +22,7 @@ All notable changes to Helldrafters will be documented in this file.
 - Upgraded Firebase Functions runtime from Node.js 18 to Node.js 20 (18 was decommissioned)
 - Removed redundant cleanupOldLobbiesManual function (manual cleanup available via Firebase Console)
 - Initial release of Helldrafters
-- Roguelite draft system for Helldivers 2
+- Roguelike draft system for Helldivers 2
 - Support for 1-4 players
 - Smart drafting system with weighted card pools
 - Theater selection (Terminids, Automatons, Illuminate)

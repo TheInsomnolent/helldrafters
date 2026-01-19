@@ -1,4 +1,4 @@
-// Type constants for Helldivers Roguelite
+// Type constants for Helldivers Roguelike
 
 export const RARITY = {
   COMMON: 'Common',

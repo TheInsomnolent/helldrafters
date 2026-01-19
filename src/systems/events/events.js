@@ -1,5 +1,5 @@
 // src/events.js
-// Events system for Helldivers Roguelite
+// Events system for Helldivers Roguelike
 // Inspired by Slay the Spire's event philosophy
 
 export const EVENT_TYPES = {

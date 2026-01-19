@@ -1,6 +1,6 @@
 # Helldrafters
 
-**A roguelite draft director for Helldivers 2**
+**A roguelike draft director for Helldivers 2**
 
 🎮 **[Play Now](https://theinsomnolent.github.io/helldrafters/)**
 
@@ -8,7 +8,7 @@
 
 ## What is Helldrafters?
 
-Helldrafters is a companion app that transforms Helldivers 2 into a roguelite experience. Instead of choosing your loadout freely, you draft equipment cards between missions, building your arsenal as you progress through escalating difficulties.
+Helldrafters is a companion app that transforms Helldivers 2 into a roguelike experience. Instead of choosing your loadout freely, you draft equipment cards between missions, building your arsenal as you progress through escalating difficulties.
 
 Perfect for solo players or squads looking for a fresh challenge, Helldrafters adds strategic depth and replayability by forcing you to adapt to what the draft offers rather than relying on your usual meta loadouts.
 

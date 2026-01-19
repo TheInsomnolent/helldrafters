@@ -45,7 +45,7 @@ import { getWarbondById } from './constants/warbonds';
 
 
 
-function HelldiversRogueliteApp() {
+function HelldiversRoguelikeApp() {
   // --- STATE (Using useReducer for complex state management) ---
   const [state, dispatch] = useReducer(gameReducer, initialState);
   
@@ -1664,7 +1664,7 @@ function HelldiversRogueliteApp() {
           </div>
           <div style={{ background: 'linear-gradient(to right, #5a5142, #6b6052)', padding: '12px', marginBottom: '60px', maxWidth: '620px', margin: '0 auto 60px auto' }}>
             <h2 style={{ fontSize: '20px', fontWeight: 'bold', color: 'white', textTransform: 'uppercase', letterSpacing: '0.3em', margin: 0 }}>
-              Roguelite Director
+              Roguelike Director
             </h2>
           </div>
           
@@ -4460,10 +4460,10 @@ function HelldiversRogueliteApp() {
 }
 
 // Wrapper component that provides multiplayer context
-export default function HelldiversRoguelite() {
+export default function HelldiversRoguelike() {
   return (
     <MultiplayerProvider>
-      <HelldiversRogueliteApp />
+      <HelldiversRoguelikeApp />
     </MultiplayerProvider>
   );
 }
