@@ -34,7 +34,7 @@ export default function ContributorsModal({ isOpen, onClose, faction = 'Terminid
       const db = getFirebaseDatabase();
       const contributorsRef = ref(db, 'contributors');
       
-      const unsubscribe = onValue(contributorsRef, (snapshot) => {
+      onValue(contributorsRef, (snapshot) => {
         if (snapshot.exists()) {
           const data = snapshot.val();
           
@@ -64,12 +64,6 @@ export default function ContributorsModal({ isOpen, onClose, faction = 'Terminid
         setError('Unable to load contributors at this time.');
         setLoading(false);
       });
-      
-      return () => {
-        if (contributorsRef) {
-          off(contributorsRef);
-        }
-      };
     } catch (err) {
       console.error('Error setting up contributors listener:', err);
       setError('Firebase is not initialized. Please refresh the page.');
