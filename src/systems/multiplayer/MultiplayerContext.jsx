@@ -180,7 +180,7 @@ export function MultiplayerProvider({ children }) {
       lobbyUnsubscribeRef.current = subscribeLobby(joinLobbyId, (lobby) => {
         if (lobby) {
           // Check if current player has been kicked (no longer in players list)
-          const stillInLobby = lobby.players && Object.keys(lobby.players).includes(result.playerId);
+          const stillInLobby = lobby.players && Object.keys(lobby.players).includes(playerId);
           if (!stillInLobby) {
             // Player was kicked
             setWasKicked(true);

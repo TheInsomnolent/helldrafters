@@ -201,11 +201,9 @@ function HelldiversRogueliteApp() {
       
       dispatch(actions.setPlayers(updatedPlayers));
       dispatch(actions.updateGameConfig({ playerCount: updatedPlayers.length }));
-      
-      // Sync the updated state to all clients
-      syncState(state);
+      // Note: State will be synced to clients automatically via the existing syncState effect
     }
-  }, [isMultiplayer, isHost, lobbyData, phase, players, syncState, state, dispatch]);
+  }, [isMultiplayer, isHost, lobbyData, phase, players, dispatch]);
 
   // Save game state to localStorage whenever it changes (for crash recovery)
   useEffect(() => {
