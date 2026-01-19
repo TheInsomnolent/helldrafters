@@ -4,6 +4,13 @@ import { getRareWeightMultiplier } from '../constants/balancingConfig';
 import { MASTER_DB } from '../data/itemsByWarbond';
 
 /**
+ * Diversity penalty multiplier for draft hand generation
+ * Each occurrence of a type beyond the first reduces weight by this factor
+ * Lower values create stronger diversity (0.1 = 90% reduction per occurrence)
+ */
+const DIVERSITY_PENALTY_MULTIPLIER = 0.1;
+
+/**
  * Generate a randomized order for draft picks
  * @param {number} playerCount - Number of players in the game
  * @returns {number[]} Array of player indices in randomized order
@@ -235,7 +242,7 @@ export const generateDraftHand = (
       // Penalty: reduce weight by 90% for each occurrence beyond the first
       let adjustedWeight = poolItem.weight;
       if (handSize >= 3 && countOfType > 0) {
-        adjustedWeight = Math.max(1, poolItem.weight * Math.pow(0.1, countOfType));
+        adjustedWeight = Math.max(1, poolItem.weight * Math.pow(DIVERSITY_PENALTY_MULTIPLIER, countOfType));
       }
       
       return { ...poolItem, adjustedWeight };
@@ -250,6 +257,7 @@ export const generateDraftHand = (
     }
 
     let randomNum = Math.random() * totalWeight;
+    let selectedPoolIndex = -1;
 
     for (let j = 0; j < adjustedPool.length; j++) {
       const poolItem = adjustedPool[j];
@@ -262,6 +270,8 @@ export const generateDraftHand = (
 
       randomNum -= poolItem.adjustedWeight;
       if (randomNum <= 0) {
+        selectedPoolIndex = j;
+        
         // Add either item or armor combo to hand
         if (poolItem.isArmorCombo) {
           console.log(`[Draft] Selected armor combo: ${poolItem.armorCombo.passive} (${poolItem.armorCombo.armorClass})`, {
@@ -291,17 +301,13 @@ export const generateDraftHand = (
           }
         }
         
-        // Remove from original pool to avoid duplicates in same hand
-        // Find the original pool item by comparing references
-        const originalIndex = pool.findIndex(p => 
-          p.isArmorCombo === poolItem.isArmorCombo && 
-          (p.isArmorCombo ? p.armorCombo === poolItem.armorCombo : p.item === poolItem.item)
-        );
-        if (originalIndex !== -1) {
-          pool.splice(originalIndex, 1);
-        }
         break;
       }
+    }
+    
+    // Remove selected item from pool to avoid duplicates in same hand
+    if (selectedPoolIndex !== -1) {
+      pool.splice(selectedPoolIndex, 1);
     }
   }
   
