@@ -315,6 +315,20 @@ export const PYTHON_COMMANDOS_ITEMS = [
 ];
 
 // =============================================================================
+// REDACTED REGIMENT (Premium Warbond)
+// =============================================================================
+export const REDACTED_REGIMENT_ITEMS = [
+  { id: 'p_censor', name: 'R-72 Censor', type: TYPE.PRIMARY, rarity: RARITY.UNCOMMON, tags: [TAGS.PRECISION], warbond: 'redacted_regiment' },
+  { id: 'p_suppressor', name: 'AR-59 Suppressor', type: TYPE.PRIMARY, rarity: RARITY.UNCOMMON, tags: [], warbond: 'redacted_regiment' },
+  { id: 's_re_educator', name: 'P-35 Re-Educator', type: TYPE.SECONDARY, rarity: RARITY.UNCOMMON, tags: [], warbond: 'redacted_regiment' },
+  { id: 'a_rs67', name: 'RS-89 Shadow Paragon', type: TYPE.ARMOR, rarity: RARITY.UNCOMMON, tags: [], warbond: 'redacted_regiment', passive: ARMOR_PASSIVE.REDUCED_SIGNATURE, armorClass: ARMOR_CLASS.LIGHT },
+  { id: 'a_rs67ns', name: 'RS-67 Null Cipher', type: TYPE.ARMOR, rarity: RARITY.UNCOMMON, tags: [], warbond: 'redacted_regiment', passive: ARMOR_PASSIVE.REDUCED_SIGNATURE, armorClass: ARMOR_CLASS.MEDIUM },
+  { id: 'b_concealed_insertion', name: 'Concealed Insertion', type: TYPE.BOOSTER, rarity: RARITY.UNCOMMON, tags: [TAGS.SMOKE], warbond: 'redacted_regiment' },
+  { id: 'st_c4', name: 'C4 Pack', type: TYPE.STRATAGEM, rarity: RARITY.RARE, tags: [TAGS.SUPPORT_WEAPON, TAGS.EXPLOSIVE, TAGS.BACKPACK], warbond: 'redacted_regiment' },
+  { id: 'g_lure_mine', name: 'TM-1 Lure Mine', type: TYPE.GRENADE, rarity: RARITY.RARE, tags: [TAGS.EXPLOSIVE], warbond: 'redacted_regiment' },
+];
+
+// =============================================================================
 // HALO: ODST (Legendary Warbond)
 // =============================================================================
 export const OBEDIENT_DEMOCRACY_SUPPORT_TROOPERS_ITEMS = [
@@ -419,6 +433,7 @@ export const MASTER_DB = [
   ...CONTROL_GROUP_ITEMS,
   ...DUST_DEVILS_ITEMS,
   ...PYTHON_COMMANDOS_ITEMS,
+  ...REDACTED_REGIMENT_ITEMS,
   ...OBEDIENT_DEMOCRACY_SUPPORT_TROOPERS_ITEMS,
   ...RIGHTEOUS_REVENANTS_ITEMS,
   ...PREMIUM_EDITION_ITEMS,
