@@ -1,7 +1,7 @@
-import React, { useState, useEffect } from 'react';
-import { X, Heart, Crown } from 'lucide-react';
+import { onValue, ref } from 'firebase/database';
+import { Crown, Heart, X } from 'lucide-react';
+import React, { useEffect, useState } from 'react';
 import { getFactionColors } from '../constants/theme';
-import { ref, onValue } from 'firebase/database';
 import { getFirebaseDatabase, isFirebaseConfigured } from '../systems/multiplayer/firebaseConfig';
 
 /**
@@ -10,7 +10,6 @@ import { getFirebaseDatabase, isFirebaseConfigured } from '../systems/multiplaye
  * Displays subscribers with their tier badges and subscription duration
  */
 export default function ContributorsModal({ isOpen, onClose, faction = 'Terminids' }) {
-  console.log('ContributorsModal rendered, isOpen:', isOpen);
   const factionColors = getFactionColors(faction);
   const [contributors, setContributors] = useState([]);
   const [loading, setLoading] = useState(true);
