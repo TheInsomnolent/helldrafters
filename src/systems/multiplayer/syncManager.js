@@ -8,15 +8,15 @@
  * - Host processes client actions and updates game state
  */
 
-import { 
-  ref, 
-  set, 
-  push, 
-  remove, 
-  onValue, 
+import {
+  get,
   onChildAdded,
+  onValue,
+  push,
+  ref,
+  remove,
   serverTimestamp,
-  get
+  set
 } from 'firebase/database';
 import { getFirebaseDatabase } from './firebaseConfig';
 

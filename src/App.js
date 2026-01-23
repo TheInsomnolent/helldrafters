@@ -325,7 +325,7 @@ function HelldiversRoguelikeApp() {
         
         if (newLobbyId) {
           // Start the multiplayer game (this sets up action subscription)
-          await startMultiplayerGame();
+          await startMultiplayerGame(newLobbyId, true);
           
           // Load the game state
           dispatch(actions.loadGameState(normalizedState));
