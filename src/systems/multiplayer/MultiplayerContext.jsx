@@ -67,6 +67,9 @@ export function MultiplayerProvider({ children }) {
   // Handler for special actions (like DRAFT_PICK) that need app-level processing
   const actionHandlerRef = useRef(null);
   
+  // Ref for lobbyData to avoid stale closures in subscriptions
+  const lobbyDataRef = useRef(null);
+  
   // Refs for cleanup
   const lobbyUnsubscribeRef = useRef(null);
   const stateUnsubscribeRef = useRef(null);
@@ -79,6 +82,11 @@ export function MultiplayerProvider({ children }) {
       setFirebaseReady(success);
     }
   }, []);
+  
+  // Keep lobbyDataRef in sync with lobbyData state
+  useEffect(() => {
+    lobbyDataRef.current = lobbyData;
+  }, [lobbyData]);
   
   // Cleanup on unmount
   useEffect(() => {
@@ -291,8 +299,11 @@ export function MultiplayerProvider({ children }) {
       // Process the action
       const { playerId: actionPlayerId, action } = actionData;
       
+      // Use ref to get current lobby data (avoids stale closure)
+      const currentLobbyData = lobbyDataRef.current;
+      
       // Find the player's slot
-      const player = Object.values(lobbyData?.players || {}).find(p => p.id === actionPlayerId);
+      const player = Object.values(currentLobbyData?.players || {}).find(p => p.id === actionPlayerId);
       if (!player) {
         console.warn('Action from unknown player:', actionPlayerId);
         await removeClientAction(lobbyId, actionId);
@@ -321,7 +332,7 @@ export function MultiplayerProvider({ children }) {
       // Remove processed action
       await removeClientAction(lobbyId, actionId);
     });
-  }, [isHost, lobbyId, lobbyData]);
+  }, [isHost, lobbyId]);
   
   /**
    * Host: Sync current state to clients
