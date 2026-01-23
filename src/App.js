@@ -1,47 +1,46 @@
-import React, { useReducer, useEffect } from 'react';
-import { HashRouter, Routes, Route } from 'react-router-dom';
-import { RefreshCw, CheckCircle, XCircle, Users, Bug } from 'lucide-react';
-import { selectRandomEvent, EVENT_TYPES, EVENTS } from './systems/events/events';
-import { RARITY, TYPE } from './constants/types';
-import { MASTER_DB } from './data/itemsByWarbond';
-import { STARTING_LOADOUT, DIFFICULTY_CONFIG, getMissionsForDifficulty } from './constants/gameConfig';
-import { ARMOR_PASSIVE_DESCRIPTIONS } from './constants/armorPassives';
-import { getItemById } from './utils/itemHelpers';
-import { getDraftHandSize, getWeightedPool, generateDraftHand } from './utils/draftHelpers';
-import { areStratagemSlotsFull, getFirstEmptyStratagemSlot } from './utils/loadoutHelpers';
-import { getArmorComboDisplayName } from './utils/itemHelpers';
-import { getItemIconUrl } from './utils/iconHelpers';
-import { processAllOutcomes, canAffordChoice, formatOutcome, formatOutcomes, needsPlayerChoice, applyGainBoosterWithSelection } from './systems/events/eventProcessor';
-import { exportGameStateToFile, parseSaveFile, normalizeLoadedState } from './systems/persistence/saveManager';
-import { 
-  trackGameStart, 
-  trackGameEnd, 
-  trackMissionComplete, 
-  trackDraftSelection, 
-  trackEventChoice,
-  trackMultiplayerAction,
-  trackModalOpen,
-  trackPageView
-} from './utils/analytics';
-import GameHeader from './components/GameHeader';
-import GameFooter from './components/GameFooter';
-import EventDisplay from './components/EventDisplay';
-import LoadoutDisplay from './components/LoadoutDisplay';
-import GameLobby from './components/GameLobby';
-import GameConfiguration from './components/GameConfiguration';
-import RarityWeightDebug from './components/RarityWeightDebug';
-import ExplainerModal from './components/ExplainerModal';
-import PatchNotesModal from './components/PatchNotesModal';
-import GenAIDisclosureModal from './components/GenAIDisclosureModal';
+import { Bug, CheckCircle, RefreshCw, Users, XCircle } from 'lucide-react';
+import React, { useEffect, useReducer } from 'react';
+import { HashRouter, Route, Routes } from 'react-router-dom';
+import CardLibrary from './components/CardLibrary';
 import ContributorsModal from './components/ContributorsModal';
+import EventDisplay from './components/EventDisplay';
+import ExplainerModal from './components/ExplainerModal';
+import GameConfiguration from './components/GameConfiguration';
+import GameFooter from './components/GameFooter';
+import GameHeader from './components/GameHeader';
+import GameLobby from './components/GameLobby';
+import GenAIDisclosureModal from './components/GenAIDisclosureModal';
+import LoadoutDisplay from './components/LoadoutDisplay';
 import { JoinGameScreen, MultiplayerModeSelect, MultiplayerStatusBar, MultiplayerWaitingRoom } from './components/MultiplayerLobby';
+import PatchNotesModal from './components/PatchNotesModal';
+import RarityWeightDebug from './components/RarityWeightDebug';
+import { ARMOR_PASSIVE_DESCRIPTIONS } from './constants/armorPassives';
+import { DIFFICULTY_CONFIG, getMissionsForDifficulty, STARTING_LOADOUT } from './constants/gameConfig';
 import { BUTTON_STYLES, COLORS, getFactionColors, GRADIENTS, SHADOWS } from './constants/theme';
+import { RARITY, TYPE } from './constants/types';
 import { getWarbondById } from './constants/warbonds';
+import { MASTER_DB } from './data/itemsByWarbond';
 import * as actions from './state/actions';
 import * as types from './state/actionTypes';
 import { gameReducer, initialState } from './state/gameReducer';
-import { MultiplayerProvider, useMultiplayer, initializeAnalytics } from './systems/multiplayer';
-import CardLibrary from './components/CardLibrary';
+import { applyGainBoosterWithSelection, canAffordChoice, formatOutcome, formatOutcomes, needsPlayerChoice, processAllOutcomes } from './systems/events/eventProcessor';
+import { EVENT_TYPES, EVENTS, selectRandomEvent } from './systems/events/events';
+import { initializeAnalytics, MultiplayerProvider, useMultiplayer } from './systems/multiplayer';
+import { exportGameStateToFile, normalizeLoadedState, parseSaveFile } from './systems/persistence/saveManager';
+import {
+  trackDraftSelection,
+  trackEventChoice,
+  trackGameEnd,
+  trackGameStart,
+  trackMissionComplete,
+  trackModalOpen,
+  trackMultiplayerAction,
+  trackPageView
+} from './utils/analytics';
+import { generateDraftHand, getDraftHandSize, getWeightedPool } from './utils/draftHelpers';
+import { getItemIconUrl } from './utils/iconHelpers';
+import { getArmorComboDisplayName, getItemById } from './utils/itemHelpers';
+import { areStratagemSlotsFull, getFirstEmptyStratagemSlot } from './utils/loadoutHelpers';
 
 function HelldiversRoguelikeApp() {
   // --- STATE (Using useReducer for complex state management) ---
@@ -1528,14 +1527,14 @@ function HelldiversRoguelikeApp() {
   const ItemCard = ({ item, onSelect, onRemove }) => {
     // Guard: if item is undefined, don't render
     if (!item) {
-      console.log('[ItemCard] Skipping null item');
+      console.debug('[ItemCard] Skipping null item');
       return null;
     }
     
     // Check if this is an armor combo (has 'items' array and 'passive' property)
     const isArmorCombo = item.items && Array.isArray(item.items) && item.items.length > 0 && item.passive && item.armorClass;
     
-    console.log('[ItemCard] Rendering item:', { 
+    console.debug('[ItemCard] Rendering item:', { 
       name: item.name, 
       id: item.id, 
       passive: item.passive, 
@@ -1546,7 +1545,7 @@ function HelldiversRoguelikeApp() {
     
     // Guard: for regular items, require name; for armor combos, require items with names
     if (!isArmorCombo && !item.name) {
-      console.log('[ItemCard] Skipping - not armor combo and no name');
+      console.debug('[ItemCard] Skipping - not armor combo and no name');
       return null;
     }
     
@@ -1555,7 +1554,7 @@ function HelldiversRoguelikeApp() {
     
     // Guard: if displayItem is invalid, don't render
     if (!displayItem || !displayItem.name) {
-      console.log('[ItemCard] Skipping - displayItem invalid:', displayItem);
+      console.debug('[ItemCard] Skipping - displayItem invalid:', displayItem);
       return null;
     }
     

@@ -8,16 +8,16 @@
  * - Only the host can write to gameState, clients write to clientActions
  */
 
-import { v4 as uuidv4 } from 'uuid';
-import { 
-  ref, 
-  set, 
-  get, 
-  remove, 
-  onValue, 
+import {
+  get,
   onDisconnect,
-  serverTimestamp 
+  onValue,
+  ref,
+  remove,
+  serverTimestamp,
+  set
 } from 'firebase/database';
+import { v4 as uuidv4 } from 'uuid';
 import { getFirebaseDatabase } from './firebaseConfig';
 
 /**
@@ -454,6 +454,11 @@ export const updatePlayerConfig = async (lobbyId, playerId, config) => {
     if (config.includeSuperstore !== undefined) {
       const superstoreRef = ref(db, `lobbies/${lobbyId}/players/${playerId}/includeSuperstore`);
       updates.push(set(superstoreRef, config.includeSuperstore));
+    }
+
+    if (config.excludedItems !== undefined) {
+      const excludedItemsRef = ref(db, `lobbies/${lobbyId}/players/${playerId}/excludedItems`);
+      updates.push(set(excludedItemsRef, config.excludedItems));
     }
     
     if (config.ready !== undefined) {
