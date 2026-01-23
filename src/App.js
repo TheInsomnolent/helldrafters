@@ -121,6 +121,7 @@ function HelldiversRoguelikeApp() {
     customSetup,
     players,
     draftState,
+    draftHistory,
     sacrificeState,
     eventsEnabled,
     currentEvent,
@@ -178,6 +179,9 @@ function HelldiversRoguelikeApp() {
     // Only handle mid-game joins (not during lobby or menu)
     if (phase === 'MENU' || phase === 'LOBBY' || !players || players.length === 0) return;
     
+    // Don't interrupt an ongoing draft (including retrospective drafts)
+    if (phase === 'DRAFT') return;
+    
     // Get currently connected players from lobby
     const lobbyPlayers = Object.values(lobbyData.players).filter(p => p.connected !== false);
     
@@ -209,7 +213,8 @@ function HelldiversRoguelikeApp() {
           excludedItems: [],
           weaponRestricted: false,
           lockedSlots: [],
-          extracted: true
+          extracted: true,
+          needsRetrospectiveDraft: draftHistory.length > 0 // Flag if they need to catch up
         };
         updatedPlayers.push(newPlayer);
       });
@@ -219,9 +224,53 @@ function HelldiversRoguelikeApp() {
       
       dispatch(actions.setPlayers(updatedPlayers));
       dispatch(actions.updateGameConfig({ playerCount: updatedPlayers.length }));
+      
+      // If there is draft history, start retrospective draft for the first new player
+      if (draftHistory.length > 0 && phase === 'DASHBOARD') {
+        const newPlayerIndex = updatedPlayers.findIndex(p => p.needsRetrospectiveDraft);
+        if (newPlayerIndex !== -1) {
+          // Start retrospective draft phase
+          const retroPlayer = updatedPlayers[newPlayerIndex];
+          const firstHistoryEntry = draftHistory[0];
+          const handSize = getDraftHandSize(firstHistoryEntry.starRating);
+          const playerLockedSlots = retroPlayer.lockedSlots || [];
+          
+          const retroHand = generateDraftHand(
+            retroPlayer,
+            firstHistoryEntry.difficulty,
+            gameConfig,
+            burnedCards,
+            updatedPlayers,
+            (cardId) => dispatch(actions.addBurnedCard(cardId)),
+            handSize,
+            playerLockedSlots
+          );
+          
+          // Initialize retrospective draft progress
+          const initPlayers = [...updatedPlayers];
+          initPlayers[newPlayerIndex] = {
+            ...retroPlayer,
+            retrospectiveDraftsCompleted: 0
+          };
+          dispatch(actions.setPlayers(initPlayers));
+          
+          dispatch(actions.startRetrospectiveDraft(newPlayerIndex));
+          dispatch(actions.setDraftState({
+            activePlayerIndex: newPlayerIndex,
+            roundCards: retroHand,
+            isRerolling: false,
+            pendingStratagem: null,
+            extraDraftRound: 0,
+            draftOrder: [newPlayerIndex],
+            isRetrospective: true,
+            retrospectivePlayerIndex: newPlayerIndex
+          }));
+          dispatch(actions.setPhase('DRAFT'));
+        }
+      }
       // Note: State will be synced to clients automatically via the existing syncState effect
     }
-  }, [isMultiplayer, isHost, lobbyData, phase, players, dispatch]);
+  }, [isMultiplayer, isHost, lobbyData, phase, players, dispatch, draftHistory, burnedCards, gameConfig]);
 
   // Save game state to localStorage whenever it changes (for crash recovery)
   useEffect(() => {
@@ -530,6 +579,72 @@ function HelldiversRoguelikeApp() {
     const currentPlayer = updatedPlayers[currentPlayerIdx];
     const currentExtraRound = draftState.extraDraftRound || 0;
     
+    // RETROSPECTIVE DRAFT HANDLING
+    // Check if we're in retrospective draft mode
+    if (draftState.isRetrospective && draftState.retrospectivePlayerIndex !== null) {
+      const retroPlayerIdx = draftState.retrospectivePlayerIndex;
+      const retroPlayer = updatedPlayers[retroPlayerIdx];
+      
+      // Count how many retrospective drafts this player has completed
+      // Each entry in draftHistory represents one completed draft round
+      const completedRetroDrafts = (retroPlayer.retrospectiveDraftsCompleted || 0) + 1;
+      
+      // Update player's retrospective draft progress
+      const progressedPlayers = [...updatedPlayers];
+      progressedPlayers[retroPlayerIdx] = {
+        ...retroPlayer,
+        retrospectiveDraftsCompleted: completedRetroDrafts
+      };
+      dispatch(actions.setPlayers(progressedPlayers));
+      
+      // Check if there are more history entries to catch up on
+      if (completedRetroDrafts < draftHistory.length) {
+        // Continue with next retrospective draft using the historical star rating
+        const nextHistoryEntry = draftHistory[completedRetroDrafts];
+        const handSize = getDraftHandSize(nextHistoryEntry.starRating);
+        const playerLockedSlots = retroPlayer.lockedSlots || [];
+        
+        const retroHand = generateDraftHand(
+          progressedPlayers[retroPlayerIdx],
+          nextHistoryEntry.difficulty,
+          gameConfig,
+          burnedCards,
+          progressedPlayers,
+          (cardId) => dispatch(actions.addBurnedCard(cardId)),
+          handSize,
+          playerLockedSlots
+        );
+        
+        dispatch(actions.setDraftState({
+          activePlayerIndex: retroPlayerIdx,
+          roundCards: retroHand,
+          isRerolling: false,
+          pendingStratagem: null,
+          extraDraftRound: 0,
+          draftOrder: [retroPlayerIdx],
+          isRetrospective: true,
+          retrospectivePlayerIndex: retroPlayerIdx
+        }));
+        return;
+      } else {
+        // Retrospective draft complete - clear flags and return to dashboard
+        const completedPlayers = [...progressedPlayers];
+        completedPlayers[retroPlayerIdx] = {
+          ...completedPlayers[retroPlayerIdx],
+          needsRetrospectiveDraft: false,
+          retrospectiveDraftsCompleted: undefined
+        };
+        dispatch(actions.setPlayers(completedPlayers));
+        dispatch(actions.setDraftState({
+          ...draftState,
+          isRetrospective: false,
+          retrospectivePlayerIndex: null
+        }));
+        dispatch(actions.setPhase('DASHBOARD'));
+        return;
+      }
+    }
+    
     // Check if current player has more redraft rounds to complete
     if (currentPlayer.redraftRounds && currentPlayer.redraftRounds > 1) {
       const remainingRounds = currentPlayer.redraftRounds - 1;
@@ -607,7 +722,62 @@ function HelldiversRoguelikeApp() {
         draftOrder: draftOrder
       }));
     } else {
-      // Draft complete - check for event
+      // Draft complete
+      // Record draft history (only for normal drafts, not retrospective)
+      if (!draftState.isRetrospective) {
+        dispatch(actions.addDraftHistory(currentDiff, gameConfig.starRating));
+        
+        // Check if any players need retrospective drafts (newly joined players)
+        const playerNeedingRetro = updatedPlayers.findIndex(p => p.needsRetrospectiveDraft);
+        if (playerNeedingRetro !== -1) {
+          // Start retrospective draft for the first player who needs it
+          // Note: We need to use the OLD draftHistory (before adding current) as the first entry
+          // since we want them to start from the beginning
+          const retroPlayer = updatedPlayers[playerNeedingRetro];
+          
+          // If there's existing history, start with the first entry
+          // Otherwise, they only need to catch up on the one we just added
+          const firstHistoryEntry = draftHistory.length > 0 
+            ? draftHistory[0] 
+            : { difficulty: currentDiff, starRating: gameConfig.starRating };
+          
+          const handSize = getDraftHandSize(firstHistoryEntry.starRating);
+          const playerLockedSlots = retroPlayer.lockedSlots || [];
+          
+          const retroHand = generateDraftHand(
+            retroPlayer,
+            firstHistoryEntry.difficulty,
+            gameConfig,
+            burnedCards,
+            updatedPlayers,
+            (cardId) => dispatch(actions.addBurnedCard(cardId)),
+            handSize,
+            playerLockedSlots
+          );
+          
+          // Initialize retrospective draft progress
+          const initPlayers = [...updatedPlayers];
+          initPlayers[playerNeedingRetro] = {
+            ...retroPlayer,
+            retrospectiveDraftsCompleted: 0
+          };
+          dispatch(actions.setPlayers(initPlayers));
+          
+          dispatch(actions.setDraftState({
+            activePlayerIndex: playerNeedingRetro,
+            roundCards: retroHand,
+            isRerolling: false,
+            pendingStratagem: null,
+            extraDraftRound: 0,
+            draftOrder: [playerNeedingRetro],
+            isRetrospective: true,
+            retrospectivePlayerIndex: playerNeedingRetro
+          }));
+          return;
+        }
+      }
+      
+      // Check for event
       if (tryTriggerRandomEvent()) {
         return;
       }
@@ -626,6 +796,20 @@ function HelldiversRoguelikeApp() {
       });
       return;
     }
+
+    // Burn all cards shown in this draft hand (if burn mode enabled)
+    if (gameConfig.burnCards && draftState.roundCards) {
+      draftState.roundCards.forEach(card => {
+        if (card.items && card.passive) {
+          // Armor combo - burn all armor pieces
+          card.items.forEach(armor => dispatch(actions.addBurnedCard(armor.id)));
+        } else if (card.id) {
+          // Regular item
+          dispatch(actions.addBurnedCard(card.id));
+        }
+      });
+    }
+
     proceedToNextDraft(players);
   };
 
@@ -698,6 +882,19 @@ function HelldiversRoguelikeApp() {
     }
 
     dispatch(actions.setPlayers(updatedPlayers));
+
+    // Burn all cards shown in this draft hand (if burn mode enabled)
+    if (gameConfig.burnCards && draftState.roundCards) {
+      draftState.roundCards.forEach(card => {
+        if (card.items && card.passive) {
+          // Armor combo - burn all armor pieces
+          card.items.forEach(armor => dispatch(actions.addBurnedCard(armor.id)));
+        } else if (card.id) {
+          // Regular item
+          dispatch(actions.addBurnedCard(card.id));
+        }
+      });
+    }
 
     // Track draft selection
     trackDraftSelection(
@@ -3466,6 +3663,23 @@ function HelldiversRoguelikeApp() {
         
         <div style={{ width: '100%', maxWidth: '1200px', margin: '0 auto', flexGrow: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
           <div style={{ textAlign: 'center', marginBottom: '40px' }}>
+            {draftState.isRetrospective && (
+              <div style={{
+                backgroundColor: 'rgba(59, 130, 246, 0.15)',
+                border: '2px solid rgba(59, 130, 246, 0.4)',
+                borderRadius: '8px',
+                padding: '12px 24px',
+                marginBottom: '16px',
+                display: 'inline-block'
+              }}>
+                <div style={{ color: '#3b82f6', fontSize: '14px', fontWeight: 'bold', textTransform: 'uppercase', letterSpacing: '1px' }}>
+                  🔄 RETROSPECTIVE DRAFT {(player.retrospectiveDraftsCompleted || 0) + 1}/{draftHistory.length}
+                </div>
+                <div style={{ color: '#94a3b8', fontSize: '11px', marginTop: '4px' }}>
+                  Catching up on past mission rewards • No rerolls available
+                </div>
+              </div>
+            )}
             {(draftState.extraDraftRound > 0) && (
               <div style={{
                 backgroundColor: factionColors.PRIMARY + '20',
@@ -3673,28 +3887,31 @@ function HelldiversRoguelikeApp() {
           {/* Only show draft controls if it's your turn */}
           {isMyTurn && (<>
             <div style={{ display: 'flex', justifyContent: 'center', gap: '24px' }}>
-            <button 
-              onClick={() => rerollDraft(1)}
-              disabled={requisition < 1}
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: '12px',
-                padding: '12px 32px',
-                borderRadius: '4px',
-                fontWeight: 'bold',
-                textTransform: 'uppercase',
-                letterSpacing: '1px',
-                border: requisition >= 1 ? '2px solid white' : '2px solid #334155',
-                backgroundColor: 'transparent',
-                color: requisition >= 1 ? 'white' : '#64748b',
-                cursor: requisition >= 1 ? 'pointer' : 'not-allowed',
-                transition: 'all 0.2s'
-              }}
-            >
-              <RefreshCw size={20} />
-              Reroll All Cards (-1 Req)
-            </button>
+            {/* Disable rerolling during retrospective drafts */}
+            {!draftState.isRetrospective && (
+              <button 
+                onClick={() => rerollDraft(1)}
+                disabled={requisition < 1}
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '12px',
+                  padding: '12px 32px',
+                  borderRadius: '4px',
+                  fontWeight: 'bold',
+                  textTransform: 'uppercase',
+                  letterSpacing: '1px',
+                  border: requisition >= 1 ? '2px solid white' : '2px solid #334155',
+                  backgroundColor: 'transparent',
+                  color: requisition >= 1 ? 'white' : '#64748b',
+                  cursor: requisition >= 1 ? 'pointer' : 'not-allowed',
+                  transition: 'all 0.2s'
+                }}
+              >
+                <RefreshCw size={20} />
+                Reroll All Cards (-1 Req)
+              </button>
+            )}
             <button 
               onClick={handleSkipDraft}
               style={{

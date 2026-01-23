@@ -239,6 +239,18 @@ export const stratagemReplacement = (playerIndex, slotIndex) => ({
   payload: { playerIndex, slotIndex }
 });
 
+// Draft history
+export const addDraftHistory = (difficulty, starRating) => ({
+  type: types.ADD_DRAFT_HISTORY,
+  payload: { difficulty, starRating }
+});
+
+// Retrospective draft
+export const startRetrospectiveDraft = (playerIndex) => ({
+  type: types.START_RETROSPECTIVE_DRAFT,
+  payload: playerIndex
+});
+
 // Events
 export const setCurrentEvent = (event) => ({
   type: types.SET_CURRENT_EVENT,

@@ -48,8 +48,11 @@ export const initialState = {
     isRerolling: false,
     pendingStratagem: null,
     extraDraftRound: 0, // Tracks which extra draft round we're on (0 = normal draft)
-    draftOrder: [] // Array of player indices in randomized order for this draft round
+    draftOrder: [], // Array of player indices in randomized order for this draft round
+    isRetrospective: false, // Flag indicating if current draft is retrospective (for hot-join catch-up)
+    retrospectivePlayerIndex: null // Index of player doing retrospective drafting
   },
+  draftHistory: [], // Array of { difficulty, starRating } for each completed draft round
   sacrificeState: {
     activePlayerIndex: 0,
     sacrificesRequired: [] // Array of player indices who must sacrifice
@@ -382,6 +385,27 @@ export function gameReducer(state, action) {
         }
       };
 
+    // Draft history
+    case types.ADD_DRAFT_HISTORY:
+      return {
+        ...state,
+        draftHistory: [
+          ...state.draftHistory,
+          { difficulty: action.payload.difficulty, starRating: action.payload.starRating }
+        ]
+      };
+
+    // Retrospective draft
+    case types.START_RETROSPECTIVE_DRAFT:
+      return {
+        ...state,
+        draftState: {
+          ...state.draftState,
+          isRetrospective: true,
+          retrospectivePlayerIndex: action.payload
+        }
+      };
+
     // Events
     case types.SET_CURRENT_EVENT:
       // When setting a new event, always reset all event selections to ensure clean state
@@ -541,6 +565,7 @@ export function gameReducer(state, action) {
         seenEvents: action.payload.seenEvents || [],
         eventSpecialDraftSelections: action.payload.eventSpecialDraftSelections ?? null,
         currentMission: action.payload.currentMission || 1,
+        draftHistory: action.payload.draftHistory || [],
         players: (action.payload.players || []).map(p => ({
           ...p,
           weaponRestricted: p.weaponRestricted || false,
