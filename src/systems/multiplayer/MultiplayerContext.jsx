@@ -2,31 +2,31 @@
  * Multiplayer Context - React context for multiplayer state and functionality
  */
 
-import React, { createContext, useContext, useState, useEffect, useCallback, useRef } from 'react';
+import { createContext, useCallback, useContext, useEffect, useRef, useState } from 'react';
 import { v4 as uuidv4 } from 'uuid';
 import { initializeFirebase, isFirebaseConfigured } from './firebaseConfig';
 import {
-  generateLobbyId,
-  createLobby,
-  checkLobby,
-  joinLobby,
-  leaveLobby,
-  kickPlayer,
-  closeLobby,
-  updateLobbyStatus,
   changePlayerSlot,
-  subscribeLobby,
+  checkLobby,
+  closeLobby,
+  createLobby,
+  generateLobbyId,
   getAvailableSlots,
-  updatePlayerConfig as updatePlayerConfigInLobby,
-  setPlayerReady as setPlayerReadyInLobby
+  joinLobby,
+  kickPlayer,
+  leaveLobby,
+  setPlayerReady as setPlayerReadyInLobby,
+  subscribeLobby,
+  updateLobbyStatus,
+  updatePlayerConfig as updatePlayerConfigInLobby
 } from './lobbyManager';
 import {
-  syncGameState,
-  subscribeGameState,
+  isActionAllowedForClient,
+  removeClientAction,
   sendClientAction,
   subscribeClientActions,
-  removeClientAction,
-  isActionAllowedForClient
+  subscribeGameState,
+  syncGameState
 } from './syncManager';
 
 // Context
@@ -292,16 +292,20 @@ export function MultiplayerProvider({ children }) {
   /**
    * Host: Start the game
    */
-  const startMultiplayerGame = useCallback(async () => {
-    if (!isHost || !lobbyId) return;
+  const startMultiplayerGame = useCallback(async (loadLobbyId, forceHost) => {
+    const activeLobbyId = loadLobbyId || lobbyId;
+    const activeIsHost = forceHost !== undefined ? forceHost : isHost;
+    if (!activeIsHost || !activeLobbyId) return;
     
-    await updateLobbyStatus(lobbyId, 'in-game');
+    console.log('Starting multiplayer game, lobbyId:', activeLobbyId);
+    await updateLobbyStatus(activeLobbyId, 'in-game');
     
     // Start listening for client actions
-    actionsUnsubscribeRef.current = subscribeClientActions(lobbyId, async (actionData, actionId) => {
+    actionsUnsubscribeRef.current = subscribeClientActions(activeLobbyId, async (actionData, actionId) => {
+      console.debug('Received client action:', actionData);
       // Process the action
       const { playerId: actionPlayerId, action } = actionData;
-      
+
       // Use ref to get current lobby data (avoids stale closure)
       const currentLobbyData = lobbyDataRef.current;
       
@@ -309,21 +313,21 @@ export function MultiplayerProvider({ children }) {
       const player = Object.values(currentLobbyData?.players || {}).find(p => p.id === actionPlayerId);
       if (!player) {
         console.warn('Action from unknown player:', actionPlayerId);
-        await removeClientAction(lobbyId, actionId);
+        await removeClientAction(activeLobbyId, actionId);
         return;
       }
       
       // Validate action is allowed for this player
       if (!isActionAllowedForClient(action, player.slot)) {
         console.warn('Unauthorized action from player:', action.type);
-        await removeClientAction(lobbyId, actionId);
+        await removeClientAction(activeLobbyId, actionId);
         return;
       }
       
       // Check if there's a special handler for this action type
       if (actionHandlerRef.current && actionHandlerRef.current(action)) {
         // Handler processed the action
-        await removeClientAction(lobbyId, actionId);
+        await removeClientAction(activeLobbyId, actionId);
         return;
       }
       
@@ -333,7 +337,7 @@ export function MultiplayerProvider({ children }) {
       }
       
       // Remove processed action
-      await removeClientAction(lobbyId, actionId);
+      await removeClientAction(activeLobbyId, actionId);
     });
   }, [isHost, lobbyId]);
   
