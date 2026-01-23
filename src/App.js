@@ -1,4 +1,5 @@
 import React, { useReducer, useEffect } from 'react';
+import { BrowserRouter, Routes, Route } from 'react-router-dom';
 import { RefreshCw, CheckCircle, XCircle, Users, Bug } from 'lucide-react';
 import { selectRandomEvent, EVENT_TYPES, EVENTS } from './systems/events/events';
 import { RARITY, TYPE } from './constants/types';
@@ -40,6 +41,7 @@ import * as actions from './state/actions';
 import * as types from './state/actionTypes';
 import { gameReducer, initialState } from './state/gameReducer';
 import { MultiplayerProvider, useMultiplayer } from './systems/multiplayer';
+import CardLibrary from './components/CardLibrary';
 
 function HelldiversRoguelikeApp() {
   // --- STATE (Using useReducer for complex state management) ---
@@ -4564,8 +4566,13 @@ function HelldiversRoguelikeApp() {
 // Wrapper component that provides multiplayer context
 export default function HelldiversRoguelike() {
   return (
-    <MultiplayerProvider>
-      <HelldiversRoguelikeApp />
-    </MultiplayerProvider>
+    <BrowserRouter basename="/helldrafters">
+      <MultiplayerProvider>
+        <Routes>
+          <Route path="/card-library" element={<CardLibrary />} />
+          <Route path="/" element={<HelldiversRoguelikeApp />} />
+        </Routes>
+      </MultiplayerProvider>
+    </BrowserRouter>
   );
 }
