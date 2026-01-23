@@ -944,6 +944,7 @@ function HelldiversRoguelikeApp() {
   };
 
   // Register action handler for multiplayer client actions (host only)
+  // Re-register when phase changes to DRAFT to ensure reconnecting clients work
   useEffect(() => {
     if (isMultiplayer && isHost) {
       setActionHandler((action) => {
@@ -960,7 +961,7 @@ function HelldiversRoguelikeApp() {
         setActionHandler(null);
       }
     };
-  }, [isMultiplayer, isHost, setActionHandler]);
+  }, [isMultiplayer, isHost, setActionHandler, phase]);
 
   const rerollDraft = (cost) => {
     if (requisition < cost) return;
@@ -2299,6 +2300,51 @@ function HelldiversRoguelikeApp() {
   }
 
   if (phase === 'CUSTOM_SETUP') {
+    // In multiplayer, only the host can configure custom setup
+    // Clients should wait for the host to finish
+    if (isMultiplayer && !isHost) {
+      return (
+        <div style={{ minHeight: '100vh', padding: '24px', backgroundColor: '#1a2332' }}>
+          <div style={{ maxWidth: '1200px', margin: '0 auto' }}>
+            <div style={{ textAlign: 'center', marginTop: '120px' }}>
+              <h1 style={{ fontSize: '48px', fontWeight: '900', color: factionColors.PRIMARY, margin: '0 0 16px 0' }}>
+                HOST CONFIGURING CUSTOM START
+              </h1>
+              <p style={{ color: '#94a3b8', marginBottom: '32px', fontSize: '18px' }}>
+                Please wait while the host configures the starting difficulty and loadouts...
+              </p>
+              <div style={{ display: 'flex', justifyContent: 'center', gap: '12px', marginTop: '32px' }}>
+                <div style={{ width: '12px', height: '12px', borderRadius: '50%', backgroundColor: factionColors.PRIMARY, animation: 'pulse 1.5s infinite' }}></div>
+                <div style={{ width: '12px', height: '12px', borderRadius: '50%', backgroundColor: factionColors.PRIMARY, animation: 'pulse 1.5s infinite 0.2s' }}></div>
+                <div style={{ width: '12px', height: '12px', borderRadius: '50%', backgroundColor: factionColors.PRIMARY, animation: 'pulse 1.5s infinite 0.4s' }}></div>
+              </div>
+            </div>
+          </div>
+          <style>{`
+            @keyframes pulse {
+              0%, 100% { opacity: 0.3; transform: scale(0.8); }
+              50% { opacity: 1; transform: scale(1.2); }
+            }
+          `}</style>
+        </div>
+      );
+    }
+
+    // Safety check: ensure customSetup.loadouts exists before proceeding
+    if (!customSetup || !customSetup.loadouts) {
+      return (
+        <div style={{ minHeight: '100vh', padding: '24px', backgroundColor: '#1a2332' }}>
+          <div style={{ maxWidth: '1200px', margin: '0 auto' }}>
+            <div style={{ textAlign: 'center', marginTop: '120px' }}>
+              <h1 style={{ fontSize: '48px', fontWeight: '900', color: factionColors.PRIMARY, margin: '0 0 16px 0' }}>
+                LOADING...
+              </h1>
+            </div>
+          </div>
+        </div>
+      );
+    }
+
     const updateLoadoutSlot = (playerIdx, slotType, itemId) => {
       const newLoadouts = [...customSetup.loadouts];
       if (slotType === 'stratagem') {
