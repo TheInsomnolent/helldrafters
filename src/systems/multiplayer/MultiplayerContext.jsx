@@ -77,10 +77,13 @@ export function MultiplayerProvider({ children }) {
   const disconnectRef = useRef(null);
   // Initialize Firebase on mount
   useEffect(() => {
-    if (isFirebaseConfigured()) {
-      const success = initializeFirebase();
-      setFirebaseReady(success);
-    }
+    const init = async () => {
+      if (isFirebaseConfigured()) {
+        const success = await initializeFirebase();
+        setFirebaseReady(success);
+      }
+    };
+    init();
   }, []);
   
   // Keep lobbyDataRef in sync with lobbyData state

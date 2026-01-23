@@ -3,10 +3,14 @@
  */
 
 export { 
-  initializeFirebase, 
-  isFirebaseConfigured, 
+  initializeFirebase,
+  initializeAnalytics,
+  isFirebaseConfigured,
+  isAnalyticsConfigured,
   getFirebaseDatabase,
-  getFirebaseAnalytics
+  getFirebaseAnalytics,
+  isAnalyticsDebugMode,
+  isAnalyticsConsoleLogging
 } from './firebaseConfig';
 
 export {

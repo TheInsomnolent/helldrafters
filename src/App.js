@@ -40,7 +40,7 @@ import { getWarbondById } from './constants/warbonds';
 import * as actions from './state/actions';
 import * as types from './state/actionTypes';
 import { gameReducer, initialState } from './state/gameReducer';
-import { MultiplayerProvider, useMultiplayer } from './systems/multiplayer';
+import { MultiplayerProvider, useMultiplayer, initializeAnalytics } from './systems/multiplayer';
 import CardLibrary from './components/CardLibrary';
 
 function HelldiversRoguelikeApp() {
@@ -163,9 +163,15 @@ function HelldiversRoguelikeApp() {
   // Ref for the hidden file input
   const fileInputRef = React.useRef(null);
   
-  // Track app initialization
+  // Track app initialization - initialize analytics first, then track page view
   useEffect(() => {
-    trackPageView('Helldrafters Main Menu');
+    const initAndTrack = async () => {
+      // Initialize analytics first (this ensures Firebase is ready before tracking)
+      await initializeAnalytics();
+      // Now track the page view
+      trackPageView('Helldrafters Main Menu');
+    };
+    initAndTrack();
   }, []);
   
   // Sync state to clients when host and in multiplayer mode

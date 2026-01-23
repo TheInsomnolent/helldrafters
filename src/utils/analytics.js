@@ -6,7 +6,7 @@
  */
 
 import { logEvent, setUserProperties } from 'firebase/analytics';
-import { getFirebaseAnalytics } from '../systems/multiplayer/firebaseConfig';
+import { getFirebaseAnalytics, isAnalyticsConsoleLogging, isAnalyticsDebugMode } from '../systems/multiplayer/firebaseConfig';
 
 /**
  * Safely log an event to Firebase Analytics
@@ -15,12 +15,25 @@ import { getFirebaseAnalytics } from '../systems/multiplayer/firebaseConfig';
  */
 export const trackEvent = (eventName, eventParams = {}) => {
   const analytics = getFirebaseAnalytics();
+  
+  // Log to console in development for debugging
+  if (isAnalyticsConsoleLogging()) {
+    console.log(`📊 Analytics Event: ${eventName}`, eventParams);
+  }
+  
   if (analytics) {
     try {
-      logEvent(analytics, eventName, eventParams);
+      // Add debug_mode parameter when in debug mode - this enables DebugView in Firebase Console
+      const params = isAnalyticsDebugMode() 
+        ? { ...eventParams, debug_mode: true }
+        : eventParams;
+      
+      logEvent(analytics, eventName, params);
     } catch (error) {
       console.warn('Failed to log analytics event:', error);
     }
+  } else if (isAnalyticsConsoleLogging()) {
+    console.warn('⚠️ Analytics not initialized - event not sent to Firebase');
   }
 };
 
@@ -42,6 +55,11 @@ export const trackPageView = (pageName) => {
  */
 export const setAnalyticsUserProperties = (properties) => {
   const analytics = getFirebaseAnalytics();
+  
+  if (isAnalyticsConsoleLogging()) {
+    console.log('📊 Analytics User Properties:', properties);
+  }
+  
   if (analytics) {
     try {
       setUserProperties(analytics, properties);
