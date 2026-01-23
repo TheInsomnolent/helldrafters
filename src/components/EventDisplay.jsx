@@ -49,6 +49,7 @@ export default function EventDisplay({
   onConfirmSelections,
   connectedPlayerIndices = null // Array of connected player indices (null means all connected)
 }) {
+  const [showSkipConfirm, setShowSkipConfirm] = React.useState(false);
   // Helper to check if a player index is connected (selectable for events)
   const isPlayerSelectable = (playerIdx) => {
     // If connectedPlayerIndices is null, all players are selectable
@@ -297,20 +298,7 @@ export default function EventDisplay({
         <div style={{ display: 'flex', gap: '16px', alignItems: 'center' }}>
           {isHost && (
             <button
-              onClick={() => {
-                const confirmed = window.confirm(
-                  '⚠️ BETA FEATURE - EMERGENCY SKIP ⚠️\n\n' +
-                  'This feature is only intended to help you escape from soft-locks during beta testing.\n\n' +
-                  'If you are using this button, please report the bug:\n' +
-                  '• What event was active?\n' +
-                  '• What was the game state?\n' +
-                  '• What steps led to the soft-lock?\n\n' +
-                  'Skip this event for all players?'
-                );
-                if (confirmed && onSkipEvent) {
-                  onSkipEvent();
-                }
-              }}
+              onClick={() => setShowSkipConfirm(true)}
               style={{
                 padding: '8px 16px',
                 backgroundColor: '#dc2626',
@@ -1226,6 +1214,167 @@ export default function EventDisplay({
           )}
         </div>
       </div>
+
+      {/* Skip Event Confirmation Modal */}
+      {showSkipConfirm && (
+        <div style={{
+          position: 'fixed',
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          backgroundColor: 'rgba(0, 0, 0, 0.85)',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          zIndex: 2000,
+          padding: '24px'
+        }}>
+          <div style={{
+            backgroundColor: '#283548',
+            borderRadius: '12px',
+            border: '3px solid #dc2626',
+            padding: '32px',
+            maxWidth: '600px',
+            width: '100%',
+            boxShadow: '0 8px 32px rgba(0, 0, 0, 0.5)'
+          }}>
+            <h2 style={{ 
+              color: '#dc2626', 
+              fontSize: '28px', 
+              fontWeight: 'bold', 
+              textAlign: 'center', 
+              marginBottom: '24px',
+              textTransform: 'uppercase',
+              letterSpacing: '0.05em'
+            }}>
+              ⚠️ BETA FEATURE
+            </h2>
+            
+            <div style={{
+              backgroundColor: '#1f2937',
+              padding: '20px',
+              borderRadius: '8px',
+              marginBottom: '24px',
+              border: '1px solid rgba(220, 38, 38, 0.3)'
+            }}>
+              <p style={{ 
+                color: '#cbd5e1', 
+                fontSize: '16px', 
+                lineHeight: '1.6',
+                marginBottom: '16px'
+              }}>
+                <strong style={{ color: '#dc2626' }}>⚠️ EMERGENCY SKIP</strong>
+              </p>
+              <p style={{ 
+                color: '#cbd5e1', 
+                fontSize: '15px', 
+                lineHeight: '1.6',
+                marginBottom: '12px'
+              }}>
+                This feature is <strong style={{ color: '#fca5a5' }}>only intended</strong> to help you escape from soft-locks during beta testing.
+              </p>
+              <p style={{ 
+                color: '#94a3b8', 
+                fontSize: '14px', 
+                lineHeight: '1.6',
+                marginBottom: '12px'
+              }}>
+                <strong>If you are using this button, please report the bug:</strong>
+              </p>
+              <ul style={{ 
+                color: '#94a3b8', 
+                fontSize: '14px', 
+                lineHeight: '1.6',
+                paddingLeft: '20px',
+                margin: 0
+              }}>
+                <li>What event was active?</li>
+                <li>What was the game state?</li>
+                <li>What steps led to the soft-lock?</li>
+              </ul>
+            </div>
+
+            <div style={{
+              backgroundColor: '#1f2937',
+              padding: '16px',
+              borderRadius: '8px',
+              marginBottom: '24px',
+              textAlign: 'center'
+            }}>
+              <p style={{ color: '#ef4444', fontSize: '15px', fontWeight: 'bold' }}>
+                Skip this event for all players?
+              </p>
+            </div>
+
+            <div style={{ display: 'flex', gap: '12px' }}>
+              <button
+                onClick={() => setShowSkipConfirm(false)}
+                style={{
+                  flex: 1,
+                  padding: '14px 24px',
+                  fontSize: '16px',
+                  fontWeight: 'bold',
+                  textTransform: 'uppercase',
+                  letterSpacing: '0.05em',
+                  borderRadius: '6px',
+                  border: '2px solid #64748b',
+                  backgroundColor: 'transparent',
+                  color: '#cbd5e1',
+                  cursor: 'pointer',
+                  transition: 'all 0.2s'
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.backgroundColor = 'rgba(100, 116, 139, 0.2)';
+                  e.currentTarget.style.borderColor = '#94a3b8';
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.backgroundColor = 'transparent';
+                  e.currentTarget.style.borderColor = '#64748b';
+                }}
+              >
+                Cancel
+              </button>
+              <button
+                onClick={() => {
+                  if (onSkipEvent) {
+                    onSkipEvent();
+                  }
+                  setShowSkipConfirm(false);
+                }}
+                style={{
+                  flex: 1,
+                  padding: '14px 24px',
+                  fontSize: '16px',
+                  fontWeight: 'bold',
+                  textTransform: 'uppercase',
+                  letterSpacing: '0.05em',
+                  borderRadius: '6px',
+                  border: '2px solid #dc2626',
+                  backgroundColor: '#dc2626',
+                  color: 'white',
+                  cursor: 'pointer',
+                  transition: 'all 0.2s'
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.backgroundColor = '#b91c1c';
+                  e.currentTarget.style.borderColor = '#b91c1c';
+                  e.currentTarget.style.transform = 'translateY(-1px)';
+                  e.currentTarget.style.boxShadow = '0 4px 12px rgba(220, 38, 38, 0.4)';
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.backgroundColor = '#dc2626';
+                  e.currentTarget.style.borderColor = '#dc2626';
+                  e.currentTarget.style.transform = 'translateY(0)';
+                  e.currentTarget.style.boxShadow = 'none';
+                }}
+              >
+                Confirm Skip Event
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

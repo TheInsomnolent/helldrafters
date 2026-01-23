@@ -154,6 +154,8 @@ function HelldiversRoguelikeApp() {
   const [showGenAIDisclosure, setShowGenAIDisclosure] = React.useState(false); // For Gen AI disclosure modal
   const [showContributors, setShowContributors] = React.useState(false); // For contributors modal
   const [showRemoveCardConfirm, setShowRemoveCardConfirm] = React.useState(false); // For remove card confirmation modal
+  const [showSacrificeConfirm, setShowSacrificeConfirm] = React.useState(false); // For sacrifice confirmation modal
+  const [pendingSacrificeItem, setPendingSacrificeItem] = React.useState(null); // Item pending sacrifice
   const [pendingCardRemoval, setPendingCardRemoval] = React.useState(null); // Card pending removal
   const [missionSuccessDebouncing, setMissionSuccessDebouncing] = React.useState(false); // Debounce for mission success button
   const [gameStartTime, setGameStartTime] = React.useState(null); // Track game start time for analytics
@@ -1139,6 +1141,79 @@ function HelldiversRoguelikeApp() {
       return true; // Action handled
     }
     
+    // Handle sacrifice item from clients
+    if (action.type === types.SACRIFICE_ITEM) {
+      const { playerIndex, itemId } = action.payload;
+      
+      // Apply sacrifice to the players array
+      const updatedPlayers = players.map((player, idx) => {
+        if (idx !== playerIndex) return player;
+        
+        // Remove from inventory
+        let newInventory = player.inventory.filter(id => id !== itemId);
+        
+        // Remove from loadout if equipped
+        const newLoadout = { 
+          ...player.loadout,
+          stratagems: [...player.loadout.stratagems]
+        };
+        
+        if (newLoadout.primary === itemId) newLoadout.primary = null;
+        if (newLoadout.secondary === itemId) {
+          newLoadout.secondary = 's_peacemaker';
+          if (!newInventory.includes('s_peacemaker')) {
+            newInventory.push('s_peacemaker');
+          }
+        }
+        if (newLoadout.grenade === itemId) {
+          newLoadout.grenade = 'g_he';
+          if (!newInventory.includes('g_he')) {
+            newInventory.push('g_he');
+          }
+        }
+        if (newLoadout.armor === itemId) {
+          newLoadout.armor = 'a_b01';
+          if (!newInventory.includes('a_b01')) {
+            newInventory.push('a_b01');
+          }
+        }
+        if (newLoadout.booster === itemId) newLoadout.booster = null;
+        
+        // Remove stratagem from all slots that match
+        for (let i = 0; i < newLoadout.stratagems.length; i++) {
+          if (newLoadout.stratagems[i] === itemId) {
+            newLoadout.stratagems[i] = null;
+          }
+        }
+        
+        return {
+          ...player,
+          inventory: newInventory,
+          loadout: newLoadout
+        };
+      });
+      
+      // Move to next player who needs to sacrifice, or end sacrifice phase
+      const currentIndex = sacrificeState.sacrificesRequired.indexOf(playerIndex);
+      const nextIndex = currentIndex + 1;
+      
+      if (nextIndex < sacrificeState.sacrificesRequired.length) {
+        // Move to next player
+        const nextPlayerIndex = sacrificeState.sacrificesRequired[nextIndex];
+        dispatch(actions.setPlayers(updatedPlayers));
+        dispatch(actions.updateSacrificeState({
+          activePlayerIndex: nextPlayerIndex
+        }));
+      } else {
+        // All sacrifices complete - reset extraction status and move to draft
+        const resetPlayers = updatedPlayers.map(p => ({ ...p, extracted: true }));
+        dispatch(actions.setPlayers(resetPlayers));
+        startDraftPhase();
+      }
+      
+      return true; // Action handled
+    }
+    
     return false; // Action not handled
   };
 
@@ -1222,6 +1297,95 @@ function HelldiversRoguelikeApp() {
       dispatch(actions.updateDraftState({
         roundCards: generateDraftHandForPlayer(draftState.activePlayerIndex)
       }));
+    }
+  };
+
+  const handleSacrifice = (item) => {
+    // Sacrifice the item for the current active player
+    const playerIndex = sacrificeState.activePlayerIndex;
+    console.log('Sacrificing item', item.id, 'for player index', playerIndex, 'player:', players[playerIndex]?.name);
+    
+    // In multiplayer as client, send action to host instead of processing locally
+    if (isMultiplayer && !isHost) {
+      sendAction({
+        type: types.SACRIFICE_ITEM,
+        payload: {
+          playerIndex: playerIndex,
+          itemId: item.id
+        }
+      });
+      return;
+    }
+    
+    // Apply sacrifice to the players array
+    const itemId = item.id;
+    const updatedPlayers = players.map((player, idx) => {
+      if (idx !== playerIndex) return player;
+      
+      // Remove from inventory
+      let newInventory = player.inventory.filter(id => id !== itemId);
+      
+      // Remove from loadout if equipped
+      const newLoadout = { 
+        ...player.loadout,
+        stratagems: [...player.loadout.stratagems]
+      };
+      
+      if (newLoadout.primary === itemId) newLoadout.primary = null;
+      if (newLoadout.secondary === itemId) {
+        newLoadout.secondary = 's_peacemaker';
+        if (!newInventory.includes('s_peacemaker')) {
+          newInventory.push('s_peacemaker');
+        }
+      }
+      if (newLoadout.grenade === itemId) {
+        newLoadout.grenade = 'g_he';
+        if (!newInventory.includes('g_he')) {
+          newInventory.push('g_he');
+        }
+      }
+      if (newLoadout.armor === itemId) {
+        newLoadout.armor = 'a_b01';
+        if (!newInventory.includes('a_b01')) {
+          newInventory.push('a_b01');
+        }
+      }
+      if (newLoadout.booster === itemId) newLoadout.booster = null;
+      
+      // Remove stratagem from all slots that match
+      for (let i = 0; i < newLoadout.stratagems.length; i++) {
+        if (newLoadout.stratagems[i] === itemId) {
+          newLoadout.stratagems[i] = null;
+        }
+      }
+      
+      return {
+        ...player,
+        inventory: newInventory,
+        loadout: newLoadout
+      };
+    });
+    
+    // Move to next player who needs to sacrifice, or end sacrifice phase
+    const currentIndex = sacrificeState.sacrificesRequired.indexOf(playerIndex);
+    const nextIndex = currentIndex + 1;
+    
+    console.log('Current position in sacrifice queue:', currentIndex, 'Next:', nextIndex, 'Total required:', sacrificeState.sacrificesRequired);
+    
+    if (nextIndex < sacrificeState.sacrificesRequired.length) {
+      // Move to next player
+      const nextPlayerIndex = sacrificeState.sacrificesRequired[nextIndex];
+      console.log('Moving to next player index:', nextPlayerIndex);
+      dispatch(actions.setPlayers(updatedPlayers));
+      dispatch(actions.updateSacrificeState({
+        activePlayerIndex: nextPlayerIndex
+      }));
+    } else {
+      // All sacrifices complete - reset extraction status and move to draft
+      console.log('All sacrifices complete, moving to draft');
+      const resetPlayers = updatedPlayers.map(p => ({ ...p, extracted: true }));
+      dispatch(actions.setPlayers(resetPlayers));
+      startDraftPhase();
     }
   };
 
@@ -2223,8 +2387,8 @@ function HelldiversRoguelikeApp() {
         {/* FOOTER */}
         <GameFooter />
         
-      {/* Remove Card Confirmation Modal */}
-      {showRemoveCardConfirm && (
+        {/* Remove Card Confirmation Modal */}
+        {showRemoveCardConfirm && (
         <div style={{
           position: 'fixed',
           top: 0,
@@ -3228,6 +3392,20 @@ function HelldiversRoguelikeApp() {
     const playerIndex = sacrificeState.activePlayerIndex;
     const player = players[playerIndex];
     
+    // In multiplayer, check if it's this player's turn to sacrifice
+    const isMyTurn = !isMultiplayer || (playerSlot === sacrificeState.activePlayerIndex);
+    
+    console.log('SACRIFICE PHASE RENDER:', { 
+      playerIndex, 
+      playerName: player?.name,
+      isMultiplayer, 
+      playerSlot, 
+      activePlayerIndex: sacrificeState.activePlayerIndex,
+      isMyTurn,
+      showSacrificeConfirm,
+      pendingSacrificeItem
+    });
+    
     if (!player) {
       console.error('SACRIFICE: Invalid player index', playerIndex, 'players:', players.length);
       return <div>Error: Invalid player state</div>;
@@ -3268,84 +3446,7 @@ function HelldiversRoguelikeApp() {
         if (item) sacrificableItems.push({ ...item, slot: `Stratagem ${idx + 1}` });
       }
     });
-    
-    const handleSacrifice = (item) => {
-      // Sacrifice the item for the current active player
-      const playerIndex = sacrificeState.activePlayerIndex;
-      console.log('Sacrificing item', item.id, 'for player index', playerIndex, 'player:', players[playerIndex]?.name);
-      
-      // Apply sacrifice to the players array
-      const itemId = item.id;
-      const updatedPlayers = players.map((player, idx) => {
-        if (idx !== playerIndex) return player;
-        
-        // Remove from inventory
-        let newInventory = player.inventory.filter(id => id !== itemId);
-        
-        // Remove from loadout if equipped
-        const newLoadout = { 
-          ...player.loadout,
-          stratagems: [...player.loadout.stratagems]
-        };
-        
-        if (newLoadout.primary === itemId) newLoadout.primary = null;
-        if (newLoadout.secondary === itemId) {
-          newLoadout.secondary = 's_peacemaker';
-          if (!newInventory.includes('s_peacemaker')) {
-            newInventory.push('s_peacemaker');
-          }
-        }
-        if (newLoadout.grenade === itemId) {
-          newLoadout.grenade = 'g_he';
-          if (!newInventory.includes('g_he')) {
-            newInventory.push('g_he');
-          }
-        }
-        if (newLoadout.armor === itemId) {
-          newLoadout.armor = 'a_b01';
-          if (!newInventory.includes('a_b01')) {
-            newInventory.push('a_b01');
-          }
-        }
-        if (newLoadout.booster === itemId) newLoadout.booster = null;
-        
-        // Remove stratagem from all slots that match
-        for (let i = 0; i < newLoadout.stratagems.length; i++) {
-          if (newLoadout.stratagems[i] === itemId) {
-            newLoadout.stratagems[i] = null;
-          }
-        }
-        
-        return {
-          ...player,
-          inventory: newInventory,
-          loadout: newLoadout
-        };
-      });
-      
-      // Move to next player who needs to sacrifice, or end sacrifice phase
-      const currentIndex = sacrificeState.sacrificesRequired.indexOf(playerIndex);
-      const nextIndex = currentIndex + 1;
-      
-      console.log('Current position in sacrifice queue:', currentIndex, 'Next:', nextIndex, 'Total required:', sacrificeState.sacrificesRequired);
-      
-      if (nextIndex < sacrificeState.sacrificesRequired.length) {
-        // Move to next player
-        const nextPlayerIndex = sacrificeState.sacrificesRequired[nextIndex];
-        console.log('Moving to next player index:', nextPlayerIndex);
-        dispatch(actions.setPlayers(updatedPlayers));
-        dispatch(actions.updateSacrificeState({
-          activePlayerIndex: nextPlayerIndex
-        }));
-      } else {
-        // All sacrifices complete - reset extraction status and move to draft
-        console.log('All sacrifices complete, moving to draft');
-        const resetPlayers = updatedPlayers.map(p => ({ ...p, extracted: true }));
-        dispatch(actions.setPlayers(resetPlayers));
-        startDraftPhase();
-      }
-    };
-    
+
     return (
       <div style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column', padding: '24px' }}>
         <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: '16px', gap: '12px' }}>
@@ -3460,22 +3561,30 @@ function HelldiversRoguelikeApp() {
               gridTemplateColumns: `repeat(${Math.min(sacrificableItems.length, 4)}, 1fr)`, 
               gap: '24px', 
               marginBottom: '48px',
-              width: '100%'
+              width: '100%',
+              opacity: isMyTurn ? 1 : 0.6,
+              pointerEvents: isMyTurn ? 'auto' : 'none'
             }}>
               {sacrificableItems.map((item, idx) => (
                 <div 
                   key={`${item.id}-${idx}`}
                   onClick={() => {
-                    if (window.confirm(`Sacrifice ${item.name}? This item will be permanently removed from your inventory and loadout.`)) {
-                      handleSacrifice(item);
+                    console.log('Sacrifice card clicked!', { item, isMyTurn, showSacrificeConfirm });
+                    if (!isMyTurn) {
+                      console.log('Not my turn, returning');
+                      return;
                     }
+                    console.log('Setting pending sacrifice item and showing modal');
+                    setPendingSacrificeItem(item);
+                    setShowSacrificeConfirm(true);
+                    console.log('State update calls completed');
                   }}
                   style={{
                     backgroundColor: '#283548',
                     border: '2px solid rgba(239, 68, 68, 0.5)',
                     borderRadius: '12px',
                     padding: '24px',
-                    cursor: 'pointer',
+                    cursor: isMyTurn ? 'pointer' : 'not-allowed',
                     transition: 'all 0.2s',
                     display: 'flex',
                     flexDirection: 'column',
@@ -3508,7 +3617,174 @@ function HelldiversRoguelikeApp() {
               ))}
             </div>
           )}
+          {!isMyTurn && (
+            <div style={{
+              backgroundColor: '#283548',
+              padding: '24px',
+              borderRadius: '12px',
+              border: '1px solid rgba(100, 116, 139, 0.5)',
+              textAlign: 'center',
+              marginTop: '24px'
+            }}>
+              <div style={{ fontSize: '16px', color: '#94a3b8', marginBottom: '8px' }}>
+                Waiting for {player.name} to sacrifice an item...
+              </div>
+              <div style={{ fontSize: '14px', color: '#64748b' }}>
+                Please wait for your turn
+              </div>
+            </div>
+          )}
         </div>
+
+        {/* Sacrifice Item Confirmation Modal */}
+        {showSacrificeConfirm && pendingSacrificeItem && (
+          <div style={{
+            position: 'fixed',
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            backgroundColor: 'rgba(0, 0, 0, 0.85)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            zIndex: 2000,
+            padding: '24px'
+          }}>
+            <div style={{
+              backgroundColor: '#283548',
+              borderRadius: '12px',
+              border: '3px solid #ef4444',
+              padding: '32px',
+              maxWidth: '600px',
+              width: '100%',
+              boxShadow: '0 8px 32px rgba(0, 0, 0, 0.5)'
+            }}>
+              <h2 style={{ 
+                color: '#ef4444', 
+                fontSize: '28px', 
+                fontWeight: 'bold', 
+                textAlign: 'center', 
+                marginBottom: '24px',
+                textTransform: 'uppercase',
+                letterSpacing: '0.05em'
+              }}>
+                ⚠️ Sacrifice Item
+              </h2>
+              
+              <div style={{
+                backgroundColor: '#1f2937',
+                padding: '20px',
+                borderRadius: '8px',
+                marginBottom: '24px',
+                border: '1px solid rgba(239, 68, 68, 0.3)'
+              }}>
+                <p style={{ 
+                  color: '#cbd5e1', 
+                  fontSize: '16px', 
+                  lineHeight: '1.6',
+                  marginBottom: '16px'
+                }}>
+                  <strong style={{ color: '#ef4444' }}>⚠️ Extraction Failure Penalty</strong>
+                </p>
+                <p style={{ 
+                  color: '#cbd5e1', 
+                  fontSize: '15px', 
+                  lineHeight: '1.6',
+                  marginBottom: '0'
+                }}>
+                  This item will be <strong style={{ color: '#fca5a5' }}>permanently removed</strong> from your inventory and loadout. This action cannot be undone.
+                </p>
+              </div>
+
+              <div style={{
+                backgroundColor: '#1f2937',
+                padding: '16px',
+                borderRadius: '8px',
+                marginBottom: '24px',
+                textAlign: 'center'
+              }}>
+                <p style={{ color: '#94a3b8', fontSize: '14px', marginBottom: '8px' }}>Sacrificing:</p>
+                <p style={{ color: '#ef4444', fontSize: '18px', fontWeight: 'bold', marginBottom: '4px' }}>
+                  {pendingSacrificeItem.name}
+                </p>
+                <p style={{ color: '#64748b', fontSize: '14px' }}>
+                  {pendingSacrificeItem.slot} • {pendingSacrificeItem.rarity}
+                </p>
+              </div>
+
+              <div style={{ display: 'flex', gap: '12px' }}>
+                <button
+                  onClick={() => {
+                    console.log('Cancel button clicked');
+                    setShowSacrificeConfirm(false);
+                    setPendingSacrificeItem(null);
+                  }}
+                  style={{
+                    flex: 1,
+                    padding: '14px 24px',
+                    fontSize: '16px',
+                    fontWeight: 'bold',
+                    textTransform: 'uppercase',
+                    letterSpacing: '0.05em',
+                    borderRadius: '6px',
+                    border: '2px solid #64748b',
+                    backgroundColor: 'transparent',
+                    color: '#cbd5e1',
+                    cursor: 'pointer',
+                    transition: 'all 0.2s'
+                  }}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.backgroundColor = 'rgba(100, 116, 139, 0.2)';
+                    e.currentTarget.style.borderColor = '#94a3b8';
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.backgroundColor = 'transparent';
+                    e.currentTarget.style.borderColor = '#64748b';
+                  }}
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={() => {
+                    console.log('Confirm sacrifice button clicked');
+                    handleSacrifice(pendingSacrificeItem);
+                    setShowSacrificeConfirm(false);
+                    setPendingSacrificeItem(null);
+                  }}
+                  style={{
+                    flex: 1,
+                    padding: '14px 24px',
+                    fontSize: '16px',
+                    fontWeight: 'bold',
+                    textTransform: 'uppercase',
+                    letterSpacing: '0.05em',
+                    borderRadius: '6px',
+                    border: '2px solid #ef4444',
+                    backgroundColor: '#ef4444',
+                    color: 'white',
+                    cursor: 'pointer',
+                    transition: 'all 0.2s'
+                  }}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.backgroundColor = '#dc2626';
+                    e.currentTarget.style.borderColor = '#dc2626';
+                    e.currentTarget.style.transform = 'translateY(-1px)';
+                    e.currentTarget.style.boxShadow = '0 4px 12px rgba(239, 68, 68, 0.4)';
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.backgroundColor = '#ef4444';
+                    e.currentTarget.style.borderColor = '#ef4444';
+                    e.currentTarget.style.transform = 'translateY(0)';
+                    e.currentTarget.style.boxShadow = 'none';
+                  }}
+                >
+                  Confirm Sacrifice
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     );
   }
