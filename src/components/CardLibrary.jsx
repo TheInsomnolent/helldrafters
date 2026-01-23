@@ -1,4 +1,5 @@
 import React from 'react';
+import { Link } from 'react-router-dom';
 import { MASTER_DB } from '../data/itemsByWarbond';
 import { TYPE, RARITY } from '../constants/types';
 import { ARMOR_PASSIVE_DESCRIPTIONS } from '../constants/armorPassives';
@@ -283,8 +284,8 @@ export default function CardLibrary() {
         paddingTop: '20px',
         borderTop: '1px solid rgba(100, 116, 139, 0.3)'
       }}>
-        <a 
-          href="/"
+        <Link 
+          to="/"
           style={{
             color: factionColors.PRIMARY,
             textDecoration: 'none',
@@ -295,7 +296,7 @@ export default function CardLibrary() {
           }}
         >
           ← Back to Game
-        </a>
+        </Link>
       </div>
     </div>
   );
