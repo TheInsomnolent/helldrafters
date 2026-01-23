@@ -36,7 +36,7 @@ const RarityBadge = ({ rarity }) => {
 
 // Card component for displaying individual items
 const ItemCard = ({ item }) => {
-  const factionColors = getFactionColors('helldivers');
+  const factionColors = getFactionColors('terminid');
   
   if (!item || !item.name) {
     return null;
@@ -183,7 +183,7 @@ const ItemCard = ({ item }) => {
 
 // Main CardLibrary component
 export default function CardLibrary() {
-  const factionColors = getFactionColors('helldivers');
+  const factionColors = getFactionColors('terminid');
   
   // Group items by warbond
   const itemsByWarbond = MASTER_DB.reduce((acc, item) => {
