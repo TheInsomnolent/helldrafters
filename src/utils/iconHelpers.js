@@ -123,7 +123,7 @@ export const CUSTOM_ICON_URLS = {
   'g_urchin': `${WIKI_BASE_URL}/thumb/G-109_Urchin_Throwable_Render.png/300px-G-109_Urchin_Throwable_Render.png`,
   'g_arc': `${WIKI_BASE_URL}/thumb/G-31_ARC_Throwable_Render.png/300px-G-31_ARC_Throwable_Render.png`,
   'g_pineapple': `${WIKI_BASE_URL}/thumb/G-7_Pineapple_Throwable_Render.png/300px-G-7_Pineapple_Throwable_Render.png`,
-  'g_lure_mine': `${WIKI_BASE_URL}/TM-01_Lure_Mine_Throwable_Icon.png`,
+  'g_lure_mine': `${WIKI_BASE_URL}/thumb/TM-1_Lure_Mine_Throwable_Icon.png/51px-TM-1_Lure_Mine_Throwable_Icon.png`,
   
   // Boosters - wiki uses _Booster_Icon.svg format
   'b_space': `${WIKI_BASE_URL}/Hellpod_Space_Optimization_Booster_Icon.svg`,
@@ -143,6 +143,7 @@ export const CUSTOM_ICON_URLS = {
   'b_sample_extricator': `${WIKI_BASE_URL}/Sample_Extricator_Booster_Icon.svg`,
   'b_sample_scanner': `${WIKI_BASE_URL}/Sample_Scanner_Booster_Icon.svg`,
   'b_stun_pods': `${WIKI_BASE_URL}/Stun_Pods_Booster_Icon.svg`,
+  'b_concealed_insertion': `${WIKI_BASE_URL}/Concealed_Insertion_Booster_Icon.svg`,
   
   // Stratagems - wiki uses {StratagemName}_Stratagem_Icon.png format
   // Orbitals
@@ -195,6 +196,7 @@ export const CUSTOM_ICON_URLS = {
   'st_airburst_rl': `${WIKI_BASE_URL}/Airburst_Rocket_Launcher_Icon.png`,
   'st_gl': `${WIKI_BASE_URL}/Grenade_Launcher_Stratagem_Icon.png`,
   'st_wasp': `${WIKI_BASE_URL}/StA-X3_W.A.S.P._Launcher_Stratagem_Icon.png`,
+  'st_c4': `${WIKI_BASE_URL}/B-MD_C4_Pack_Stratagem_Icon.png`,
   
   // Backpacks
   'st_bp_jump': `${WIKI_BASE_URL}/Jump_Pack_Stratagem_Icon.png`,
@@ -301,6 +303,10 @@ export const CUSTOM_ICON_URLS = {
   // Python Commandos
   'a_rs20': `${WIKI_BASE_URL}/RS-20_Constrictor_Body_Icon.png`,
   'a_rs40': `${WIKI_BASE_URL}/RS-40_Beast_of_Prey_Body_Icon.png`,
+  // Redacted Regiment
+  'a_rs67': `${WIKI_BASE_URL}/RS-89_Shadow_Paragon_Body_Armory.png`,
+  'a_rs67ns': `${WIKI_BASE_URL}/RS-67_Null_Cipher_Body_Armory.png`,
+
   // Halo ODST
   'a_a9': `${WIKI_BASE_URL}/A-9_Helljumper_Body_Icon.png`,
   'a_a35': `${WIKI_BASE_URL}/A-35_Recon_Body_Icon.png`,
