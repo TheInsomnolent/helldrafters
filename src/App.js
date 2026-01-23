@@ -33,27 +33,13 @@ import ExplainerModal from './components/ExplainerModal';
 import PatchNotesModal from './components/PatchNotesModal';
 import GenAIDisclosureModal from './components/GenAIDisclosureModal';
 import ContributorsModal from './components/ContributorsModal';
-import { MultiplayerModeSelect, JoinGameScreen, MultiplayerWaitingRoom, MultiplayerStatusBar } from './components/MultiplayerLobby';
-import { MultiplayerProvider, useMultiplayer } from './systems/multiplayer';
-import { gameReducer, initialState } from './state/gameReducer';
+import { JoinGameScreen, MultiplayerModeSelect, MultiplayerStatusBar, MultiplayerWaitingRoom } from './components/MultiplayerLobby';
+import { BUTTON_STYLES, COLORS, getFactionColors, GRADIENTS, SHADOWS } from './constants/theme';
+import { getWarbondById } from './constants/warbonds';
 import * as actions from './state/actions';
 import * as types from './state/actionTypes';
-import { COLORS, SHADOWS, BUTTON_STYLES, GRADIENTS, getFactionColors } from './constants/theme';
-import { getWarbondById } from './constants/warbonds';
-
-// --- DATA CONSTANTS (imported from modules) ---
-
-
-
-
-
-
-
-
-
-// --- INITIAL STATE & HELPER LOGIC ---
-
-
+import { gameReducer, initialState } from './state/gameReducer';
+import { MultiplayerProvider, useMultiplayer } from './systems/multiplayer';
 
 function HelldiversRoguelikeApp() {
   // --- STATE (Using useReducer for complex state management) ---
@@ -1209,9 +1195,10 @@ function HelldiversRoguelikeApp() {
       : item.name;
 
     let armorPassiveDescription = null;
+    let armorPassiveKey = null;
     const isArmorItem = isArmorCombo || item?.type === TYPE.ARMOR;
     if (isArmorItem) {
-      const armorPassiveKey = item.passive;
+      armorPassiveKey = item.passive;
       if (armorPassiveKey) {
         const description = ARMOR_PASSIVE_DESCRIPTIONS[armorPassiveKey];
         if (!description && process.env.NODE_ENV === 'development') {
@@ -1227,6 +1214,13 @@ function HelldiversRoguelikeApp() {
     const isSuperstore = displayItem.superstore;
     const warbondInfo = warbondId ? getWarbondById(warbondId) : null;
     const sourceName = isSuperstore ? 'Superstore' : (warbondInfo?.name || 'Unknown');
+    const tags = displayItem.tags || [];
+
+    // Show armor class in tags
+    const armorClass = item.armorClass ? item.armorClass.slice(0, 1).toUpperCase() + item.armorClass.slice(1) : null;
+    if (armorClass && !tags.includes(armorClass)) {
+      tags.push(armorClass);
+    }
     
     // Get item icon URL - use helper function
     const iconUrl = getItemIconUrl(displayItem);
@@ -1365,7 +1359,7 @@ function HelldiversRoguelikeApp() {
             {armorPassiveDescription && (
               <div style={{ marginTop: '10px' }}>
                 <div style={{ color: '#94a3b8', fontSize: '9px', textTransform: 'uppercase', letterSpacing: '1px' }}>
-                  Armor Passive
+                  Armor Passive - {armorPassiveKey}
                 </div>
                 <div style={{ color: '#cbd5e1', fontSize: '11px', lineHeight: '1.4', marginTop: '4px' }}>
                   {armorPassiveDescription}

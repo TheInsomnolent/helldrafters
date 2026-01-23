@@ -1,5 +1,5 @@
-import { RARITY, TYPE, TAGS } from '../constants/types';
-import { ARMOR_PASSIVE, ARMOR_CLASS } from '../constants/armorPassives';
+import { ARMOR_CLASS, ARMOR_PASSIVE } from '../constants/armorPassives';
+import { RARITY, TAGS, TYPE } from '../constants/types';
 
 // This file organizes items by their source warbond for maintainability
 // Items without a warbond field default to 'helldivers_mobilize' (base game)
