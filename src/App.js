@@ -12,6 +12,16 @@ import { getArmorComboDisplayName } from './utils/itemHelpers';
 import { getItemIconUrl } from './utils/iconHelpers';
 import { processAllOutcomes, canAffordChoice, formatOutcome, formatOutcomes, needsPlayerChoice, applyGainBoosterWithSelection } from './systems/events/eventProcessor';
 import { exportGameStateToFile, parseSaveFile, normalizeLoadedState } from './systems/persistence/saveManager';
+import { 
+  trackGameStart, 
+  trackGameEnd, 
+  trackMissionComplete, 
+  trackDraftSelection, 
+  trackEventChoice,
+  trackMultiplayerAction,
+  trackModalOpen,
+  trackPageView
+} from './utils/analytics';
 import GameHeader from './components/GameHeader';
 import GameFooter from './components/GameFooter';
 import EventDisplay from './components/EventDisplay';
@@ -157,9 +167,15 @@ function HelldiversRoguelikeApp() {
   const [showRemoveCardConfirm, setShowRemoveCardConfirm] = React.useState(false); // For remove card confirmation modal
   const [pendingCardRemoval, setPendingCardRemoval] = React.useState(null); // Card pending removal
   const [missionSuccessDebouncing, setMissionSuccessDebouncing] = React.useState(false); // Debounce for mission success button
+  const [gameStartTime, setGameStartTime] = React.useState(null); // Track game start time for analytics
   
   // Ref for the hidden file input
   const fileInputRef = React.useRef(null);
+  
+  // Track app initialization
+  useEffect(() => {
+    trackPageView('Helldrafters Main Menu');
+  }, []);
   
   // Sync state to clients when host and in multiplayer mode
   useEffect(() => {
@@ -306,6 +322,7 @@ function HelldiversRoguelikeApp() {
     // Solo mode: set player count to 1 and go to config
     dispatch(actions.updateGameConfig({ playerCount: 1 }));
     dispatch(actions.setPhase('SOLO_CONFIG'));
+    trackMultiplayerAction('start_solo_mode');
   };
 
   const startGameFromLobby = (lobbyPlayers) => {
@@ -362,6 +379,8 @@ function HelldiversRoguelikeApp() {
       dispatch(actions.setRequisition(0)); // Start with 0, earn 1 per mission
       dispatch(actions.setBurnedCards([]));
       dispatch(actions.setPhase('DASHBOARD'));
+      setGameStartTime(Date.now());
+      trackGameStart(isMultiplayer ? 'multiplayer' : 'solo', 1);
     }
   };
 
@@ -378,6 +397,8 @@ function HelldiversRoguelikeApp() {
     dispatch(actions.setPlayers(newPlayers));
     dispatch(actions.setDifficulty(customSetup.difficulty));
     dispatch(actions.setRequisition(0));
+    setGameStartTime(Date.now());
+    trackGameStart(isMultiplayer ? 'multiplayer' : 'solo', customSetup.difficulty);
     dispatch(actions.setBurnedCards([]));
     dispatch(actions.setPhase('DASHBOARD'));
   };
@@ -691,6 +712,13 @@ function HelldiversRoguelikeApp() {
     }
 
     dispatch(actions.setPlayers(updatedPlayers));
+
+    // Track draft selection
+    trackDraftSelection(
+      item.type || (isArmorCombo ? TYPE.ARMOR : 'unknown'),
+      item.rarity || 'unknown',
+      draftState.roundNumber || 1
+    );
 
     // Next player, extra draft, or finish
     proceedToNextDraft(updatedPlayers);
@@ -1599,6 +1627,7 @@ function HelldiversRoguelikeApp() {
         gameConfig={gameConfig}
         onHost={async () => {
           // Create lobby and go to waiting room
+          trackMultiplayerAction('create_lobby');
           const newLobbyId = await hostGame('Host', gameConfig);
           if (newLobbyId) {
             setMultiplayerMode('waiting');
@@ -1774,7 +1803,10 @@ function HelldiversRoguelikeApp() {
             {/* Help Button */}
             <div style={{ marginTop: '12px' }}>
               <button 
-                onClick={() => setShowExplainer(true)}
+                onClick={() => {
+                  trackModalOpen('explainer');
+                  setShowExplainer(true);
+                }}
                 style={{
                   width: '100%',
                   padding: '12px',
@@ -1811,7 +1843,10 @@ function HelldiversRoguelikeApp() {
             {/* Patch Notes Button */}
             <div style={{ marginTop: '12px' }}>
               <button 
-                onClick={() => setShowPatchNotes(true)}
+                onClick={() => {
+                  trackModalOpen('patch_notes');
+                  setShowPatchNotes(true);
+                }}
                 style={{
                   width: '100%',
                   padding: '12px',
@@ -1888,7 +1923,10 @@ function HelldiversRoguelikeApp() {
             {/* Gen AI Disclosure Button */}
             <div style={{ marginTop: '12px' }}>
               <button 
-                onClick={() => setShowGenAIDisclosure(true)}
+                onClick={() => {
+                  trackModalOpen('genai_disclosure');
+                  setShowGenAIDisclosure(true);
+                }}
                 style={{
                   width: '100%',
                   padding: '12px',
@@ -1927,6 +1965,7 @@ function HelldiversRoguelikeApp() {
               <button 
                 onClick={() => {
                   console.log('Contributors button clicked, showContributors:', showContributors);
+                  trackModalOpen('contributors');
                   setShowContributors(true);
                   console.log('setShowContributors(true) called');
                 }}
@@ -2558,6 +2597,12 @@ function HelldiversRoguelikeApp() {
     }
 
     const handleEventChoice = (choice) => {
+      // Track event choice
+      trackEventChoice(
+        currentEvent?.type || 'unknown',
+        choice.id || 'unknown'
+      );
+      
       // Process outcomes using the event processor with selections
       const selections = {
         sourcePlayerSelection: eventSourcePlayerSelection,
@@ -4243,6 +4288,13 @@ function HelldiversRoguelikeApp() {
                       
                       // Check for victory condition
                       if (currentDiff === 10 && !gameConfig.endlessMode) {
+                        const gameTimeSeconds = gameStartTime ? Math.floor((Date.now() - gameStartTime) / 1000) : 0;
+                        trackGameEnd(
+                          isMultiplayer ? 'multiplayer' : 'solo',
+                          currentMission,
+                          gameTimeSeconds,
+                          true
+                        );
                         dispatch(actions.setPhase('VICTORY'));
                         return;
                       }
@@ -4291,8 +4343,18 @@ function HelldiversRoguelikeApp() {
                     const reqGained = 1 * reqMultiplier;
                     dispatch(actions.addRequisition(reqGained));
                     
+                    // Track mission complete
+                    trackMissionComplete(currentMission, currentDiff, true);
+                    
                     // Check for victory condition
                     if (currentDiff === 10 && !gameConfig.endlessMode) {
+                      const gameTimeSeconds = gameStartTime ? Math.floor((Date.now() - gameStartTime) / 1000) : 0;
+                      trackGameEnd(
+                        isMultiplayer ? 'multiplayer' : 'solo',
+                        currentMission,
+                        gameTimeSeconds,
+                        true
+                      );
                       dispatch(actions.setPhase('VICTORY'));
                       return;
                     }

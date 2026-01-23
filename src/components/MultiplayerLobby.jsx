@@ -6,6 +6,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { Copy, Check, Users, Crown, Wifi, WifiOff, RefreshCw } from 'lucide-react';
 import { COLORS, SHADOWS, GRADIENTS, getFactionColors } from '../constants/theme';
 import { useMultiplayer } from '../systems/multiplayer';
+import { trackMultiplayerAction } from '../utils/analytics';
 import GameConfiguration from './GameConfiguration';
 
 /**
@@ -92,7 +93,10 @@ export function MultiplayerModeSelect({ gameConfig, onHost, onJoin, onBack }) {
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '32px', marginBottom: '48px' }}>
           {/* Host Game */}
           <button
-            onClick={onHost}
+            onClick={() => {
+              trackMultiplayerAction('select_host');
+              onHost();
+            }}
             style={{
               backgroundColor: COLORS.CARD_BG,
               border: `2px solid ${COLORS.CARD_BORDER}`,
@@ -124,7 +128,10 @@ export function MultiplayerModeSelect({ gameConfig, onHost, onJoin, onBack }) {
 
           {/* Join Game */}
           <button
-            onClick={onJoin}
+            onClick={() => {
+              trackMultiplayerAction('select_join');
+              onJoin();
+            }}
             style={{
               backgroundColor: COLORS.CARD_BG,
               border: `2px solid ${COLORS.CARD_BORDER}`,
@@ -316,6 +323,7 @@ export function JoinGameScreen({ gameConfig, onJoinLobby, onBack }) {
       } catch (e) {
         // Ignore localStorage errors
       }
+      trackMultiplayerAction('join_lobby');
       onJoinLobby(lobbyCode.trim(), playerName.trim(), selectedSlot);
     }
   };
@@ -638,11 +646,14 @@ export function MultiplayerWaitingRoom({
   };
 
   const handleLeave = async () => {
+    trackMultiplayerAction('leave_lobby', players.length);
     await disconnect();
     onLeave();
   };
 
   const handleStartGame = () => {
+    // Track multiplayer game start
+    trackMultiplayerAction('start_game', players.length);
     // Pass the actual number of players that joined
     onStartGame(players.length);
   };

@@ -5,7 +5,8 @@
 export { 
   initializeFirebase, 
   isFirebaseConfigured, 
-  getFirebaseDatabase 
+  getFirebaseDatabase,
+  getFirebaseAnalytics
 } from './firebaseConfig';
 
 export {

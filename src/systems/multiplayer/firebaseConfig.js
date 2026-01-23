@@ -17,6 +17,7 @@
 
 import { initializeApp } from 'firebase/app';
 import { getDatabase } from 'firebase/database';
+import { getAnalytics, isSupported } from 'firebase/analytics';
 
 const firebaseConfig = {
   apiKey: process.env.REACT_APP_FIREBASE_API_KEY,
@@ -31,8 +32,9 @@ const firebaseConfig = {
 // Initialize Firebase only if config is present
 let app = null;
 let database = null;
+let analytics = null;
 
-export const initializeFirebase = () => {
+export const initializeFirebase = async () => {
   if (!firebaseConfig.apiKey || !firebaseConfig.databaseURL) {
     console.warn('Firebase config not found. Multiplayer features will be disabled.');
     return false;
@@ -41,6 +43,16 @@ export const initializeFirebase = () => {
   try {
     app = initializeApp(firebaseConfig);
     database = getDatabase(app);
+    
+    // Initialize Analytics if supported (works in browsers, not in Node.js environments)
+    const analyticsSupported = await isSupported();
+    if (analyticsSupported) {
+      analytics = getAnalytics(app);
+      console.log('Firebase Analytics initialized successfully');
+    } else {
+      console.log('Firebase Analytics not supported in this environment');
+    }
+    
     return true;
   } catch (error) {
     console.error('Failed to initialize Firebase:', error);
@@ -53,6 +65,10 @@ export const getFirebaseDatabase = () => {
     throw new Error('Firebase not initialized. Call initializeFirebase() first.');
   }
   return database;
+};
+
+export const getFirebaseAnalytics = () => {
+  return analytics; // Returns null if not initialized or not supported
 };
 
 export const isFirebaseConfigured = () => {
