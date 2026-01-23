@@ -1,5 +1,5 @@
 import React, { useReducer, useEffect } from 'react';
-import { BrowserRouter, Routes, Route } from 'react-router-dom';
+import { HashRouter, Routes, Route } from 'react-router-dom';
 import { RefreshCw, CheckCircle, XCircle, Users, Bug } from 'lucide-react';
 import { selectRandomEvent, EVENT_TYPES, EVENTS } from './systems/events/events';
 import { RARITY, TYPE } from './constants/types';
@@ -5059,13 +5059,13 @@ function HelldiversRoguelikeApp() {
 // Wrapper component that provides multiplayer context
 export default function HelldiversRoguelike() {
   return (
-    <BrowserRouter basename="/helldrafters">
+    <HashRouter>
       <MultiplayerProvider>
         <Routes>
-          <Route path="/card-library" element={<CardLibrary />} />
+          <Route path="card-library" element={<CardLibrary />} />
           <Route path="/" element={<HelldiversRoguelikeApp />} />
         </Routes>
       </MultiplayerProvider>
-    </BrowserRouter>
+    </HashRouter>
   );
 }
