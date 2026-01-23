@@ -1,49 +1,34 @@
-import React, { useReducer, useEffect } from 'react';
-import { RefreshCw, CheckCircle, XCircle, Users, Bug } from 'lucide-react';
-import { selectRandomEvent, EVENT_TYPES, EVENTS } from './systems/events/events';
-import { RARITY, TYPE } from './constants/types';
-import { MASTER_DB } from './data/itemsByWarbond';
-import { STARTING_LOADOUT, DIFFICULTY_CONFIG, getMissionsForDifficulty } from './constants/gameConfig';
-import { ARMOR_PASSIVE_DESCRIPTIONS } from './constants/armorPassives';
-import { getItemById } from './utils/itemHelpers';
-import { getDraftHandSize, getWeightedPool, generateDraftHand } from './utils/draftHelpers';
-import { areStratagemSlotsFull, getFirstEmptyStratagemSlot } from './utils/loadoutHelpers';
-import { getArmorComboDisplayName } from './utils/itemHelpers';
-import { getItemIconUrl } from './utils/iconHelpers';
-import { processAllOutcomes, canAffordChoice, formatOutcome, formatOutcomes, needsPlayerChoice, applyGainBoosterWithSelection } from './systems/events/eventProcessor';
-import { exportGameStateToFile, parseSaveFile, normalizeLoadedState } from './systems/persistence/saveManager';
-import GameHeader from './components/GameHeader';
-import GameFooter from './components/GameFooter';
-import EventDisplay from './components/EventDisplay';
-import LoadoutDisplay from './components/LoadoutDisplay';
-import GameLobby from './components/GameLobby';
-import GameConfiguration from './components/GameConfiguration';
-import RarityWeightDebug from './components/RarityWeightDebug';
-import ExplainerModal from './components/ExplainerModal';
-import PatchNotesModal from './components/PatchNotesModal';
-import GenAIDisclosureModal from './components/GenAIDisclosureModal';
+import { Bug, CheckCircle, RefreshCw, Users, XCircle } from 'lucide-react';
+import React, { useEffect, useReducer } from 'react';
 import ContributorsModal from './components/ContributorsModal';
-import { MultiplayerModeSelect, JoinGameScreen, MultiplayerWaitingRoom, MultiplayerStatusBar } from './components/MultiplayerLobby';
-import { MultiplayerProvider, useMultiplayer } from './systems/multiplayer';
-import { gameReducer, initialState } from './state/gameReducer';
+import EventDisplay from './components/EventDisplay';
+import ExplainerModal from './components/ExplainerModal';
+import GameConfiguration from './components/GameConfiguration';
+import GameFooter from './components/GameFooter';
+import GameHeader from './components/GameHeader';
+import GameLobby from './components/GameLobby';
+import GenAIDisclosureModal from './components/GenAIDisclosureModal';
+import LoadoutDisplay from './components/LoadoutDisplay';
+import { JoinGameScreen, MultiplayerModeSelect, MultiplayerStatusBar, MultiplayerWaitingRoom } from './components/MultiplayerLobby';
+import PatchNotesModal from './components/PatchNotesModal';
+import RarityWeightDebug from './components/RarityWeightDebug';
+import { ARMOR_PASSIVE_DESCRIPTIONS } from './constants/armorPassives';
+import { DIFFICULTY_CONFIG, getMissionsForDifficulty, STARTING_LOADOUT } from './constants/gameConfig';
+import { BUTTON_STYLES, COLORS, getFactionColors, GRADIENTS, SHADOWS } from './constants/theme';
+import { RARITY, TYPE } from './constants/types';
+import { getWarbondById } from './constants/warbonds';
+import { MASTER_DB } from './data/itemsByWarbond';
 import * as actions from './state/actions';
 import * as types from './state/actionTypes';
-import { COLORS, SHADOWS, BUTTON_STYLES, GRADIENTS, getFactionColors } from './constants/theme';
-import { getWarbondById } from './constants/warbonds';
-
-// --- DATA CONSTANTS (imported from modules) ---
-
-
-
-
-
-
-
-
-
-// --- INITIAL STATE & HELPER LOGIC ---
-
-
+import { gameReducer, initialState } from './state/gameReducer';
+import { applyGainBoosterWithSelection, canAffordChoice, formatOutcome, formatOutcomes, needsPlayerChoice, processAllOutcomes } from './systems/events/eventProcessor';
+import { EVENT_TYPES, EVENTS, selectRandomEvent } from './systems/events/events';
+import { MultiplayerProvider, useMultiplayer } from './systems/multiplayer';
+import { exportGameStateToFile, normalizeLoadedState, parseSaveFile } from './systems/persistence/saveManager';
+import { generateDraftHand, getDraftHandSize, getWeightedPool } from './utils/draftHelpers';
+import { getItemIconUrl } from './utils/iconHelpers';
+import { getArmorComboDisplayName, getItemById } from './utils/itemHelpers';
+import { areStratagemSlotsFull, getFirstEmptyStratagemSlot } from './utils/loadoutHelpers';
 
 function HelldiversRoguelikeApp() {
   // --- STATE (Using useReducer for complex state management) ---
@@ -1181,9 +1166,10 @@ function HelldiversRoguelikeApp() {
       : item.name;
 
     let armorPassiveDescription = null;
+    let armorPassiveKey = null;
     const isArmorItem = isArmorCombo || item?.type === TYPE.ARMOR;
     if (isArmorItem) {
-      const armorPassiveKey = item.passive;
+      armorPassiveKey = item.passive;
       if (armorPassiveKey) {
         const description = ARMOR_PASSIVE_DESCRIPTIONS[armorPassiveKey];
         if (!description && process.env.NODE_ENV === 'development') {
@@ -1199,6 +1185,13 @@ function HelldiversRoguelikeApp() {
     const isSuperstore = displayItem.superstore;
     const warbondInfo = warbondId ? getWarbondById(warbondId) : null;
     const sourceName = isSuperstore ? 'Superstore' : (warbondInfo?.name || 'Unknown');
+    const tags = displayItem.tags || [];
+
+    // Show armor class in tags
+    const armorClass = item.armorClass ? item.armorClass.slice(0, 1).toUpperCase() + item.armorClass.slice(1) : null;
+    if (armorClass && !tags.includes(armorClass)) {
+      tags.push(armorClass);
+    }
     
     // Get item icon URL - use helper function
     const iconUrl = getItemIconUrl(displayItem);
@@ -1337,7 +1330,7 @@ function HelldiversRoguelikeApp() {
             {armorPassiveDescription && (
               <div style={{ marginTop: '10px' }}>
                 <div style={{ color: '#94a3b8', fontSize: '9px', textTransform: 'uppercase', letterSpacing: '1px' }}>
-                  Armor Passive
+                  Armor Passive - {armorPassiveKey}
                 </div>
                 <div style={{ color: '#cbd5e1', fontSize: '11px', lineHeight: '1.4', marginTop: '4px' }}>
                   {armorPassiveDescription}
