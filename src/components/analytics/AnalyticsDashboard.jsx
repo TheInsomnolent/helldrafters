@@ -279,7 +279,7 @@ const AnalyticsDashboard = ({
               Final Requisition
             </p>
             <p style={{ color: COLORS.PRIMARY, fontSize: '28px', fontWeight: 'bold', margin: 0 }}>
-              {Math.floor((analyticsData?.finalStats?.finalRequisition || 0) * 100) / 100}
+              {parseFloat((analyticsData?.finalStats?.finalRequisition || 0).toFixed(2))}
             </p>
             <p style={{ color: COLORS.TEXT_SECONDARY, fontSize: '11px', margin: '4px 0 0 0', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '4px' }}>
               <img src="https://helldivers.wiki.gg/images/Requisition_Slip.svg" alt="" style={{ width: 14, height: 14 }} />
