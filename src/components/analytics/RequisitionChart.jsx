@@ -21,7 +21,6 @@ const CustomTooltip = ({ active, payload }) => {
   if (!active || !payload || !payload.length) return null;
   
   const data = payload[0]?.payload;
-  const isSpend = data?.change < 0;
   
   return (
     <div style={{
