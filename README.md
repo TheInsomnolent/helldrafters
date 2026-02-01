@@ -30,7 +30,7 @@ Perfect for solo players or squads looking for a fresh challenge, Helldrafters a
 - **Events System**: Optional high-risk, high-reward events between missions
 - **Loadout Sacrifice**: Failed missions force you to sacrifice equipment, raising the stakes
 - **Custom Start Mode**: Configure starting difficulty and loadouts for challenge runs
-- **Multiple Game Modes**: 
+- **Multiple Game Modes**:
   - **Global Uniqueness**: Players can't draft the same cards
   - **Burn Cards**: Once seen, a card never appears again
   - **Brutality Mode**: Harsher penalties for non-extracted players
