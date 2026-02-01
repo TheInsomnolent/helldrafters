@@ -41,7 +41,7 @@ By participating in this project, you agree to abide by our [Code of Conduct](CO
 
 ### Branch Strategy
 
-- **`master`** — Production branch. Automatically deploys to GitHub Pages when updated. **Do not submit PRs directly to master.**
+- **`main`** — Production branch. Automatically deploys to GitHub Pages when updated. **Do not submit PRs directly to main.**
 - **`develop`** — Integration branch for all contributions. **Submit your PRs here.**
 
 ### Making Changes
