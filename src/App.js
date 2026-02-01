@@ -14,6 +14,8 @@ import LoadoutDisplay from './components/LoadoutDisplay';
 import { JoinGameScreen, MultiplayerModeSelect, MultiplayerStatusBar, MultiplayerWaitingRoom } from './components/MultiplayerLobby';
 import PatchNotesModal from './components/PatchNotesModal';
 import RarityWeightDebug from './components/RarityWeightDebug';
+import RunHistoryModal from './components/RunHistoryModal';
+import { AnalyticsDashboard } from './components/analytics';
 import { ARMOR_PASSIVE_DESCRIPTIONS } from './constants/armorPassives';
 import { DIFFICULTY_CONFIG, getMissionsForDifficulty, STARTING_LOADOUT } from './constants/gameConfig';
 import { BUTTON_STYLES, COLORS, getFactionColors, GRADIENTS, SHADOWS } from './constants/theme';
@@ -23,10 +25,11 @@ import { MASTER_DB } from './data/itemsByWarbond';
 import * as actions from './state/actions';
 import * as types from './state/actionTypes';
 import { gameReducer, initialState } from './state/gameReducer';
+import * as runAnalytics from './state/analyticsStore';
 import { applyGainBoosterWithSelection, canAffordChoice, formatOutcome, formatOutcomes, needsPlayerChoice, processAllOutcomes } from './systems/events/eventProcessor';
 import { EVENT_TYPES, EVENTS, selectRandomEvent } from './systems/events/events';
 import { initializeAnalytics, MultiplayerProvider, useMultiplayer } from './systems/multiplayer';
-import { exportGameStateToFile, normalizeLoadedState, parseSaveFile } from './systems/persistence/saveManager';
+import { exportGameStateToFile, normalizeLoadedState, parseSaveFile, saveRunToHistory } from './systems/persistence/saveManager';
 import {
   trackDraftSelection,
   trackEventChoice,
@@ -158,6 +161,10 @@ function HelldiversRoguelikeApp() {
   const [pendingCardRemoval, setPendingCardRemoval] = React.useState(null); // Card pending removal
   const [missionSuccessDebouncing, setMissionSuccessDebouncing] = React.useState(false); // Debounce for mission success button
   const [gameStartTime, setGameStartTime] = React.useState(null); // Track game start time for analytics
+  
+  // Analytics state
+  const [showRunHistory, setShowRunHistory] = React.useState(false); // For run history modal
+  const [runAnalyticsData, setRunAnalyticsData] = React.useState(null); // Current run's analytics snapshot
   
   // Ref for the hidden file input
   const fileInputRef = React.useRef(null);
@@ -353,6 +360,10 @@ function HelldiversRoguelikeApp() {
           dispatch(actions.loadGameState(normalizedState));
           setSelectedPlayer(normalizedState.selectedPlayer || 0);
           
+          // Initialize analytics for loaded game
+          runAnalytics.initializeAnalytics(normalizedState.gameConfig, normalizedState.players);
+          setGameStartTime(Date.now());
+          
           // Sync the loaded state to all clients
           await syncState(normalizedState);
           
@@ -362,11 +373,19 @@ function HelldiversRoguelikeApp() {
           // Fall back to solo loading
           dispatch(actions.loadGameState(normalizedState));
           setSelectedPlayer(normalizedState.selectedPlayer || 0);
+          
+          // Initialize analytics for loaded game
+          runAnalytics.initializeAnalytics(normalizedState.gameConfig, normalizedState.players);
+          setGameStartTime(Date.now());
         }
       } else {
         // Single player game or Firebase not ready - load normally
         dispatch(actions.loadGameState(normalizedState));
         setSelectedPlayer(normalizedState.selectedPlayer || 0);
+        
+        // Initialize analytics for loaded game
+        runAnalytics.initializeAnalytics(normalizedState.gameConfig, normalizedState.players);
+        setGameStartTime(Date.now());
         
         if (isMultiplayerGame && !firebaseReady) {
           alert('Game loaded successfully!\n\nNote: This is a multiplayer save but Firebase is not configured. Loading as solo game.');
@@ -448,6 +467,10 @@ function HelldiversRoguelikeApp() {
       dispatch(actions.setPhase('DASHBOARD'));
       setGameStartTime(Date.now());
       trackGameStart(isMultiplayer ? 'multiplayer' : 'solo', 1);
+      
+      // Initialize run analytics
+      runAnalytics.initializeAnalytics(gameConfig, newPlayers);
+      setRunAnalyticsData(null);
     }
   };
 
@@ -468,6 +491,10 @@ function HelldiversRoguelikeApp() {
     trackGameStart(isMultiplayer ? 'multiplayer' : 'solo', customSetup.difficulty);
     dispatch(actions.setBurnedCards([]));
     dispatch(actions.setPhase('DASHBOARD'));
+    
+    // Initialize run analytics
+    runAnalytics.initializeAnalytics(gameConfig, newPlayers);
+    setRunAnalyticsData(null);
   };
 
   // --- CORE LOGIC: THE DRAFT DIRECTOR ---
@@ -766,6 +793,13 @@ function HelldiversRoguelikeApp() {
       if (!draftState.isRetrospective) {
         dispatch(actions.addDraftHistory(currentDiff, gameConfig.starRating));
         
+        // Record draft complete for analytics
+        runAnalytics.recordDraftComplete(currentDiff, updatedPlayers.map(p => ({
+          index: updatedPlayers.indexOf(p),
+          name: p.name,
+          loadout: p.loadout
+        })));
+        
         // Check if any players need retrospective drafts (newly joined players)
         const playerNeedingRetro = updatedPlayers.findIndex(p => p.needsRetrospectiveDraft && (p.catchUpDraftsRemaining || 0) > 0);
         if (playerNeedingRetro !== -1) {
@@ -919,6 +953,20 @@ function HelldiversRoguelikeApp() {
 
     dispatch(actions.setPlayers(updatedPlayers));
 
+    // Determine the slot type and item ID for analytics
+    let slotType = item.type || 'armor';
+    let itemId = isArmorCombo ? item.items[0].id : item.id;
+    
+    // Record loadout change for analytics
+    runAnalytics.recordLoadoutChange(
+      currentPlayerIdx,
+      player.name || `Helldiver ${currentPlayerIdx + 1}`,
+      { ...player.loadout },
+      slotType,
+      itemId,
+      `Draft pick: ${item.name || (isArmorCombo ? getArmorComboDisplayName(item) : 'Unknown item')}`
+    );
+
     // Burn all cards shown in this draft hand (if burn mode enabled)
     if (gameConfig.burnCards && draftState.roundCards) {
       draftState.roundCards.forEach(card => {
@@ -983,6 +1031,16 @@ function HelldiversRoguelikeApp() {
     dispatch(actions.setPlayers(updatedPlayers));
     dispatch(actions.updateDraftState({ pendingStratagem: null }));
 
+    // Record loadout change for analytics
+    runAnalytics.recordLoadoutChange(
+      currentPlayerIdx,
+      player.name || `Helldiver ${currentPlayerIdx + 1}`,
+      { ...player.loadout },
+      `stratagems`,
+      item.id,
+      `Replaced stratagem slot ${slotIndex + 1}: ${item.name || 'Unknown'}`
+    );
+
     // Next player, extra draft, or finish
     proceedToNextDraft(updatedPlayers);
   };
@@ -1039,6 +1097,17 @@ function HelldiversRoguelikeApp() {
       }
 
       dispatch(actions.setPlayers(updatedPlayers));
+
+      // Record loadout change for analytics
+      runAnalytics.recordLoadoutChange(
+        playerIndex,
+        player.name || `Helldiver ${playerIndex + 1}`,
+        { ...player.loadout },
+        item.type || 'armor',
+        isArmorCombo ? item.items[0].id : item.id,
+        `Draft pick: ${item.name || (isArmorCombo ? 'Armor combo' : 'Unknown item')}`
+      );
+
       proceedToNextDraft(updatedPlayers);
       return true; // Action was handled
     }
@@ -1070,6 +1139,17 @@ function HelldiversRoguelikeApp() {
       
       dispatch(actions.setPlayers(updatedPlayers));
       dispatch(actions.updateDraftState({ pendingStratagem: null }));
+
+      // Record loadout change for analytics
+      runAnalytics.recordLoadoutChange(
+        playerIndex,
+        player.name || `Helldiver ${playerIndex + 1}`,
+        { ...player.loadout },
+        'stratagems',
+        item.id,
+        `Replaced stratagem slot ${slotIndex + 1}: ${item.name || 'Unknown'}`
+      );
+
       proceedToNextDraft(updatedPlayers);
       return true;
     }
@@ -1300,6 +1380,12 @@ function HelldiversRoguelikeApp() {
     }
     
     dispatch(actions.spendRequisition(cost));
+    
+    // Record requisition spend for analytics
+    const playerName = players[draftState.activePlayerIndex]?.name || `Helldiver ${draftState.activePlayerIndex + 1}`;
+    runAnalytics.recordRequisitionChange(-cost, playerName, 'Draft Reroll');
+    runAnalytics.recordRerollUsed(draftState.activePlayerIndex, cost);
+    
     dispatch(actions.updateDraftState({
       roundCards: generateDraftHandForPlayer(draftState.activePlayerIndex)
     }));
@@ -1316,6 +1402,11 @@ function HelldiversRoguelikeApp() {
     if (playerLockedSlots.includes(slotType)) return;
     
     dispatch(actions.spendRequisition(slotLockCost));
+    
+    // Record requisition spend for analytics
+    const playerName = player?.name || 'Unknown Player';
+    runAnalytics.recordRequisitionChange(-slotLockCost, playerName, `Lock ${slotType} Slot`);
+    
     dispatch(actions.lockPlayerDraftSlot(playerId, slotType));
     
     // Regenerate current hand if this is the active player
@@ -1809,189 +1900,40 @@ function HelldiversRoguelikeApp() {
   // --- RENDER PHASES ---
 
   if (phase === 'VICTORY') {
+    const handleReturnToMenu = () => {
+      runAnalytics.clearAnalytics();
+      setRunAnalyticsData(null);
+      dispatch(actions.setPhase('MENU'));
+    };
+    
     return (
-      <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'linear-gradient(135deg, #0f1419 0%, #1a2f3a 50%, #0f1419 100%)', padding: '24px' }}>
-        <div style={{ maxWidth: '900px', width: '100%', textAlign: 'center' }}>
-          <div style={{ marginBottom: '40px' }}>
-            <div style={{ fontSize: '80px', marginBottom: '16px' }}>🎖️</div>
-            <h1 style={{ fontSize: '64px', fontWeight: '900', color: factionColors.PRIMARY, margin: '0 0 16px 0', textTransform: 'uppercase', letterSpacing: '0.05em', textShadow: factionColors.GLOW }}>
-              DEMOCRACY MANIFESTED
-            </h1>
-            <h2 style={{ fontSize: '24px', fontWeight: 'bold', color: '#22c55e', margin: '0 0 8px 0' }}>
-              OPERATION COMPLETE
-            </h2>
-            <p style={{ fontSize: '16px', color: '#cbd5e1', lineHeight: '1.8', margin: '0', maxWidth: '600px', marginLeft: 'auto', marginRight: 'auto' }}>
-              Your squad has successfully completed all 10 difficulty tiers.
-              <br/>
-              Super Earth salutes your unwavering dedication to Liberty and Freedom.
-              <br/>
-              <span style={{ color: factionColors.PRIMARY, fontWeight: 'bold' }}>Managed Democracy prevails!</span>
-            </p>
-          </div>
-
-          {/* Final Stats */}
-          <div style={{ backgroundColor: 'rgba(26, 35, 50, 0.8)', padding: '24px', borderRadius: '8px', border: `2px solid ${factionColors.PRIMARY}66`, marginBottom: '32px' }}>
-            <div style={{ fontSize: '14px', color: factionColors.PRIMARY, marginBottom: '16px', textTransform: 'uppercase', fontWeight: 'bold', letterSpacing: '0.1em' }}>
-              Mission Statistics
-            </div>
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '16px', textAlign: 'center' }}>
-              <div>
-                <div style={{ fontSize: '12px', color: '#64748b', marginBottom: '4px' }}>Difficulty Cleared</div>
-                <div style={{ fontSize: '32px', fontWeight: 'bold', color: factionColors.PRIMARY }}>D10</div>
-                <div style={{ fontSize: '11px', color: '#94a3b8', marginTop: '2px' }}>Super Helldive</div>
-              </div>
-              <div>
-                <div style={{ fontSize: '12px', color: '#64748b', marginBottom: '4px' }}>Requisition</div>
-                <div style={{ fontSize: '32px', fontWeight: 'bold', color: '#22c55e' }}>{Math.floor(requisition)}</div>
-              </div>
-              <div>
-                <div style={{ fontSize: '12px', color: '#64748b', marginBottom: '4px' }}>Theater</div>
-                <div style={{ fontSize: '24px', fontWeight: 'bold', color: 'white', marginTop: '8px' }}>{gameConfig.faction}</div>
-              </div>
-            </div>
-          </div>
-
-          {/* Final Loadouts */}
-          <div style={{ backgroundColor: 'rgba(26, 35, 50, 0.8)', padding: '24px', borderRadius: '8px', border: '1px solid rgba(100, 116, 139, 0.5)', marginBottom: '32px' }}>
-            <div style={{ fontSize: '14px', color: factionColors.PRIMARY, marginBottom: '20px', textTransform: 'uppercase', fontWeight: 'bold', letterSpacing: '0.1em' }}>
-              Final Loadouts
-            </div>
-            <div style={{ display: 'grid', gridTemplateColumns: players.length > 2 ? 'repeat(2, 1fr)' : 'repeat(' + players.length + ', 1fr)', gap: '16px' }}>
-              {players.map((player, idx) => {
-                const loadout = player.loadout;
-                const primaryItem = getItemById(loadout.primary);
-                const secondaryItem = getItemById(loadout.secondary);
-                const grenadeItem = getItemById(loadout.grenade);
-                const armorItem = getItemById(loadout.armor);
-                const boosterItem = getItemById(loadout.booster);
-                const stratagems = loadout.stratagems.map(s => getItemById(s)).filter(Boolean);
-
-                return (
-                  <div key={idx} style={{ backgroundColor: 'rgba(40, 53, 72, 0.6)', padding: '16px', borderRadius: '6px', border: `1px solid ${factionColors.PRIMARY}4D` }}>
-                    <div style={{ fontSize: '16px', fontWeight: 'bold', color: factionColors.PRIMARY, marginBottom: '12px', textAlign: 'left' }}>
-                      {player.name}
-                    </div>
-                    <div style={{ fontSize: '11px', color: '#cbd5e1', textAlign: 'left', lineHeight: '1.8' }}>
-                      <div><span style={{ color: '#94a3b8' }}>Primary:</span> {primaryItem?.name || 'None'}</div>
-                      <div><span style={{ color: '#94a3b8' }}>Secondary:</span> {secondaryItem?.name || 'None'}</div>
-                      <div><span style={{ color: '#94a3b8' }}>Grenade:</span> {grenadeItem?.name || 'None'}</div>
-                      <div><span style={{ color: '#94a3b8' }}>Armor:</span> {armorItem?.name || 'None'}</div>
-                      {boosterItem && <div><span style={{ color: '#94a3b8' }}>Booster:</span> {boosterItem.name}</div>}
-                      {stratagems.length > 0 && (
-                        <div style={{ marginTop: '8px', paddingTop: '8px', borderTop: '1px solid rgba(100, 116, 139, 0.3)' }}>
-                          <div style={{ color: '#94a3b8', marginBottom: '4px' }}>Stratagems:</div>
-                          {stratagems.map((s, i) => <div key={i}>• {s.name}</div>)}
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          </div>
-
-          <button
-            onClick={() => dispatch(actions.setPhase('MENU'))}
-            style={{
-              width: '100%',
-              maxWidth: '400px',
-              padding: '20px',
-              backgroundColor: factionColors.PRIMARY,
-              color: 'black',
-              border: 'none',
-              borderRadius: '4px',
-              fontWeight: '900',
-              fontSize: '18px',
-              textTransform: 'uppercase',
-              letterSpacing: '0.2em',
-              cursor: 'pointer',
-              transition: 'all 0.2s',
-              boxShadow: factionColors.SHADOW
-            }}
-            onMouseEnter={(e) => {
-              e.currentTarget.style.backgroundColor = factionColors.PRIMARY_HOVER;
-              e.currentTarget.style.boxShadow = factionColors.SHADOW_HOVER;
-            }}
-            onMouseLeave={(e) => {
-              e.currentTarget.style.backgroundColor = factionColors.PRIMARY;
-              e.currentTarget.style.boxShadow = factionColors.SHADOW;
-            }}
-          >
-            Return to Menu
-          </button>
-        </div>
-      </div>
+      <AnalyticsDashboard
+        analyticsData={runAnalyticsData}
+        outcome="victory"
+        faction={gameConfig.faction}
+        players={players}
+        onClose={handleReturnToMenu}
+        onViewHistory={() => setShowRunHistory(true)}
+      />
     );
   }
 
   if (phase === 'GAMEOVER') {
+    const handleReturnToMenu = () => {
+      runAnalytics.clearAnalytics();
+      setRunAnalyticsData(null);
+      dispatch(actions.setPhase('MENU'));
+    };
+    
     return (
-      <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', backgroundColor: '#0f1419', padding: '24px' }}>
-        <div style={{ maxWidth: '600px', textAlign: 'center' }}>
-          <div style={{ marginBottom: '40px' }}>
-            <div style={{ fontSize: '80px', marginBottom: '16px' }}>💀</div>
-            <h1 style={{ fontSize: '64px', fontWeight: '900', color: '#ef4444', margin: '0 0 16px 0', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-              DISHONORABLE DISCHARGE
-            </h1>
-            <h2 style={{ fontSize: '24px', fontWeight: 'bold', color: '#94a3b8', margin: '0 0 8px 0' }}>
-              MISSION FAILED
-            </h2>
-            <p style={{ fontSize: '16px', color: '#64748b', lineHeight: '1.6', margin: '0' }}>
-              Your squad has been eliminated.
-              <br/>
-              Super Earth revokes your citizenship and Helldivers status.
-              <br/>
-              You have brought shame to Democracy.
-            </p>
-          </div>
-
-          <div style={{ backgroundColor: '#1a2332', padding: '24px', borderRadius: '8px', border: '1px solid rgba(239, 68, 68, 0.3)', marginBottom: '32px' }}>
-            <div style={{ fontSize: '14px', color: '#94a3b8', marginBottom: '16px', textTransform: 'uppercase' }}>
-              Final Stats
-            </div>
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px', textAlign: 'left' }}>
-              <div>
-                <div style={{ fontSize: '12px', color: '#64748b', marginBottom: '4px' }}>Difficulty Reached</div>
-                <div style={{ fontSize: '24px', fontWeight: 'bold', color: factionColors.PRIMARY }}>{currentDiff}</div>
-              </div>
-              <div>
-                <div style={{ fontSize: '12px', color: '#64748b', marginBottom: '4px' }}>Requisition Earned</div>
-                <div style={{ fontSize: '24px', fontWeight: 'bold', color: factionColors.PRIMARY }}>{Math.floor(requisition)}</div>
-              </div>
-              <div>
-                <div style={{ fontSize: '12px', color: '#64748b', marginBottom: '4px' }}>Squad Size</div>
-                <div style={{ fontSize: '24px', fontWeight: 'bold', color: 'white' }}>{players.length}</div>
-              </div>
-              <div>
-                <div style={{ fontSize: '12px', color: '#64748b', marginBottom: '4px' }}>Theater</div>
-                <div style={{ fontSize: '20px', fontWeight: 'bold', color: 'white' }}>{gameConfig.faction}</div>
-              </div>
-            </div>
-          </div>
-
-          <button
-            onClick={() => dispatch(actions.setPhase('MENU'))}
-            style={{
-              width: '100%',
-              padding: '20px',
-              backgroundColor: factionColors.PRIMARY,
-              color: 'black',
-              border: 'none',
-              borderRadius: '4px',
-              fontWeight: '900',
-              fontSize: '18px',
-              textTransform: 'uppercase',
-              letterSpacing: '0.2em',
-              cursor: 'pointer',
-              transition: 'all 0.2s'
-            }}
-            onMouseEnter={(e) => e.currentTarget.style.backgroundColor = factionColors.PRIMARY_HOVER}
-            onMouseLeave={(e) => e.currentTarget.style.backgroundColor = factionColors.PRIMARY}
-          >
-            Return to Menu
-          </button>
-        </div>
-      </div>
+      <AnalyticsDashboard
+        analyticsData={runAnalyticsData}
+        outcome="defeat"
+        faction={gameConfig.faction}
+        players={players}
+        onClose={handleReturnToMenu}
+        onViewHistory={() => setShowRunHistory(true)}
+      />
     );
   }
 
@@ -2219,6 +2161,46 @@ function HelldiversRoguelikeApp() {
                 }}
               >
                 Load Game
+              </button>
+            </div>
+            
+            {/* Past Runs Button */}
+            <div style={{ marginTop: '12px' }}>
+              <button 
+                onClick={() => {
+                  trackModalOpen('run_history');
+                  setShowRunHistory(true);
+                }}
+                style={{
+                  width: '100%',
+                  padding: '12px',
+                  fontSize: '14px',
+                  letterSpacing: '0.1em',
+                  borderRadius: '4px',
+                  border: `1px solid ${COLORS.CARD_BORDER}`,
+                  backgroundColor: 'transparent',
+                  color: COLORS.TEXT_MUTED,
+                  fontWeight: '700',
+                  textTransform: 'uppercase',
+                  cursor: 'pointer',
+                  transition: 'all 0.2s',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: '8px'
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.borderColor = COLORS.ACCENT_PURPLE;
+                  e.currentTarget.style.color = COLORS.ACCENT_PURPLE;
+                  e.currentTarget.style.backgroundColor = `${COLORS.ACCENT_PURPLE}10`;
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.borderColor = COLORS.CARD_BORDER;
+                  e.currentTarget.style.color = COLORS.TEXT_MUTED;
+                  e.currentTarget.style.backgroundColor = 'transparent';
+                }}
+              >
+                <span style={{ fontSize: '16px' }}>📊</span> Past Runs
               </button>
             </div>
             
@@ -2627,6 +2609,13 @@ function HelldiversRoguelikeApp() {
         <ContributorsModal 
           isOpen={showContributors} 
           onClose={() => setShowContributors(false)}
+          faction={gameConfig.faction}
+        />
+        
+        {/* Run History Modal */}
+        <RunHistoryModal 
+          isOpen={showRunHistory} 
+          onClose={() => setShowRunHistory(false)}
           faction={gameConfig.faction}
         />
       </div>
@@ -3070,6 +3059,15 @@ function HelldiversRoguelikeApp() {
         choice.id || 'unknown'
       );
       
+      // Record event for analytics
+      runAnalytics.recordGameEvent(
+        currentEvent?.id || 'unknown',
+        currentEvent?.name || 'Unknown Event',
+        currentEvent?.type || 'unknown',
+        choice.text || 'Unknown Choice',
+        formatOutcomes(choice.outcomes)
+      );
+      
       // Process outcomes using the event processor with selections
       const selections = {
         sourcePlayerSelection: eventSourcePlayerSelection,
@@ -3240,6 +3238,11 @@ function HelldiversRoguelikeApp() {
       
       // Handle game over
       if (updates.triggerGameOver) {
+        // Finalize and save run analytics
+        const analyticsSnapshot = runAnalytics.finalizeRun('defeat', state);
+        setRunAnalyticsData(analyticsSnapshot);
+        saveRunToHistory(analyticsSnapshot);
+        
         setTimeout(() => dispatch(actions.setPhase('GAMEOVER')), 100);
         return;
       }
@@ -3344,6 +3347,11 @@ function HelldiversRoguelikeApp() {
         
         // Handle game over
         if (updates.triggerGameOver) {
+          // Finalize and save run analytics
+          const analyticsSnapshot = runAnalytics.finalizeRun('defeat', state);
+          setRunAnalyticsData(analyticsSnapshot);
+          saveRunToHistory(analyticsSnapshot);
+          
           setTimeout(() => dispatch(actions.setPhase('GAMEOVER')), 100);
           return;
         }
@@ -4723,6 +4731,17 @@ function HelldiversRoguelikeApp() {
                   const handleExtractionChange = (checked) => {
                     if (!canToggle) return;
                     
+                    // Record death for analytics when player fails to extract
+                    if (!checked) {
+                      runAnalytics.recordPlayerDeath(
+                        idx,
+                        player.name || `Player ${idx + 1}`,
+                        currentDiff,
+                        currentMission,
+                        'Failed to extract'
+                      );
+                    }
+                    
                     // In multiplayer as client, send action to host
                     if (isMultiplayer && !isHost) {
                       sendAction({
@@ -4790,7 +4809,18 @@ function HelldiversRoguelikeApp() {
                   <button 
                     onClick={() => {
                        if (window.confirm('Mission Failed? This will end your run permanently. Are you sure?')) {
-                         dispatch(actions.setPhase('GAMEOVER'));
+                         try {
+                           // Finalize and save run analytics
+                           const analyticsSnapshot = runAnalytics.finalizeRun('defeat', state);
+                           setRunAnalyticsData(analyticsSnapshot);
+                           saveRunToHistory(analyticsSnapshot);
+                           
+                           dispatch(actions.setPhase('GAMEOVER'));
+                         } catch (error) {
+                           console.error('Error in mission failed handler:', error);
+                           // Still transition to GAMEOVER even if analytics fails
+                           dispatch(actions.setPhase('GAMEOVER'));
+                         }
                        }
                     }}
                     style={{
@@ -4838,6 +4868,17 @@ function HelldiversRoguelikeApp() {
                     superRare: superRareSamples
                   }));
                   
+                  // Record sample change for analytics (pass cumulative totals)
+                  runAnalytics.recordSampleChange(
+                    { 
+                      common: state.samples.common + commonSamples, 
+                      rare: state.samples.rare + rareSamples, 
+                      superRare: state.samples.superRare + superRareSamples 
+                    },
+                    'mission_complete',
+                    `Collected from difficulty ${currentDiff} mission`
+                  );
+                  
                   // Clear input fields
                   if (document.getElementById('commonSamples')) document.getElementById('commonSamples').value = '0';
                   if (document.getElementById('rareSamples')) document.getElementById('rareSamples').value = '0';
@@ -4872,6 +4913,17 @@ function HelldiversRoguelikeApp() {
                     const missionsRequired = getMissionsForDifficulty(currentDiff);
                     const isOperationComplete = currentMission >= missionsRequired;
                     
+                    // Record mission complete for analytics (endurance mode)
+                    const starRating = Math.min(Math.ceil(currentDiff / 2), 5);
+                    const extractedCount = players.filter(p => p.extracted).length;
+                    runAnalytics.recordMissionComplete(
+                      currentMission,
+                      currentDiff,
+                      starRating,
+                      extractedCount,
+                      players.length
+                    );
+                    
                     if (isOperationComplete) {
                       // Operation complete - give draft rewards and advance difficulty
                       const { getRequisitionMultiplier } = require('./constants/balancingConfig');
@@ -4881,6 +4933,9 @@ function HelldiversRoguelikeApp() {
                       );
                       const reqGained = 1 * reqMultiplier;
                       dispatch(actions.addRequisition(reqGained));
+                      
+                      // Record requisition gain for analytics
+                      runAnalytics.recordRequisitionChange(reqGained, 'System', 'Operation Complete Reward');
                       
                       // Reset mission counter for next difficulty
                       dispatch(actions.setCurrentMission(1));
@@ -4894,6 +4949,12 @@ function HelldiversRoguelikeApp() {
                           gameTimeSeconds,
                           true
                         );
+                        
+                        // Finalize and save run analytics
+                        const analyticsSnapshot = runAnalytics.finalizeRun('victory', state);
+                        setRunAnalyticsData(analyticsSnapshot);
+                        saveRunToHistory(analyticsSnapshot);
+                        
                         dispatch(actions.setPhase('VICTORY'));
                         return;
                       }
@@ -4942,6 +5003,20 @@ function HelldiversRoguelikeApp() {
                     const reqGained = 1 * reqMultiplier;
                     dispatch(actions.addRequisition(reqGained));
                     
+                    // Record requisition gain for analytics
+                    runAnalytics.recordRequisitionChange(reqGained, 'System', 'Mission Complete Reward');
+                    
+                    // Record mission complete for analytics
+                    const starRating = Math.min(Math.ceil(currentDiff / 2), 5);
+                    const extractedCount = players.filter(p => p.extracted).length;
+                    runAnalytics.recordMissionComplete(
+                      currentMission,
+                      currentDiff,
+                      starRating,
+                      extractedCount,
+                      players.length
+                    );
+                    
                     // Track mission complete
                     trackMissionComplete(currentMission, currentDiff, true);
                     
@@ -4954,6 +5029,12 @@ function HelldiversRoguelikeApp() {
                         gameTimeSeconds,
                         true
                       );
+                      
+                      // Finalize and save run analytics
+                      const analyticsSnapshot = runAnalytics.finalizeRun('victory', state);
+                      setRunAnalyticsData(analyticsSnapshot);
+                      saveRunToHistory(analyticsSnapshot);
+                      
                       dispatch(actions.setPhase('VICTORY'));
                       return;
                     }
@@ -5114,6 +5195,13 @@ function HelldiversRoguelikeApp() {
       <ContributorsModal 
         isOpen={showContributors} 
         onClose={() => setShowContributors(false)}
+        faction={gameConfig.faction}
+      />
+      
+      {/* Run History Modal */}
+      <RunHistoryModal 
+        isOpen={showRunHistory} 
+        onClose={() => setShowRunHistory(false)}
         faction={gameConfig.faction}
       />
     </div>
