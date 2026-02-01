@@ -1914,6 +1914,7 @@ function HelldiversRoguelikeApp() {
         analyticsData={state.runAnalyticsData}
         outcome="victory"
         faction={gameConfig.faction}
+        subfaction={gameConfig.subfaction}
         players={players}
         onClose={handleReturnToMenu}
         onViewHistory={() => setShowRunHistory(true)}
@@ -1933,6 +1934,7 @@ function HelldiversRoguelikeApp() {
         analyticsData={state.runAnalyticsData}
         outcome="defeat"
         faction={gameConfig.faction}
+        subfaction={gameConfig.subfaction}
         players={players}
         onClose={handleReturnToMenu}
         onViewHistory={() => setShowRunHistory(true)}
