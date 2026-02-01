@@ -7,6 +7,7 @@
 import React, { useRef } from 'react';
 import { COLORS, getFactionColors, BUTTON_STYLES } from '../../constants/theme';
 import { DIFFICULTY_CONFIG } from '../../constants/gameConfig';
+import { SUBFACTION_CONFIG } from '../../constants/balancingConfig';
 import SamplesChart from './SamplesChart';
 import RequisitionChart from './RequisitionChart';
 import LoadoutTimeline from './LoadoutTimeline';
@@ -32,10 +33,39 @@ const getDifficultyName = (level) => {
   return config?.name || `Difficulty ${level}`;
 };
 
+// Get faction display name
+const getFactionDisplayName = (factionId) => {
+  switch (factionId) {
+    case 'terminid':
+      return 'Terminids';
+    case 'automaton':
+      return 'Automatons';
+    case 'illuminate':
+      return 'Illuminate';
+    default:
+      return factionId || 'Unknown';
+  }
+};
+
+// Get faction emoji
+const getFactionEmoji = (factionId) => {
+  switch (factionId) {
+    case 'terminid':
+      return '🐛';
+    case 'automaton':
+      return '🤖';
+    case 'illuminate':
+      return '👽';
+    default:
+      return '❓';
+  }
+};
+
 const AnalyticsDashboard = ({ 
   analyticsData, 
   outcome, // 'victory' or 'defeat'
   faction = 'terminid',
+  subfaction = null,
   players = [],
   onClose,
   onViewHistory 
@@ -78,6 +108,20 @@ const AnalyticsDashboard = ({
     (analyticsData?.endTime && analyticsData?.startTime 
       ? analyticsData.endTime - analyticsData.startTime 
       : 0);
+
+  // Get subfaction display name
+  const subfactionName = subfaction && SUBFACTION_CONFIG[subfaction] 
+    ? SUBFACTION_CONFIG[subfaction].name 
+    : null;
+
+  // Check if faction was changed during the run (e.g., by an event)
+  const startingFaction = analyticsData?.gameConfig?.faction;
+  const startingSubfaction = analyticsData?.gameConfig?.subfaction;
+  const factionWasChanged = startingFaction && startingFaction !== faction;
+  const startingFactionName = startingFaction ? getFactionDisplayName(startingFaction) : null;
+  const startingSubfactionName = startingSubfaction && SUBFACTION_CONFIG[startingSubfaction] 
+    ? SUBFACTION_CONFIG[startingSubfaction].name 
+    : null;
 
   return (
     <div style={{
@@ -235,7 +279,7 @@ const AnalyticsDashboard = ({
               Final Requisition
             </p>
             <p style={{ color: COLORS.PRIMARY, fontSize: '28px', fontWeight: 'bold', margin: 0 }}>
-              {analyticsData?.finalStats?.finalRequisition || 0}
+              {Math.floor((analyticsData?.finalStats?.finalRequisition || 0) * 100) / 100}
             </p>
             <p style={{ color: COLORS.TEXT_SECONDARY, fontSize: '11px', margin: '4px 0 0 0', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '4px' }}>
               <img src="https://helldivers.wiki.gg/images/Requisition_Slip.svg" alt="" style={{ width: 14, height: 14 }} />
@@ -260,6 +304,44 @@ const AnalyticsDashboard = ({
             <p style={{ color: COLORS.TEXT_SECONDARY, fontSize: '11px', margin: '4px 0 0 0' }}>
               💀 KIA
             </p>
+          </div>
+          
+          {/* Enemy Faction */}
+          <div style={{
+            backgroundColor: COLORS.CARD_INNER,
+            borderRadius: '12px',
+            padding: '16px',
+            textAlign: 'center',
+            border: `1px solid ${factionColors.PRIMARY}40`,
+            gridColumn: 'span 2'
+          }}>
+            <p style={{ color: COLORS.TEXT_MUTED, fontSize: '11px', margin: '0 0 4px 0', textTransform: 'uppercase', letterSpacing: '0.1em' }}>
+              Enemy Forces
+            </p>
+            <p style={{ color: factionColors.PRIMARY, fontSize: '24px', fontWeight: 'bold', margin: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}>
+              <span>{getFactionEmoji(faction)}</span>
+              <span>{getFactionDisplayName(faction)}</span>
+            </p>
+            {subfactionName && (
+              <p style={{ color: COLORS.TEXT_SECONDARY, fontSize: '13px', margin: '4px 0 0 0' }}>
+                {subfactionName}
+              </p>
+            )}
+            {factionWasChanged && (
+              <p style={{ 
+                color: COLORS.ACCENT_PURPLE, 
+                fontSize: '11px', 
+                margin: '8px 0 0 0',
+                fontStyle: 'italic',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: '4px'
+              }}>
+                ⚡ Changed from {getFactionEmoji(startingFaction)} {startingFactionName}
+                {startingSubfactionName && startingSubfactionName !== 'Standard' && ` (${startingSubfactionName})`}
+              </p>
+            )}
           </div>
         </div>
 
