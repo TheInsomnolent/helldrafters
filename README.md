@@ -56,11 +56,22 @@ Cards show:
 
 You can spend Requisition to reroll your hand, or lock specific slots to prevent certain item types from appearing.
 
+## Contributing
+
+Helldrafters is an open-source project and welcomes community contributions! Whether you're fixing bugs, adding features, or improving documentation, your help is appreciated.
+
+**How to contribute:**
+- Read our [Contributing Guide](CONTRIBUTING.md) for development setup and workflow
+- Check out [open issues](https://github.com/TheInsomnolent/helldrafters/issues) or create a new one
+- All contributions should target the `develop` branch
+
+**Please note:** We follow the [Contributor Covenant Code of Conduct](CODE_OF_CONDUCT.md). Be respectful and welcoming to all contributors.
+
 ## Feedback & Bug Reports
 
-Found a bug? Have a suggestion? Please [open an issue on GitHub](https://github.com/TheInsomnolent/helldrafters/issues).
+Found a bug? Have a suggestion? Please [open an issue on GitHub](https://github.com/TheInsomnolent/helldrafters/issues/new/choose).
 
-When reporting bugs, please include:
+When reporting bugs, please use the bug report template and include:
 - What you were doing when the bug occurred
 - Your game configuration (player count, game modes enabled, etc.)
 - Browser and device information
