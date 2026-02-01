@@ -101,7 +101,6 @@ export const getWeightedPool = (player, difficulty, gameConfig, burnedCards = []
     !player.inventory.includes(item.id) && item.type !== TYPE.BOOSTER
   );
 
-  const initialCandidateCount = candidates.length;
   draftDebugLog('After initial filter (owned + boosters)', {
     candidateCount: candidates.length,
     removedCount: MASTER_DB.length - candidates.length

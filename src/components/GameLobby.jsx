@@ -176,7 +176,7 @@ export default function GameLobby({
         ready: isReady
       });
     }
-  }, [isMultiplayer, updatePlayerConfig, myConfig, isReady]);
+  }, [isMultiplayer, updatePlayerConfig, myConfig, isReady, playerSlot]);
 
   // Auto-start when all players are ready (host initiates)
   useEffect(() => {

@@ -301,7 +301,7 @@ function HelldiversRoguelikeApp() {
       }
       // Note: State will be synced to clients automatically via the existing syncState effect
     }
-  }, [isMultiplayer, isHost, lobbyData, phase, players, dispatch, draftHistory, burnedCards, gameConfig]);
+  }, [isMultiplayer, isHost, lobbyData, phase, players, dispatch, draftHistory, burnedCards, gameConfig, currentDiff]);
 
   // Save game state to localStorage whenever it changes (for crash recovery)
   useEffect(() => {
