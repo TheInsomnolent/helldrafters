@@ -1,0 +1,84 @@
+name: Create Release PR
+
+on:
+  push:
+    branches:
+      - develop
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  create-release-pr:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Fetch main branch
+        run: |
+          git fetch origin main:main || echo "main branch may not exist yet"
+
+      - name: Check for existing release PR
+        id: check-pr
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          # Check if a PR from develop to main already exists
+          EXISTING_PR=$(gh pr list --base main --head develop --state open --json number --jq '.[0].number')
+          
+          if [ -n "$EXISTING_PR" ]; then
+            echo "exists=true" >> $GITHUB_OUTPUT
+            echo "pr_number=$EXISTING_PR" >> $GITHUB_OUTPUT
+            echo "✅ Release PR #$EXISTING_PR already exists"
+          else
+            echo "exists=false" >> $GITHUB_OUTPUT
+            echo "❌ No release PR found"
+          fi
+
+      - name: Create release PR
+        if: steps.check-pr.outputs.exists == 'false'
+        id: create-pr
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          # Generate PR body with commits since last merge to main
+          LAST_RELEASE=$(git log main --oneline -1 --pretty=format:"%h")
+          COMMITS=$(git log main..develop --oneline --pretty=format:"- %s (%h)" | head -20)
+          
+          # Create the PR with multiline body
+          gh pr create \
+            --base main \
+            --head develop \
+            --title "🚀 Release: Deploy develop to main" \
+            --body "## 🚀 Release from develop to main
+
+          This PR contains changes ready for deployment to production.
+
+          ### Recent Changes
+          $COMMITS
+
+          ---
+          **Note:** This PR was automatically created when changes were merged to \`develop\`.
+          Review the changes and merge when ready to deploy to production." \
+            --label "release" > pr_output.txt
+          
+          PR_NUMBER=$(cat pr_output.txt | grep -oP '(?<=pull/)\d+')
+          echo "pr_number=$PR_NUMBER" >> $GITHUB_OUTPUT
+          echo "✅ Created release PR #$PR_NUMBER"
+
+      - name: Add reviewers
+        if: steps.check-pr.outputs.exists == 'false' && steps.create-pr.outputs.pr_number != ''
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          PR_NUMBER="${{ steps.create-pr.outputs.pr_number }}"
+          
+          # Add reviewers
+          gh pr edit $PR_NUMBER --add-reviewer TheInsomnolent,James-Archer
+          
+          echo "✅ Added reviewers to PR #$PR_NUMBER"
