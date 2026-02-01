@@ -5919,60 +5919,74 @@ function HelldiversRoguelikeApp() {
                                     pointerEvents: !isMultiplayer || isHost ? 'auto' : 'none',
                                 }}
                             >
-                                {[1, 2, 3, 4, 5].map((n) => (
-                                    <button
-                                        key={n}
-                                        onClick={() =>
-                                            dispatch(actions.updateGameConfig({ starRating: n }))
-                                        }
-                                        disabled={isMultiplayer && !isHost}
-                                        style={{
-                                            padding: '16px 8px',
-                                            borderRadius: '4px',
-                                            fontWeight: '900',
-                                            fontSize: '24px',
-                                            display: 'flex',
-                                            flexDirection: 'column',
-                                            alignItems: 'center',
-                                            justifyContent: 'center',
-                                            transition: 'all 0.2s',
-                                            backgroundColor:
-                                                gameConfig.starRating === n
-                                                    ? factionColors.PRIMARY
-                                                    : 'transparent',
-                                            color:
-                                                gameConfig.starRating === n ? 'black' : '#64748b',
-                                            border:
-                                                gameConfig.starRating === n
-                                                    ? `2px solid ${factionColors.PRIMARY}`
-                                                    : '1px solid rgba(100, 116, 139, 0.5)',
-                                            cursor:
-                                                !isMultiplayer || isHost
-                                                    ? 'pointer'
-                                                    : 'not-allowed',
-                                        }}
-                                        onMouseEnter={(e) => {
-                                            if (
-                                                gameConfig.starRating !== n &&
-                                                (!isMultiplayer || isHost)
-                                            ) {
-                                                e.currentTarget.style.borderColor = '#64748b'
+                                {[1, 2, 3, 4, 5].map((n) => {
+                                    // Calculate max allowed stars based on current difficulty
+                                    // D1-D2: max 2 stars, D3-D4: max 3 stars, D5-D6: max 4 stars, D7+: max 5 stars
+                                    const getMaxStarsForDifficulty = (diff) => {
+                                        if (diff <= 2) return 2
+                                        if (diff <= 4) return 3
+                                        if (diff <= 6) return 4
+                                        return 5
+                                    }
+
+                                    const maxStars = getMaxStarsForDifficulty(currentDiff)
+                                    const isDisabled = n > maxStars || (isMultiplayer && !isHost)
+
+                                    return (
+                                        <button
+                                            key={n}
+                                            onClick={() =>
+                                                !isDisabled &&
+                                                dispatch(
+                                                    actions.updateGameConfig({ starRating: n }),
+                                                )
                                             }
-                                        }}
-                                        onMouseLeave={(e) => {
-                                            if (
-                                                gameConfig.starRating !== n &&
-                                                (!isMultiplayer || isHost)
-                                            ) {
-                                                e.currentTarget.style.borderColor =
-                                                    'rgba(100, 116, 139, 0.5)'
-                                            }
-                                        }}
-                                    >
-                                        <div>{n}</div>
-                                        <div style={{ fontSize: '16px' }}>★</div>
-                                    </button>
-                                ))}
+                                            disabled={isDisabled}
+                                            style={{
+                                                padding: '16px 8px',
+                                                borderRadius: '4px',
+                                                fontWeight: '900',
+                                                fontSize: '24px',
+                                                display: 'flex',
+                                                flexDirection: 'column',
+                                                alignItems: 'center',
+                                                justifyContent: 'center',
+                                                transition: 'all 0.2s',
+                                                backgroundColor:
+                                                    gameConfig.starRating === n
+                                                        ? factionColors.PRIMARY
+                                                        : 'transparent',
+                                                color: isDisabled
+                                                    ? '#334155'
+                                                    : gameConfig.starRating === n
+                                                      ? 'black'
+                                                      : '#64748b',
+                                                border:
+                                                    gameConfig.starRating === n
+                                                        ? `2px solid ${factionColors.PRIMARY}`
+                                                        : isDisabled
+                                                          ? '1px solid #1e293b'
+                                                          : '1px solid rgba(100, 116, 139, 0.5)',
+                                                cursor: isDisabled ? 'not-allowed' : 'pointer',
+                                                opacity: isDisabled ? 0.4 : 1,
+                                            }}
+                                            onMouseEnter={(e) => {
+                                                if (!isDisabled && gameConfig.starRating !== n) {
+                                                    e.currentTarget.style.borderColor = '#64748b'
+                                                }
+                                            }}
+                                            onMouseLeave={(e) => {
+                                                if (!isDisabled && gameConfig.starRating !== n) {
+                                                    e.currentTarget.style.borderColor =
+                                                        'rgba(100, 116, 139, 0.5)'
+                                                }
+                                            }}
+                                        >
+                                            <div>{n}</div>
+                                            <div style={{ fontSize: '16px' }}>★</div>
+                                        </button>
+                                    )
+                                })}
                             </div>
                             <p
                                 style={{
