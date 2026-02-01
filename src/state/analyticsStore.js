@@ -589,6 +589,43 @@ export const getChartData = () => {
   };
 };
 
+/**
+ * Register a late-joining player in analytics
+ * This adds their initial loadout snapshot so they appear in the analytics
+ */
+export const registerLatePlayer = (player) => {
+  if (!analyticsStore.runId) {
+    console.warn('Cannot register late player: analytics not initialized');
+    return;
+  }
+  
+  const playerId = player.id;
+  const timestamp = getRelativeTimestamp();
+  
+  // Skip if player already registered
+  if (analyticsStore.playerLoadouts[playerId] && analyticsStore.playerLoadouts[playerId].length > 0) {
+    return;
+  }
+  
+  // Add initial loadout snapshot for the late-joining player
+  analyticsStore.playerLoadouts[playerId] = [{
+    timestamp,
+    loadout: {
+      ...player.loadout,
+      stratagems: player.loadout?.stratagems ? [...player.loadout.stratagems] : []
+    },
+    reason: 'late-join',
+    playerName: player.name || `Helldiver ${playerId}`
+  }];
+  
+  // Record the join event in timeline
+  addTimelineEvent(ANALYTICS_EVENT_TYPES.RUN_START, {
+    type: 'PLAYER_JOINED',
+    playerId,
+    playerName: player.name
+  });
+};
+
 // Bundle all exports for convenience
 const runAnalytics = {
   initializeAnalytics,
@@ -611,6 +648,7 @@ const runAnalytics = {
   exportAnalyticsData,
   importAnalyticsData,
   getChartData,
+  registerLatePlayer,
   ANALYTICS_EVENT_TYPES
 };
 

@@ -328,3 +328,9 @@ export const loadGameState = (state) => ({
 export const resetGame = () => ({
   type: types.RESET_GAME
 });
+
+// Analytics
+export const setRunAnalyticsData = (data) => ({
+  type: types.SET_RUN_ANALYTICS_DATA,
+  payload: data
+});

@@ -91,3 +91,6 @@ export const SET_CURRENT_MISSION = 'SET_CURRENT_MISSION';
 // Full state load
 export const LOAD_GAME_STATE = 'LOAD_GAME_STATE';
 export const RESET_GAME = 'RESET_GAME';
+
+// Analytics
+export const SET_RUN_ANALYTICS_DATA = 'SET_RUN_ANALYTICS_DATA';

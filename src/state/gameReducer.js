@@ -80,7 +80,8 @@ export const initialState = {
   pendingSubfactionSelection: null, // Selected subfaction for pending faction change
   seenEvents: [],
   settingsOpen: false,
-  disabledWarbonds: []
+  disabledWarbonds: [],
+  runAnalyticsData: null // Analytics snapshot for end-of-run display (synced to all players)
 };
 
 /**
@@ -585,6 +586,9 @@ export function gameReducer(state, action) {
 
     case types.RESET_GAME:
       return { ...initialState };
+    
+    case types.SET_RUN_ANALYTICS_DATA:
+      return { ...state, runAnalyticsData: action.payload };
 
     default:
       return state;

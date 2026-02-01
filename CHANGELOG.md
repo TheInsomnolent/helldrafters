@@ -23,6 +23,8 @@ All notable changes to Helldrafters will be documented in this file.
 - **Analytics bug**: Stratagem snapshots now properly show changes during run (fixed shallow copy issue)
 - **Analytics bug**: Duplicate player entries no longer appear in loadout timeline
 - **Analytics bug**: Mission count now correctly reflects actual missions played, not final difficulty
+- **Multiplayer analytics bug**: Late-joining players now appear in end-of-run analytics
+- **Multiplayer analytics bug**: All players now see the analytics dashboard on victory/defeat (not just host)
 - Comprehensive draft filtering test suite (16+ tests for warbond/superstore filtering)
 - Debug logging infrastructure for draft mechanics (enable via localStorage: `DEBUG_DRAFT_FILTERING`)
 - Armor combo validation tests in itemHelpers

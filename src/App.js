@@ -164,7 +164,7 @@ function HelldiversRoguelikeApp() {
   
   // Analytics state
   const [showRunHistory, setShowRunHistory] = React.useState(false); // For run history modal
-  const [runAnalyticsData, setRunAnalyticsData] = React.useState(null); // Current run's analytics snapshot
+  // Note: runAnalyticsData is now stored in game state (state.runAnalyticsData) so it syncs to clients
   
   // Ref for the hidden file input
   const fileInputRef = React.useRef(null);
@@ -249,6 +249,9 @@ function HelldiversRoguelikeApp() {
           catchUpDraftsRemaining: catchUpDraftsNeeded // Track how many catch-up drafts needed
         };
         updatedPlayers.push(newPlayer);
+        
+        // Register late-joining player in analytics so they appear in end-of-run stats
+        runAnalytics.registerLatePlayer(newPlayer);
       });
       
       // Sort by player id to maintain order
@@ -470,7 +473,7 @@ function HelldiversRoguelikeApp() {
       
       // Initialize run analytics
       runAnalytics.initializeAnalytics(gameConfig, newPlayers);
-      setRunAnalyticsData(null);
+      dispatch(actions.setRunAnalyticsData(null));
     }
   };
 
@@ -494,7 +497,7 @@ function HelldiversRoguelikeApp() {
     
     // Initialize run analytics
     runAnalytics.initializeAnalytics(gameConfig, newPlayers);
-    setRunAnalyticsData(null);
+    dispatch(actions.setRunAnalyticsData(null));
   };
 
   // --- CORE LOGIC: THE DRAFT DIRECTOR ---
@@ -1902,13 +1905,13 @@ function HelldiversRoguelikeApp() {
   if (phase === 'VICTORY') {
     const handleReturnToMenu = () => {
       runAnalytics.clearAnalytics();
-      setRunAnalyticsData(null);
+      dispatch(actions.setRunAnalyticsData(null));
       dispatch(actions.setPhase('MENU'));
     };
     
     return (
       <AnalyticsDashboard
-        analyticsData={runAnalyticsData}
+        analyticsData={state.runAnalyticsData}
         outcome="victory"
         faction={gameConfig.faction}
         players={players}
@@ -1921,13 +1924,13 @@ function HelldiversRoguelikeApp() {
   if (phase === 'GAMEOVER') {
     const handleReturnToMenu = () => {
       runAnalytics.clearAnalytics();
-      setRunAnalyticsData(null);
+      dispatch(actions.setRunAnalyticsData(null));
       dispatch(actions.setPhase('MENU'));
     };
     
     return (
       <AnalyticsDashboard
-        analyticsData={runAnalyticsData}
+        analyticsData={state.runAnalyticsData}
         outcome="defeat"
         faction={gameConfig.faction}
         players={players}
@@ -3240,7 +3243,7 @@ function HelldiversRoguelikeApp() {
       if (updates.triggerGameOver) {
         // Finalize and save run analytics
         const analyticsSnapshot = runAnalytics.finalizeRun('defeat', state);
-        setRunAnalyticsData(analyticsSnapshot);
+        dispatch(actions.setRunAnalyticsData(analyticsSnapshot));
         saveRunToHistory(analyticsSnapshot);
         
         setTimeout(() => dispatch(actions.setPhase('GAMEOVER')), 100);
@@ -3349,7 +3352,7 @@ function HelldiversRoguelikeApp() {
         if (updates.triggerGameOver) {
           // Finalize and save run analytics
           const analyticsSnapshot = runAnalytics.finalizeRun('defeat', state);
-          setRunAnalyticsData(analyticsSnapshot);
+          dispatch(actions.setRunAnalyticsData(analyticsSnapshot));
           saveRunToHistory(analyticsSnapshot);
           
           setTimeout(() => dispatch(actions.setPhase('GAMEOVER')), 100);
@@ -4812,7 +4815,7 @@ function HelldiversRoguelikeApp() {
                          try {
                            // Finalize and save run analytics
                            const analyticsSnapshot = runAnalytics.finalizeRun('defeat', state);
-                           setRunAnalyticsData(analyticsSnapshot);
+                           dispatch(actions.setRunAnalyticsData(analyticsSnapshot));
                            saveRunToHistory(analyticsSnapshot);
                            
                            dispatch(actions.setPhase('GAMEOVER'));
@@ -4952,7 +4955,7 @@ function HelldiversRoguelikeApp() {
                         
                         // Finalize and save run analytics
                         const analyticsSnapshot = runAnalytics.finalizeRun('victory', state);
-                        setRunAnalyticsData(analyticsSnapshot);
+                        dispatch(actions.setRunAnalyticsData(analyticsSnapshot));
                         saveRunToHistory(analyticsSnapshot);
                         
                         dispatch(actions.setPhase('VICTORY'));
@@ -5032,7 +5035,7 @@ function HelldiversRoguelikeApp() {
                       
                       // Finalize and save run analytics
                       const analyticsSnapshot = runAnalytics.finalizeRun('victory', state);
-                      setRunAnalyticsData(analyticsSnapshot);
+                      dispatch(actions.setRunAnalyticsData(analyticsSnapshot));
                       saveRunToHistory(analyticsSnapshot);
                       
                       dispatch(actions.setPhase('VICTORY'));
