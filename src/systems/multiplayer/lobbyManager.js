@@ -21,6 +21,37 @@ import { v4 as uuidv4 } from 'uuid';
 import { getFirebaseDatabase } from './firebaseConfig';
 
 /**
+ * Debug logging for multiplayer sync - checks localStorage flag
+ */
+const mpDebugLog = (message, data = null) => {
+  try {
+    if (localStorage.getItem('DEBUG_DRAFT_FILTERING') !== 'true') return;
+  } catch {
+    return;
+  }
+  
+  const timestamp = new Date().toISOString();
+  const logEntry = {
+    timestamp,
+    source: 'lobbyManager',
+    message,
+    ...(data && { data })
+  };
+  
+  console.log(`[MPDebug] ${message}`, data ? JSON.stringify(data, null, 2) : '');
+  
+  // Store in sessionStorage
+  try {
+    const existing = JSON.parse(sessionStorage.getItem('mpDebugLogs') || '[]');
+    existing.push(logEntry);
+    if (existing.length > 500) existing.shift();
+    sessionStorage.setItem('mpDebugLogs', JSON.stringify(existing));
+  } catch (e) {
+    // Ignore
+  }
+};
+
+/**
  * Generate a new lobby ID (UUIDv4)
  * The UUID serves as both identifier and access control
  */
@@ -437,6 +468,22 @@ export const updatePlayerConnection = async (lobbyId, playerId, connected) => {
 export const updatePlayerConfig = async (lobbyId, playerId, config) => {
   const db = getFirebaseDatabase();
   
+  // === DEBUG: Log config being written to Firebase ===
+  mpDebugLog('updatePlayerConfig called', {
+    lobbyId: lobbyId?.substring(0, 8) + '...',
+    playerId: playerId?.substring(0, 8) + '...',
+    config: {
+      name: config.name,
+      warbonds: config.warbonds,
+      warbondsLength: config.warbonds?.length,
+      includeSuperstore: config.includeSuperstore,
+      includeSuperstoreType: typeof config.includeSuperstore,
+      excludedItems: config.excludedItems,
+      excludedItemsLength: config.excludedItems?.length,
+      ready: config.ready
+    }
+  });
+  
   try {
     // Update each config field individually to avoid overwriting other fields
     const updates = [];
@@ -448,16 +495,30 @@ export const updatePlayerConfig = async (lobbyId, playerId, config) => {
     
     if (config.warbonds !== undefined) {
       const warbondsRef = ref(db, `lobbies/${lobbyId}/players/${playerId}/warbonds`);
+      mpDebugLog('Writing warbonds to Firebase', {
+        playerId: playerId?.substring(0, 8) + '...',
+        warbonds: config.warbonds,
+        warbondsLength: config.warbonds?.length
+      });
       updates.push(set(warbondsRef, config.warbonds));
     }
     
     if (config.includeSuperstore !== undefined) {
       const superstoreRef = ref(db, `lobbies/${lobbyId}/players/${playerId}/includeSuperstore`);
+      mpDebugLog('Writing includeSuperstore to Firebase', {
+        playerId: playerId?.substring(0, 8) + '...',
+        includeSuperstore: config.includeSuperstore,
+        type: typeof config.includeSuperstore
+      });
       updates.push(set(superstoreRef, config.includeSuperstore));
     }
 
     if (config.excludedItems !== undefined) {
       const excludedItemsRef = ref(db, `lobbies/${lobbyId}/players/${playerId}/excludedItems`);
+      mpDebugLog('Writing excludedItems to Firebase', {
+        playerId: playerId?.substring(0, 8) + '...',
+        excludedItemsCount: config.excludedItems?.length
+      });
       updates.push(set(excludedItemsRef, config.excludedItems));
     }
     
@@ -471,9 +532,11 @@ export const updatePlayerConfig = async (lobbyId, playerId, config) => {
     updates.push(set(lastUpdatedRef, serverTimestamp()));
     
     await Promise.all(updates);
+    mpDebugLog('updatePlayerConfig SUCCESS', { updatesCount: updates.length });
     return { success: true };
   } catch (error) {
     console.error('Error updating player config:', error);
+    mpDebugLog('updatePlayerConfig ERROR', { error: error.message });
     return { success: false, error: error.message };
   }
 };

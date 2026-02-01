@@ -395,6 +395,12 @@ export function gameReducer(state, action) {
         ]
       };
 
+    case types.SET_DRAFT_HISTORY:
+      return {
+        ...state,
+        draftHistory: action.payload || []
+      };
+
     // Retrospective draft
     case types.START_RETROSPECTIVE_DRAFT:
       return {

@@ -8,7 +8,7 @@ import ExplainerModal from './components/ExplainerModal';
 import GameConfiguration from './components/GameConfiguration';
 import GameFooter from './components/GameFooter';
 import GameHeader from './components/GameHeader';
-import GameLobby from './components/GameLobby';
+import GameLobby, { addExcludedItemsToSavedConfig } from './components/GameLobby';
 import GenAIDisclosureModal from './components/GenAIDisclosureModal';
 import LoadoutDisplay from './components/LoadoutDisplay';
 import { JoinGameScreen, MultiplayerModeSelect, MultiplayerStatusBar, MultiplayerWaitingRoom } from './components/MultiplayerLobby';
@@ -18,7 +18,7 @@ import { ARMOR_PASSIVE_DESCRIPTIONS } from './constants/armorPassives';
 import { DIFFICULTY_CONFIG, getMissionsForDifficulty, STARTING_LOADOUT } from './constants/gameConfig';
 import { BUTTON_STYLES, COLORS, getFactionColors, GRADIENTS, SHADOWS } from './constants/theme';
 import { RARITY, TYPE } from './constants/types';
-import { getWarbondById } from './constants/warbonds';
+import { DEFAULT_WARBONDS, getWarbondById } from './constants/warbonds';
 import { MASTER_DB } from './data/itemsByWarbond';
 import * as actions from './state/actions';
 import * as types from './state/actionTypes';
@@ -205,6 +205,21 @@ function HelldiversRoguelikeApp() {
       const updatedPlayers = [...players];
       
       newPlayersNeeded.forEach(lobbyPlayer => {
+        // IMPORTANT: Use warbond config from lobby data if available, otherwise use defaults
+        // This ensures late-joiners still have proper warbond filtering
+        // If lobbyPlayer.warbonds is undefined/null, use DEFAULT_WARBONDS (not empty array)
+        // Empty array would skip filtering entirely, causing all items to appear
+        const playerWarbonds = (lobbyPlayer.warbonds && lobbyPlayer.warbonds.length > 0) 
+          ? lobbyPlayer.warbonds 
+          : [...DEFAULT_WARBONDS];
+        const playerIncludeSuperstore = lobbyPlayer.includeSuperstore || false;
+        const playerExcludedItems = lobbyPlayer.excludedItems || [];
+        
+        // Calculate number of catch-up drafts based on current difficulty
+        // Late joiners need (currentDiff - 1) catch-up drafts to match other players
+        // This is deterministic based on current game state, not historical draftHistory
+        const catchUpDraftsNeeded = currentDiff > 1 ? currentDiff - 1 : 0;
+        
         const newPlayer = {
           id: lobbyPlayer.slot + 1,
           name: lobbyPlayer.name || `Helldiver ${lobbyPlayer.slot + 1}`,
@@ -217,13 +232,14 @@ function HelldiversRoguelikeApp() {
             stratagems: [...STARTING_LOADOUT.stratagems]
           },
           inventory: Object.values(STARTING_LOADOUT).flat().filter(id => id !== null),
-          warbonds: [],
-          includeSuperstore: false,
-          excludedItems: [],
+          warbonds: playerWarbonds,
+          includeSuperstore: playerIncludeSuperstore,
+          excludedItems: playerExcludedItems,
           weaponRestricted: false,
           lockedSlots: [],
           extracted: true,
-          needsRetrospectiveDraft: draftHistory.length > 0 // Flag if they need to catch up
+          needsRetrospectiveDraft: catchUpDraftsNeeded > 0, // Flag if they need to catch up
+          catchUpDraftsRemaining: catchUpDraftsNeeded // Track how many catch-up drafts needed
         };
         updatedPlayers.push(newPlayer);
       });
@@ -234,19 +250,25 @@ function HelldiversRoguelikeApp() {
       dispatch(actions.setPlayers(updatedPlayers));
       dispatch(actions.updateGameConfig({ playerCount: updatedPlayers.length }));
       
-      // If there is draft history, start retrospective draft for the first new player
-      if (draftHistory.length > 0 && phase === 'DASHBOARD') {
-        const newPlayerIndex = updatedPlayers.findIndex(p => p.needsRetrospectiveDraft);
+      // If late-joiner needs catch-up drafts, start retrospective draft for the first new player
+      if (phase === 'DASHBOARD') {
+        const newPlayerIndex = updatedPlayers.findIndex(p => p.needsRetrospectiveDraft && p.catchUpDraftsRemaining > 0);
         if (newPlayerIndex !== -1) {
           // Start retrospective draft phase
           const retroPlayer = updatedPlayers[newPlayerIndex];
-          const firstHistoryEntry = draftHistory[0];
-          const handSize = getDraftHandSize(firstHistoryEntry.starRating);
+          
+          // Use current game config for retrospective drafts
+          // The difficulty progresses: 1, 2, 3, ... based on how many they've completed
+          const retrospectiveDraftNumber = (retroPlayer.retrospectiveDraftsCompleted || 0) + 1;
+          const retroDifficulty = retrospectiveDraftNumber; // Difficulty 1 for first catch-up, 2 for second, etc.
+          const retroStarRating = Math.min(Math.ceil(retroDifficulty / 2), 5); // Approximate star rating
+          
+          const handSize = getDraftHandSize(retroStarRating);
           const playerLockedSlots = retroPlayer.lockedSlots || [];
           
           const retroHand = generateDraftHand(
             retroPlayer,
-            firstHistoryEntry.difficulty,
+            retroDifficulty,
             gameConfig,
             burnedCards,
             updatedPlayers,
@@ -422,6 +444,7 @@ function HelldiversRoguelikeApp() {
       dispatch(actions.setDifficulty(1));
       dispatch(actions.setRequisition(0)); // Start with 0, earn 1 per mission
       dispatch(actions.setBurnedCards([]));
+      dispatch(actions.setDraftHistory([])); // Reset draft history for new game
       dispatch(actions.setPhase('DASHBOARD'));
       setGameStartTime(Date.now());
       trackGameStart(isMultiplayer ? 'multiplayer' : 'solo', 1);
@@ -595,8 +618,10 @@ function HelldiversRoguelikeApp() {
       const retroPlayer = updatedPlayers[retroPlayerIdx];
       
       // Count how many retrospective drafts this player has completed
-      // Each entry in draftHistory represents one completed draft round
       const completedRetroDrafts = (retroPlayer.retrospectiveDraftsCompleted || 0) + 1;
+      
+      // Get the total catch-up drafts needed (deterministic based on lobby difficulty)
+      const totalCatchUpNeeded = retroPlayer.catchUpDraftsRemaining || 0;
       
       // Update player's retrospective draft progress
       const progressedPlayers = [...updatedPlayers];
@@ -606,16 +631,20 @@ function HelldiversRoguelikeApp() {
       };
       dispatch(actions.setPlayers(progressedPlayers));
       
-      // Check if there are more history entries to catch up on
-      if (completedRetroDrafts < draftHistory.length) {
-        // Continue with next retrospective draft using the historical star rating
-        const nextHistoryEntry = draftHistory[completedRetroDrafts];
-        const handSize = getDraftHandSize(nextHistoryEntry.starRating);
-        const playerLockedSlots = retroPlayer.lockedSlots || [];
+      // Check if there are more catch-up drafts to complete
+      if (completedRetroDrafts < totalCatchUpNeeded) {
+        // Continue with next retrospective draft
+        // Difficulty progresses: 1, 2, 3, ... based on which catch-up draft this is
+        const nextDraftNumber = completedRetroDrafts + 1;
+        const nextDifficulty = nextDraftNumber;
+        const nextStarRating = Math.min(Math.ceil(nextDifficulty / 2), 5);
+        
+        const handSize = getDraftHandSize(nextStarRating);
+        const playerLockedSlots = progressedPlayers[retroPlayerIdx].lockedSlots || [];
         
         const retroHand = generateDraftHand(
           progressedPlayers[retroPlayerIdx],
-          nextHistoryEntry.difficulty,
+          nextDifficulty,
           gameConfig,
           burnedCards,
           progressedPlayers,
@@ -641,7 +670,8 @@ function HelldiversRoguelikeApp() {
         completedPlayers[retroPlayerIdx] = {
           ...completedPlayers[retroPlayerIdx],
           needsRetrospectiveDraft: false,
-          retrospectiveDraftsCompleted: undefined
+          retrospectiveDraftsCompleted: undefined,
+          catchUpDraftsRemaining: undefined
         };
         dispatch(actions.setPlayers(completedPlayers));
         dispatch(actions.setDraftState({
@@ -737,25 +767,22 @@ function HelldiversRoguelikeApp() {
         dispatch(actions.addDraftHistory(currentDiff, gameConfig.starRating));
         
         // Check if any players need retrospective drafts (newly joined players)
-        const playerNeedingRetro = updatedPlayers.findIndex(p => p.needsRetrospectiveDraft);
+        const playerNeedingRetro = updatedPlayers.findIndex(p => p.needsRetrospectiveDraft && (p.catchUpDraftsRemaining || 0) > 0);
         if (playerNeedingRetro !== -1) {
           // Start retrospective draft for the first player who needs it
-          // Note: We need to use the OLD draftHistory (before adding current) as the first entry
-          // since we want them to start from the beginning
           const retroPlayer = updatedPlayers[playerNeedingRetro];
           
-          // If there's existing history, start with the first entry
-          // Otherwise, they only need to catch up on the one we just added
-          const firstHistoryEntry = draftHistory.length > 0 
-            ? draftHistory[0] 
-            : { difficulty: currentDiff, starRating: gameConfig.starRating };
+          // Use deterministic difficulty progression: 1, 2, 3, ...
+          const retrospectiveDraftNumber = (retroPlayer.retrospectiveDraftsCompleted || 0) + 1;
+          const retroDifficulty = retrospectiveDraftNumber;
+          const retroStarRating = Math.min(Math.ceil(retroDifficulty / 2), 5);
           
-          const handSize = getDraftHandSize(firstHistoryEntry.starRating);
+          const handSize = getDraftHandSize(retroStarRating);
           const playerLockedSlots = retroPlayer.lockedSlots || [];
           
           const retroHand = generateDraftHand(
             retroPlayer,
-            firstHistoryEntry.difficulty,
+            retroDifficulty,
             gameConfig,
             burnedCards,
             updatedPlayers,
@@ -1073,10 +1100,25 @@ function HelldiversRoguelikeApp() {
     
     // Handle remove card from clients
     if (action.type === 'REMOVE_CARD') {
-      const { cardToRemove } = action.payload;
-      const player = players[draftState.activePlayerIndex];
+      const { cardToRemove, itemIdsToExclude } = action.payload;
+      const playerIdx = draftState.activePlayerIndex;
+      const player = players[playerIdx];
+      
+      // Update player's excludedItems with the items sent from client
+      if (itemIdsToExclude && itemIdsToExclude.length > 0) {
+        const currentExcluded = player?.excludedItems || [];
+        const newExcluded = [...new Set([...currentExcluded, ...itemIdsToExclude])];
+        dispatch(actions.setPlayerExcludedItems(playerIdx, newExcluded));
+      }
+      
       const playerLockedSlots = player?.lockedSlots || [];
-      const pool = getWeightedPool(player, currentDiff, gameConfig, burnedCards, players, playerLockedSlots);
+      
+      // Use updated excluded items for pool
+      const updatedExcluded = itemIdsToExclude 
+        ? [...new Set([...(player?.excludedItems || []), ...itemIdsToExclude])]
+        : (player?.excludedItems || []);
+      const updatedPlayer = { ...player, excludedItems: updatedExcluded };
+      const pool = getWeightedPool(updatedPlayer, currentDiff, gameConfig, burnedCards, players, playerLockedSlots);
       
       // Check if the card to remove is an armor combo
       const isRemovingArmorCombo = cardToRemove && cardToRemove.items && cardToRemove.passive;
@@ -1407,6 +1449,23 @@ function HelldiversRoguelikeApp() {
     // Close modal and clear pending card
     setShowRemoveCardConfirm(false);
     setPendingCardRemoval(null);
+    
+    // Check if the card to remove is an armor combo
+    const isRemovingArmorCombo = cardToRemove && cardToRemove.items && cardToRemove.passive;
+    
+    // Get the item ID(s) to exclude - for armor combos, exclude all armor variants
+    const itemIdsToExclude = isRemovingArmorCombo 
+      ? cardToRemove.items.map(armor => armor.id)
+      : [cardToRemove.id];
+    
+    // Update the player's excludedItems in game state
+    const player = players[draftState.activePlayerIndex];
+    const currentExcluded = player.excludedItems || [];
+    const newExcluded = [...new Set([...currentExcluded, ...itemIdsToExclude])];
+    dispatch(actions.setPlayerExcludedItems(draftState.activePlayerIndex, newExcluded));
+    
+    // Also update localStorage so this persists across sessions
+    addExcludedItemsToSavedConfig(itemIdsToExclude);
 
     // In multiplayer as client, send action to host instead of processing locally
     if (isMultiplayer && !isHost) {
@@ -1414,19 +1473,19 @@ function HelldiversRoguelikeApp() {
         type: 'REMOVE_CARD',
         payload: {
           playerIndex: draftState.activePlayerIndex,
-          cardToRemove: cardToRemove
+          cardToRemove: cardToRemove,
+          itemIdsToExclude: itemIdsToExclude
         }
       });
       return;
     }
 
     // Remove single card and replace it with a new one
-    const player = players[draftState.activePlayerIndex];
     const playerLockedSlots = player.lockedSlots || [];
-    const pool = getWeightedPool(player, currentDiff, gameConfig, burnedCards, players, playerLockedSlots);
     
-    // Check if the card to remove is an armor combo
-    const isRemovingArmorCombo = cardToRemove && cardToRemove.items && cardToRemove.passive;
+    // Use the updated excluded items for pool generation
+    const updatedPlayer = { ...player, excludedItems: newExcluded };
+    const pool = getWeightedPool(updatedPlayer, currentDiff, gameConfig, burnedCards, players, playerLockedSlots);
     
     // Filter out cards already in the current hand
     const availablePool = pool.filter(poolEntry => {
@@ -3956,7 +4015,7 @@ function HelldiversRoguelikeApp() {
                 display: 'inline-block'
               }}>
                 <div style={{ color: '#3b82f6', fontSize: '14px', fontWeight: 'bold', textTransform: 'uppercase', letterSpacing: '1px' }}>
-                  🔄 RETROSPECTIVE DRAFT {(player.retrospectiveDraftsCompleted || 0) + 1}/{draftHistory.length}
+                  🔄 RETROSPECTIVE DRAFT {(player.retrospectiveDraftsCompleted || 0) + 1}/{player.catchUpDraftsRemaining || draftHistory.length}
                 </div>
                 <div style={{ color: '#94a3b8', fontSize: '11px', marginTop: '4px' }}>
                   Catching up on past mission rewards • No rerolls available

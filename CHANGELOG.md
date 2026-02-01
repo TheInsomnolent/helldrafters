@@ -2,6 +2,20 @@
 
 All notable changes to Helldrafters will be documented in this file.
 
+## 2026-02-01
+
+### Added
+- Comprehensive draft filtering test suite (16+ tests for warbond/superstore filtering)
+- Debug logging infrastructure for draft mechanics (enable via localStorage: `DEBUG_DRAFT_FILTERING`)
+- Armor combo validation tests in itemHelpers
+
+### Fixed
+- **Critical multiplayer bug**: Late-joining players now properly inherit lobby warbond configuration instead of empty array
+- **Critical multiplayer bug**: Catch-up draft count is now deterministic (difficulty - 1) instead of using cumulative draft history
+- Draft history now properly resets between games to prevent cumulative catch-up drafts
+- Retrospective draft system now uses deterministic difficulty progression (1, 2, 3...) instead of relying on draft history
+- **UX improvement**: Removed cards during draft are now permanently added to excluded items list in localStorage, preventing them from appearing in future sessions
+
 ## 2026-01-23
 
 ### Added

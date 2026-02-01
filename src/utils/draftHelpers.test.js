@@ -1,6 +1,7 @@
 /* eslint-disable jest/no-conditional-expect */
 import { getDraftHandSize, getWeightedPool, generateDraftHand, generateRandomDraftOrder } from './draftHelpers';
-import { TYPE, FACTION, TAGS } from '../constants/types';
+import { TYPE, FACTION, TAGS, RARITY } from '../constants/types';
+import { MASTER_DB, SUPERSTORE_ITEMS } from '../data/itemsByWarbond';
 
 describe('Utils - Draft Helpers', () => {
   describe('generateRandomDraftOrder', () => {
@@ -178,6 +179,225 @@ describe('Utils - Draft Helpers', () => {
 
       pool.forEach(({ item }) => {
         expect(burnedCards).not.toContain(item.id);
+      });
+    });
+
+    describe('Warbond and Superstore Filtering', () => {
+      const basePlayer = {
+        inventory: ['s_peacemaker', 'g_he'],
+        loadout: {
+          primary: null,
+          secondary: 's_peacemaker',
+          grenade: 'g_he',
+          armor: 'a_b01',
+          booster: null,
+          stratagems: [null, null, null, null]
+        }
+      };
+
+      const baseGameConfig = {
+        starRating: 3,
+        faction: FACTION.BUGS,
+        globalUniqueness: false,
+        burnCards: false
+      };
+
+      it('should only include items from enabled warbonds when warbonds specified', () => {
+        const playerWithWarbonds = {
+          ...basePlayer,
+          warbonds: ['helldivers_mobilize'],
+          includeSuperstore: false
+        };
+
+        const pool = getWeightedPool(playerWithWarbonds, 1, baseGameConfig);
+
+        // All items in pool should either:
+        // 1. Be from helldivers_mobilize warbond
+        // 2. Have no warbond/superstore (base game items)
+        pool.forEach(({ item, armorCombo, isArmorCombo }) => {
+          if (isArmorCombo) {
+            // For armor combos, at least one item should be accessible
+            const hasAccessibleArmor = armorCombo.items.some(armor => 
+              armor.warbond === 'helldivers_mobilize' || (!armor.warbond && !armor.superstore)
+            );
+            expect(hasAccessibleArmor).toBe(true);
+          } else {
+            const isFromEnabledWarbond = item.warbond === 'helldivers_mobilize';
+            const isBaseGame = !item.warbond && !item.superstore;
+            expect(isFromEnabledWarbond || isBaseGame).toBe(true);
+          }
+        });
+      });
+
+      it('should exclude superstore items when includeSuperstore is false', () => {
+        const playerNoSuperstore = {
+          ...basePlayer,
+          warbonds: ['helldivers_mobilize'],
+          includeSuperstore: false
+        };
+
+        const pool = getWeightedPool(playerNoSuperstore, 1, baseGameConfig);
+        
+        // Get all superstore item IDs for checking
+        const superstoreIds = SUPERSTORE_ITEMS.map(item => item.id);
+
+        // No superstore items should be in the pool
+        pool.forEach(({ item, armorCombo, isArmorCombo }) => {
+          if (isArmorCombo) {
+            // For armor combos, no item in the combo should be superstore-only
+            const hasSuperStoreOnlyArmor = armorCombo.items.every(armor => armor.superstore);
+            expect(hasSuperStoreOnlyArmor).toBe(false);
+          } else {
+            expect(superstoreIds).not.toContain(item.id);
+            expect(item.superstore).not.toBe(true);
+          }
+        });
+      });
+
+      it('should include superstore items when includeSuperstore is true', () => {
+        const playerWithSuperstore = {
+          ...basePlayer,
+          warbonds: ['helldivers_mobilize'],
+          includeSuperstore: true
+        };
+
+        const pool = getWeightedPool(playerWithSuperstore, 1, baseGameConfig);
+        
+        // Get all superstore item IDs
+        const superstoreIds = SUPERSTORE_ITEMS.map(item => item.id);
+
+        // At least some superstore items should be in the pool
+        const superstoreInPool = pool.filter(({ item, isArmorCombo }) => {
+          if (isArmorCombo) return false;
+          return superstoreIds.includes(item.id);
+        });
+
+        expect(superstoreInPool.length).toBeGreaterThan(0);
+      });
+
+      it('should filter using excludedItems list', () => {
+        const excludedIds = ['p_liberator', 'p_breaker', 'st_ops'];
+        const playerWithExcluded = {
+          ...basePlayer,
+          warbonds: ['helldivers_mobilize'],
+          includeSuperstore: false,
+          excludedItems: excludedIds
+        };
+
+        const pool = getWeightedPool(playerWithExcluded, 1, baseGameConfig);
+
+        // None of the excluded items should be in the pool
+        pool.forEach(({ item, isArmorCombo }) => {
+          if (!isArmorCombo) {
+            expect(excludedIds).not.toContain(item.id);
+          }
+        });
+      });
+
+      it('should handle undefined warbonds gracefully (no filtering)', () => {
+        const playerNoWarbonds = {
+          ...basePlayer,
+          warbonds: undefined,
+          includeSuperstore: false
+        };
+
+        const pool = getWeightedPool(playerNoWarbonds, 1, baseGameConfig);
+
+        // Pool should have items (warbond filter is skipped when warbonds is undefined)
+        expect(pool.length).toBeGreaterThan(0);
+      });
+
+      it('should handle empty warbonds array gracefully (no filtering)', () => {
+        const playerEmptyWarbonds = {
+          ...basePlayer,
+          warbonds: [],
+          includeSuperstore: false
+        };
+
+        const pool = getWeightedPool(playerEmptyWarbonds, 1, baseGameConfig);
+
+        // Pool should have items (warbond filter is skipped when warbonds is empty)
+        expect(pool.length).toBeGreaterThan(0);
+      });
+
+      it('should treat undefined includeSuperstore as false', () => {
+        const playerUndefinedSuperstore = {
+          ...basePlayer,
+          warbonds: ['helldivers_mobilize'],
+          includeSuperstore: undefined
+        };
+
+        const pool = getWeightedPool(playerUndefinedSuperstore, 1, baseGameConfig);
+        
+        // Get all superstore item IDs
+        const superstoreIds = SUPERSTORE_ITEMS.map(item => item.id);
+
+        // No superstore items should be in the pool when includeSuperstore is undefined
+        pool.forEach(({ item, isArmorCombo }) => {
+          if (!isArmorCombo) {
+            expect(superstoreIds).not.toContain(item.id);
+          }
+        });
+      });
+
+      it('should filter superstore items even when multiple warbonds enabled', () => {
+        const playerMultipleWarbonds = {
+          ...basePlayer,
+          warbonds: ['helldivers_mobilize', 'steeled_veterans', 'cutting_edge'],
+          includeSuperstore: false
+        };
+
+        const pool = getWeightedPool(playerMultipleWarbonds, 1, baseGameConfig);
+        
+        const superstoreIds = SUPERSTORE_ITEMS.map(item => item.id);
+
+        // No superstore items even with multiple warbonds
+        pool.forEach(({ item, isArmorCombo }) => {
+          if (!isArmorCombo) {
+            expect(superstoreIds).not.toContain(item.id);
+          }
+        });
+      });
+
+      it('should correctly combine warbond filtering and excludedItems', () => {
+        // Exclude an item from each source: warbond and would-be-superstore
+        const excludedIds = ['p_breaker_inc', 'p_double_freedom']; // breaker_inc is from steeled_veterans
+        const playerCombined = {
+          ...basePlayer,
+          warbonds: ['helldivers_mobilize', 'steeled_veterans'],
+          includeSuperstore: true,
+          excludedItems: excludedIds
+        };
+
+        const pool = getWeightedPool(playerCombined, 1, baseGameConfig);
+
+        // Excluded items should not appear
+        pool.forEach(({ item, isArmorCombo }) => {
+          if (!isArmorCombo) {
+            expect(excludedIds).not.toContain(item.id);
+          }
+        });
+
+        // But other steeled_veterans and superstore items should be present
+        const steeledVetItem = pool.find(({ item, isArmorCombo }) => 
+          !isArmorCombo && item.warbond === 'steeled_veterans' && !excludedIds.includes(item.id)
+        );
+        expect(steeledVetItem).toBeDefined();
+      });
+
+      it('should handle player with only superstore enabled (no warbonds)', () => {
+        // Edge case: empty warbonds but superstore true - should allow superstore items
+        // Note: This tests the current behavior - if warbonds is empty, filtering is skipped
+        const playerSuperstoreOnly = {
+          ...basePlayer,
+          warbonds: [],
+          includeSuperstore: true
+        };
+
+        const pool = getWeightedPool(playerSuperstoreOnly, 1, baseGameConfig);
+
+        // Pool should have items since warbond filtering is skipped
+        expect(pool.length).toBeGreaterThan(0);
       });
     });
   });

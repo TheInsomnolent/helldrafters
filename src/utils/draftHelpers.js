@@ -2,6 +2,35 @@ import { getRareWeightMultiplier } from '../constants/balancingConfig';
 import { FACTION, RARITY, TAGS, TYPE } from '../constants/types';
 import { MASTER_DB } from '../data/itemsByWarbond';
 import { anyItemHasTag, getItemById, getUniqueArmorCombos, hasArmorCombo, playerHasAccessToArmorCombo } from './itemHelpers';
+import { isDraftFilteringDebugEnabled } from '../constants/gameConfig';
+
+/**
+ * Draft Filtering Debug Logger
+ * Logs detailed information about pool filtering for debugging superstore/warbond issues
+ */
+const draftDebugLog = (message, data = null) => {
+  if (!isDraftFilteringDebugEnabled()) return;
+  
+  const timestamp = new Date().toISOString();
+  const logEntry = {
+    timestamp,
+    message,
+    ...(data && { data })
+  };
+  
+  console.log(`[DraftDebug] ${message}`, data ? JSON.stringify(data, null, 2) : '');
+  
+  // Also store in sessionStorage for easy export
+  try {
+    const existing = JSON.parse(sessionStorage.getItem('draftDebugLogs') || '[]');
+    existing.push(logEntry);
+    // Keep last 500 entries to prevent memory issues
+    if (existing.length > 500) existing.shift();
+    sessionStorage.setItem('draftDebugLogs', JSON.stringify(existing));
+  } catch (e) {
+    // Ignore storage errors
+  }
+};
 
 /**
  * Diversity penalty multiplier for draft hand generation
@@ -50,13 +79,38 @@ export const getDraftHandSize = (starRating) => {
  * @returns {Object[]} Array of {item, weight} objects (or {armorCombo, weight} for armor)
  */
 export const getWeightedPool = (player, difficulty, gameConfig, burnedCards = [], allPlayers = [], lockedSlots = []) => {
+  // === DEBUG: Log player filtering config at entry ===
+  draftDebugLog('getWeightedPool called', {
+    playerId: player?.id,
+    playerName: player?.name,
+    warbonds: player?.warbonds,
+    warbondsType: typeof player?.warbonds,
+    warbondsLength: player?.warbonds?.length,
+    includeSuperstore: player?.includeSuperstore,
+    includeSuperstoreType: typeof player?.includeSuperstore,
+    excludedItems: player?.excludedItems,
+    excludedItemsLength: player?.excludedItems?.length,
+    inventoryCount: player?.inventory?.length,
+    difficulty,
+    globalUniqueness: gameConfig?.globalUniqueness,
+    burnCards: gameConfig?.burnCards
+  });
+
   // 1. Filter out already owned items and boosters (boosters only come from events)
   let candidates = MASTER_DB.filter(item => 
     !player.inventory.includes(item.id) && item.type !== TYPE.BOOSTER
   );
 
+  const initialCandidateCount = candidates.length;
+  draftDebugLog('After initial filter (owned + boosters)', {
+    candidateCount: candidates.length,
+    removedCount: MASTER_DB.length - candidates.length
+  });
+
   // 2. Filter by player's enabled warbonds and superstore access
   if (player.warbonds && player.warbonds.length > 0) {
+    const beforeWarbondFilter = candidates.length;
+    
     candidates = candidates.filter(item => {
       // Include items from enabled warbonds
       if (item.warbond && player.warbonds.includes(item.warbond)) {
@@ -69,11 +123,40 @@ export const getWeightedPool = (player, difficulty, gameConfig, burnedCards = []
       // Exclude items with warbond/superstore tags that aren't accessible
       return !item.warbond && !item.superstore;
     });
+
+    // === DEBUG: Log superstore items that passed/failed filtering ===
+    const superstoreItemsInPool = candidates.filter(item => item.superstore);
+    draftDebugLog('After warbond/superstore filter', {
+      beforeCount: beforeWarbondFilter,
+      afterCount: candidates.length,
+      removedCount: beforeWarbondFilter - candidates.length,
+      superstoreItemsIncluded: superstoreItemsInPool.length,
+      superstoreItemIds: superstoreItemsInPool.map(i => i.id),
+      playerIncludeSuperstore: player.includeSuperstore,
+      playerWarbonds: player.warbonds
+    });
+  } else {
+    // === DEBUG: Log when warbond filtering is SKIPPED ===
+    draftDebugLog('WARNING: Warbond filtering SKIPPED', {
+      reason: !player.warbonds ? 'warbonds is falsy' : 'warbonds is empty array',
+      warbondsValue: player.warbonds,
+      warbondsType: typeof player.warbonds,
+      candidateCount: candidates.length,
+      superstoreItemsInPool: candidates.filter(item => item.superstore).length
+    });
   }
 
   // 2.5. Filter out excluded items (items the player doesn't own)
   if (player.excludedItems && player.excludedItems.length > 0) {
+    const beforeExcludeFilter = candidates.length;
     candidates = candidates.filter(item => !player.excludedItems.includes(item.id));
+    
+    draftDebugLog('After excludedItems filter', {
+      beforeCount: beforeExcludeFilter,
+      afterCount: candidates.length,
+      removedCount: beforeExcludeFilter - candidates.length,
+      excludedItemsUsed: player.excludedItems.length
+    });
   }
 
   // 3. Filter out burned cards (if burn mode enabled)
@@ -175,7 +258,20 @@ export const getWeightedPool = (player, difficulty, gameConfig, burnedCards = []
   // Combine both pools
   const combinedPool = [...weightedNonArmor, ...weightedArmor];
   
-  return combinedPool.filter(c => c.weight > 0);
+  const filteredPool = combinedPool.filter(c => c.weight > 0);
+  
+  // === DEBUG: Log final pool summary ===
+  draftDebugLog('getWeightedPool final result', {
+    playerId: player?.id,
+    playerName: player?.name,
+    totalPoolSize: filteredPool.length,
+    armorCombos: weightedArmor.length,
+    nonArmorItems: weightedNonArmor.filter(i => i.weight > 0).length,
+    superstoreItemsInFinalPool: filteredPool.filter(p => !p.isArmorCombo && p.item?.superstore).map(p => p.item.id),
+    superstoreArmorCombosInFinalPool: filteredPool.filter(p => p.isArmorCombo && p.armorCombo?.items?.some(a => a.superstore)).length
+  });
+  
+  return filteredPool;
 };
 
 /**

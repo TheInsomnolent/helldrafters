@@ -48,6 +48,7 @@ export const SET_PENDING_STRATAGEM = 'SET_PENDING_STRATAGEM';
 export const DRAFT_PICK = 'DRAFT_PICK'; // Multiplayer action for client draft picks
 export const STRATAGEM_REPLACEMENT = 'STRATAGEM_REPLACEMENT'; // Multiplayer action for stratagem slot replacement
 export const ADD_DRAFT_HISTORY = 'ADD_DRAFT_HISTORY'; // Add a record to draft history
+export const SET_DRAFT_HISTORY = 'SET_DRAFT_HISTORY'; // Set/reset draft history
 export const START_RETROSPECTIVE_DRAFT = 'START_RETROSPECTIVE_DRAFT'; // Start retrospective draft for hot-join player
 
 // Sacrifice state

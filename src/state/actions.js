@@ -245,6 +245,11 @@ export const addDraftHistory = (difficulty, starRating) => ({
   payload: { difficulty, starRating }
 });
 
+export const setDraftHistory = (history) => ({
+  type: types.SET_DRAFT_HISTORY,
+  payload: history
+});
+
 // Retrospective draft
 export const startRetrospectiveDraft = (playerIndex) => ({
   type: types.START_RETROSPECTIVE_DRAFT,

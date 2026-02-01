@@ -6,9 +6,13 @@ import {
   getItemsByRarity,
   anyItemHasTag,
   getItemsWithTag,
-  countItemsByType
+  countItemsByType,
+  getUniqueArmorCombos,
+  playerHasAccessToArmorCombo,
+  hasArmorCombo
 } from './itemHelpers';
 import { TYPE, RARITY, TAGS } from '../constants/types';
+import { ARMOR_PASSIVE, ARMOR_CLASS } from '../constants/armorPassives';
 
 describe('Utils - Item Helpers', () => {
   describe('getItemById', () => {
@@ -135,6 +139,187 @@ describe('Utils - Item Helpers', () => {
     it('should return 0 for empty inventory', () => {
       const count = countItemsByType([], TYPE.STRATAGEM);
       expect(count).toBe(0);
+    });
+  });
+
+  describe('getUniqueArmorCombos', () => {
+    it('should group armors by passive and armorClass', () => {
+      const testArmors = [
+        { id: 'a1', passive: ARMOR_PASSIVE.SCOUT, armorClass: ARMOR_CLASS.LIGHT },
+        { id: 'a2', passive: ARMOR_PASSIVE.SCOUT, armorClass: ARMOR_CLASS.LIGHT },
+        { id: 'a3', passive: ARMOR_PASSIVE.FORTIFIED, armorClass: ARMOR_CLASS.HEAVY }
+      ];
+
+      const combos = getUniqueArmorCombos(testArmors);
+
+      expect(combos).toHaveLength(2);
+      const scoutLightCombo = combos.find(c => c.passive === ARMOR_PASSIVE.SCOUT && c.armorClass === ARMOR_CLASS.LIGHT);
+      expect(scoutLightCombo).toBeDefined();
+      expect(scoutLightCombo.items).toHaveLength(2);
+    });
+
+    it('should skip armors without passive or armorClass', () => {
+      const testArmors = [
+        { id: 'a1', passive: ARMOR_PASSIVE.SCOUT, armorClass: ARMOR_CLASS.LIGHT },
+        { id: 'a2', passive: null, armorClass: ARMOR_CLASS.LIGHT },
+        { id: 'a3', passive: ARMOR_PASSIVE.FORTIFIED, armorClass: undefined }
+      ];
+
+      const combos = getUniqueArmorCombos(testArmors);
+
+      expect(combos).toHaveLength(1);
+    });
+
+    it('should return empty array for empty input', () => {
+      const combos = getUniqueArmorCombos([]);
+      expect(combos).toHaveLength(0);
+    });
+  });
+
+  describe('playerHasAccessToArmorCombo', () => {
+    const mockCombo = {
+      passive: ARMOR_PASSIVE.SCOUT,
+      armorClass: ARMOR_CLASS.LIGHT,
+      items: [
+        { id: 'a_sc34', warbond: 'helldivers_mobilize' },
+        { id: 'a_sc37', superstore: true },
+        { id: 'a_cw4', warbond: 'polar_patriots' }
+      ]
+    };
+
+    it('should return true when player has warbond access to at least one armor', () => {
+      const result = playerHasAccessToArmorCombo(
+        mockCombo,
+        ['helldivers_mobilize'],
+        false,
+        []
+      );
+      expect(result).toBe(true);
+    });
+
+    it('should return true when player has superstore access and combo has superstore armor', () => {
+      const result = playerHasAccessToArmorCombo(
+        mockCombo,
+        [], // No warbonds
+        true, // Has superstore
+        []
+      );
+      expect(result).toBe(true);
+    });
+
+    it('should return false when player has no access to any armor in combo', () => {
+      const result = playerHasAccessToArmorCombo(
+        mockCombo,
+        [], // No warbonds
+        false, // No superstore
+        []
+      );
+      expect(result).toBe(false);
+    });
+
+    it('should exclude armors in excludedItems list', () => {
+      // Exclude the only warbond armor, no superstore
+      const result = playerHasAccessToArmorCombo(
+        mockCombo,
+        ['helldivers_mobilize'],
+        false,
+        ['a_sc34'] // Exclude the only accessible armor
+      );
+      expect(result).toBe(false);
+    });
+
+    it('should allow access when not all combo items are excluded', () => {
+      const comboWithMultipleWarbondArmors = {
+        passive: ARMOR_PASSIVE.FORTIFIED,
+        armorClass: ARMOR_CLASS.HEAVY,
+        items: [
+          { id: 'a_fs05', warbond: 'helldivers_mobilize' },
+          { id: 'a_fs23', warbond: 'helldivers_mobilize' }
+        ]
+      };
+
+      const result = playerHasAccessToArmorCombo(
+        comboWithMultipleWarbondArmors,
+        ['helldivers_mobilize'],
+        false,
+        ['a_fs05'] // Exclude one but not the other
+      );
+      expect(result).toBe(true);
+    });
+
+    it('should return true for base game armors (no warbond/superstore)', () => {
+      const baseGameCombo = {
+        passive: ARMOR_PASSIVE.EXTRA_PADDING,
+        armorClass: ARMOR_CLASS.MEDIUM,
+        items: [
+          { id: 'a_base', warbond: undefined, superstore: undefined }
+        ]
+      };
+
+      const result = playerHasAccessToArmorCombo(
+        baseGameCombo,
+        [], // No warbonds
+        false, // No superstore
+        []
+      );
+      expect(result).toBe(true);
+    });
+
+    it('should handle undefined playerWarbonds gracefully', () => {
+      const result = playerHasAccessToArmorCombo(
+        mockCombo,
+        undefined,
+        true, // Has superstore
+        []
+      );
+      expect(result).toBe(true);
+    });
+
+    it('should handle undefined includeSuperstore gracefully (treat as false)', () => {
+      const superstoreOnlyCombo = {
+        passive: ARMOR_PASSIVE.SCOUT,
+        armorClass: ARMOR_CLASS.LIGHT,
+        items: [
+          { id: 'a_ss1', superstore: true }
+        ]
+      };
+
+      const result = playerHasAccessToArmorCombo(
+        superstoreOnlyCombo,
+        [],
+        undefined, // Undefined should be treated as false
+        []
+      );
+      expect(result).toBe(false);
+    });
+
+    it('should handle undefined excludedItems gracefully', () => {
+      const result = playerHasAccessToArmorCombo(
+        mockCombo,
+        ['helldivers_mobilize'],
+        false,
+        undefined
+      );
+      expect(result).toBe(true);
+    });
+  });
+
+  describe('hasArmorCombo', () => {
+    it('should return true if inventory contains armor with matching combo', () => {
+      const inventory = ['a_sc34', 's_peacemaker']; // SC-34 Infiltrator is Scout/Light
+      const result = hasArmorCombo(inventory, ARMOR_PASSIVE.SCOUT, ARMOR_CLASS.LIGHT);
+      expect(result).toBe(true);
+    });
+
+    it('should return false if inventory does not contain matching combo', () => {
+      const inventory = ['a_sc34', 's_peacemaker']; // SC-34 is Scout/Light, not Fortified/Heavy
+      const result = hasArmorCombo(inventory, ARMOR_PASSIVE.FORTIFIED, ARMOR_CLASS.HEAVY);
+      expect(result).toBe(false);
+    });
+
+    it('should return false for empty inventory', () => {
+      const result = hasArmorCombo([], ARMOR_PASSIVE.SCOUT, ARMOR_CLASS.LIGHT);
+      expect(result).toBe(false);
     });
   });
 });

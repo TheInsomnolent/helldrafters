@@ -7,6 +7,35 @@ import { MASTER_DB, SUPERSTORE_ITEMS } from '../data/itemsByWarbond';
 import { useMultiplayer } from '../systems/multiplayer';
 import { getItemIconUrl } from '../utils/iconHelpers';
 import StratagemGame from './StratagemGame';
+import { isDraftFilteringDebugEnabled } from '../constants/gameConfig';
+
+/**
+ * Lobby Debug Logger for tracking player config sync issues
+ */
+const lobbyDebugLog = (message, data = null) => {
+  if (!isDraftFilteringDebugEnabled()) return;
+  
+  const timestamp = new Date().toISOString();
+  const logEntry = {
+    timestamp,
+    source: 'GameLobby',
+    message,
+    ...(data && { data })
+  };
+  
+  console.log(`[LobbyDebug] ${message}`, data ? JSON.stringify(data, null, 2) : '');
+  
+  // Also store in sessionStorage for easy export
+  try {
+    const existing = JSON.parse(sessionStorage.getItem('lobbyDebugLogs') || '[]');
+    existing.push(logEntry);
+    // Keep last 500 entries
+    if (existing.length > 500) existing.shift();
+    sessionStorage.setItem('lobbyDebugLogs', JSON.stringify(existing));
+  } catch (e) {
+    // Ignore storage errors
+  }
+};
 
 // Local storage key for saving player configuration
 const STORAGE_KEY = 'helldrafters_player_config';
@@ -14,7 +43,7 @@ const STORAGE_KEY = 'helldrafters_player_config';
 /**
  * Load saved player configuration from local storage
  */
-const loadSavedConfig = () => {
+export const loadSavedConfig = () => {
   try {
     const saved = localStorage.getItem(STORAGE_KEY);
     if (saved) {
@@ -29,11 +58,38 @@ const loadSavedConfig = () => {
 /**
  * Save player configuration to local storage
  */
-const saveConfig = (config) => {
+export const saveConfig = (config) => {
   try {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(config));
   } catch (e) {
     console.warn('Failed to save config:', e);
+  }
+};
+
+/**
+ * Add item(s) to the excluded items list in saved config
+ * This persists the exclusion to localStorage so it won't appear in future sessions
+ * @param {string|string[]} itemIds - Item ID or array of item IDs to exclude
+ */
+export const addExcludedItemsToSavedConfig = (itemIds) => {
+  try {
+    const ids = Array.isArray(itemIds) ? itemIds : [itemIds];
+    const config = loadSavedConfig() || {};
+    const currentExcluded = config.excludedItems || [];
+    
+    // Add new items, avoiding duplicates
+    const newExcluded = [...new Set([...currentExcluded, ...ids])];
+    
+    saveConfig({
+      ...config,
+      excludedItems: newExcluded
+    });
+    
+    console.log('[Config] Added excluded items to saved config:', ids, 'Total excluded:', newExcluded.length);
+    return newExcluded;
+  } catch (e) {
+    console.warn('Failed to add excluded items to saved config:', e);
+    return null;
   }
 };
 
@@ -101,6 +157,17 @@ export default function GameLobby({
   // Sync ready state and config to multiplayer lobby
   useEffect(() => {
     if (isMultiplayer && updatePlayerConfig) {
+      lobbyDebugLog('Syncing player config to Firebase', {
+        playerSlot,
+        name: myConfig.name,
+        warbonds: myConfig.warbonds,
+        warbondsLength: myConfig.warbonds?.length,
+        includeSuperstore: myConfig.includeSuperstore,
+        excludedItems: myConfig.excludedItems,
+        excludedItemsLength: myConfig.excludedItems?.length,
+        ready: isReady
+      });
+      
       updatePlayerConfig({
         name: myConfig.name,
         warbonds: myConfig.warbonds,
@@ -114,15 +181,58 @@ export default function GameLobby({
   // Auto-start when all players are ready (host initiates)
   useEffect(() => {
     if (isMultiplayer && isHost && allPlayersReady() && lobbyData?.players) {
+      // === DEBUG: Log raw lobby data before transformation ===
+      lobbyDebugLog('MULTIPLAYER GAME START - Raw lobby data', {
+        lobbyPlayers: lobbyData.players,
+        playerCount: Object.keys(lobbyData.players).length
+      });
+      
       // Build players array from lobby data
       const players = Object.values(lobbyData.players)
         .sort((a, b) => a.slot - b.slot)
-        .map(p => ({
+        .map((p, index) => {
+          const playerConfig = {
+            name: p.name,
+            warbonds: p.warbonds || [...DEFAULT_WARBONDS],
+            includeSuperstore: p.includeSuperstore || false,
+            excludedItems: p.excludedItems || []
+          };
+          
+          // === DEBUG: Log each player's config transformation ===
+          lobbyDebugLog(`Player ${index + 1} config transformation`, {
+            slot: p.slot,
+            rawName: p.name,
+            rawWarbonds: p.warbonds,
+            rawWarbondsType: typeof p.warbonds,
+            rawWarbondsLength: p.warbonds?.length,
+            rawIncludeSuperstore: p.includeSuperstore,
+            rawIncludeSuperstoreType: typeof p.includeSuperstore,
+            rawExcludedItems: p.excludedItems,
+            rawExcludedItemsLength: p.excludedItems?.length,
+            // Transformed values
+            transformedWarbonds: playerConfig.warbonds,
+            transformedIncludeSuperstore: playerConfig.includeSuperstore,
+            transformedExcludedItems: playerConfig.excludedItems,
+            // Flags for potential issues
+            warbondsUsedDefault: !p.warbonds,
+            includeSuperstoreUsedDefault: p.includeSuperstore === undefined || p.includeSuperstore === null,
+            excludedItemsUsedDefault: !p.excludedItems
+          });
+          
+          return playerConfig;
+        });
+      
+      // === DEBUG: Log final players array ===
+      lobbyDebugLog('MULTIPLAYER GAME START - Final players array', {
+        playerCount: players.length,
+        players: players.map((p, i) => ({
+          index: i,
           name: p.name,
-          warbonds: p.warbonds || [...DEFAULT_WARBONDS],
-          includeSuperstore: p.includeSuperstore || false,
-          excludedItems: p.excludedItems || []
-        }));
+          warbondsCount: p.warbonds?.length,
+          includeSuperstore: p.includeSuperstore,
+          excludedItemsCount: p.excludedItems?.length
+        }))
+      });
       
       // Small delay to ensure UI shows all ready
       setTimeout(() => {
@@ -184,6 +294,14 @@ export default function GameLobby({
 
   const handleSoloStart = () => {
     // Solo mode - just start with current config
+    lobbyDebugLog('SOLO GAME START', {
+      name: myConfig.name,
+      warbonds: myConfig.warbonds,
+      warbondsLength: myConfig.warbonds?.length,
+      includeSuperstore: myConfig.includeSuperstore,
+      excludedItems: myConfig.excludedItems,
+      excludedItemsLength: myConfig.excludedItems?.length
+    });
     onStartRun([myConfig]);
   };
 

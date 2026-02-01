@@ -1,5 +1,30 @@
 // Game configuration constants
 
+/**
+ * Debug flag for draft filtering/superstore logging
+ * Set to true to enable verbose logging for debugging item filtering issues
+ * Can also be enabled via localStorage: localStorage.setItem('DEBUG_DRAFT_FILTERING', 'true')
+ */
+export const DEBUG_DRAFT_FILTERING = (() => {
+  try {
+    return localStorage.getItem('DEBUG_DRAFT_FILTERING') === 'true';
+  } catch {
+    return false;
+  }
+})();
+
+/**
+ * Helper to check if draft filtering debug is enabled
+ * Checks both the constant and localStorage at runtime
+ */
+export const isDraftFilteringDebugEnabled = () => {
+  try {
+    return DEBUG_DRAFT_FILTERING || localStorage.getItem('DEBUG_DRAFT_FILTERING') === 'true';
+  } catch {
+    return DEBUG_DRAFT_FILTERING;
+  }
+};
+
 export const STARTING_LOADOUT = {
   primary: null,
   secondary: 's_peacemaker',
