@@ -1,0 +1,101 @@
+name: Feature Request
+description: Suggest an enhancement or new feature for Helldrafters
+title: "[Feature]: "
+labels: ["enhancement"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for taking the time to suggest a feature! Please fill out the information below to help us understand your idea.
+
+  - type: textarea
+    id: summary
+    attributes:
+      label: Feature Summary
+      description: A clear and concise description of the feature you'd like to see.
+      placeholder: I'd like to see...
+    validations:
+      required: true
+
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem or Motivation
+      description: What problem does this feature solve? Why would it be valuable?
+      placeholder: This would help because...
+    validations:
+      required: true
+
+  - type: textarea
+    id: solution
+    attributes:
+      label: Proposed Solution
+      description: How do you envision this feature working?
+      placeholder: The feature could work by...
+    validations:
+      required: true
+
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives Considered
+      description: Have you considered any alternative solutions or workarounds?
+      placeholder: I've also thought about...
+
+  - type: dropdown
+    id: feature-area
+    attributes:
+      label: Feature Area
+      description: Which part of the app does this feature relate to?
+      options:
+        - Draft System (card selection, weighting, rerolls)
+        - Game Modes (new modes or mode modifications)
+        - Events System (new events or event mechanics)
+        - Loadout Display (UI for showing equipment)
+        - Multiplayer (lobby, sync, co-op features)
+        - Analytics (post-game stats, charts)
+        - Warbonds/Items (new content, item data)
+        - UI/UX (general interface improvements)
+        - Accessibility (screen readers, colorblind, etc.)
+        - Mobile Experience
+        - Performance
+        - Other
+    validations:
+      required: true
+
+  - type: dropdown
+    id: player-impact
+    attributes:
+      label: Player Impact
+      description: Who would benefit from this feature?
+      options:
+        - All players
+        - Solo players primarily
+        - Co-op/multiplayer players primarily
+        - Competitive/challenge runners
+        - New players
+        - Experienced players
+    validations:
+      required: true
+
+  - type: textarea
+    id: mockups
+    attributes:
+      label: Mockups or Examples
+      description: If applicable, add sketches, mockups, or links to similar features in other apps. You can drag and drop images here.
+
+  - type: checkboxes
+    id: contribution
+    attributes:
+      label: Contribution Interest
+      description: Would you be interested in helping implement this feature?
+      options:
+        - label: I'd be willing to help implement this feature
+        - label: I'd be willing to help test this feature
+        - label: I'd be willing to help document this feature
+
+  - type: textarea
+    id: additional-context
+    attributes:
+      label: Additional Context
+      description: Add any other context, screenshots, or information about the feature request here.

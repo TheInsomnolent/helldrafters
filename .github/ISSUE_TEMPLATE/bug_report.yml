@@ -121,11 +121,12 @@ body:
       description: Which theater/faction were you playing?
       options:
         - Terminids
-        - Terminids (Contaminated Biosphere)
-        - Terminids (Fungal Planets)
+        - Terminids - Rupture Strain
+        - Terminids - Predator Strain
+        - Terminids - Spore Burst Strain
         - Automatons
-        - Automatons (Occupied Worlds)
-        - Automatons (Petafactory Grid)
+        - Automatons - Jet Brigade
+        - Automatons - Incineration Core
         - Illuminate
         - Not applicable
 

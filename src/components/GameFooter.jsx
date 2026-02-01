@@ -1,5 +1,5 @@
 import React from 'react';
-import { Coffee, Bug } from 'lucide-react';
+import { Coffee, Bug, MessageSquare } from 'lucide-react';
 import { COLORS } from '../constants/theme';
 
 /**
@@ -53,6 +53,38 @@ export default function GameFooter() {
         >
           <Bug size={16} />
           Report Bug/Feedback
+        </a>
+        <a
+          href="https://github.com/TheInsomnolent/helldrafters/discussions"
+          target="_blank"
+          rel="noopener noreferrer"
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: '8px',
+            padding: '10px 20px',
+            backgroundColor: 'rgba(139, 92, 246, 0.1)',
+            color: '#a78bfa',
+            border: '1px solid rgba(139, 92, 246, 0.3)',
+            borderRadius: '6px',
+            fontSize: '13px',
+            fontWeight: 'bold',
+            textDecoration: 'none',
+            textTransform: 'uppercase',
+            transition: 'all 0.2s',
+            letterSpacing: '0.5px'
+          }}
+          onMouseEnter={(e) => {
+            e.currentTarget.style.backgroundColor = 'rgba(139, 92, 246, 0.2)';
+            e.currentTarget.style.borderColor = '#a78bfa';
+          }}
+          onMouseLeave={(e) => {
+            e.currentTarget.style.backgroundColor = 'rgba(139, 92, 246, 0.1)';
+            e.currentTarget.style.borderColor = 'rgba(139, 92, 246, 0.3)';
+          }}
+        >
+          <MessageSquare size={16} />
+          Discussions
         </a>
         <a
           href="https://ko-fi.com/theinsomnolent"

@@ -63,6 +63,7 @@ Helldrafters is an open-source project and welcomes community contributions! Whe
 **How to contribute:**
 - Read our [Contributing Guide](CONTRIBUTING.md) for development setup and workflow
 - Check out [open issues](https://github.com/TheInsomnolent/helldrafters/issues) or create a new one
+- Join the [community discussions](https://github.com/TheInsomnolent/helldrafters/discussions) to share ideas and ask questions
 - All contributions should target the `develop` branch
 
 **Please note:** We follow the [Contributor Covenant Code of Conduct](CODE_OF_CONDUCT.md). Be respectful and welcoming to all contributors.
