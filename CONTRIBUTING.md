@@ -11,7 +11,7 @@ By participating in this project, you agree to abide by our [Code of Conduct](CO
 ### Prerequisites
 
 - **Node.js 18+** (recommended: use the version specified in `.github/workflows/`)
-- **npm** (comes with Node.js)
+- **yarn** (install via `npm install -g yarn` or [other methods](https://yarnpkg.com/getting-started/install))
 - **Git**
 - A GitHub account
 
@@ -29,11 +29,11 @@ By participating in this project, you agree to abide by our [Code of Conduct](CO
    ```
 4. **Install dependencies:**
    ```bash
-   npm install
+   yarn
    ```
 5. **Start the development server:**
    ```bash
-   npm start
+   yarn start
    ```
    The app will open at [http://localhost:3000](http://localhost:3000)
 
@@ -76,9 +76,9 @@ By participating in this project, you agree to abide by our [Code of Conduct](CO
 
 4. **Run tests and linting before pushing:**
    ```bash
-   npm run lint    # Must pass with 0 warnings
-   npm test        # All tests must pass
-   npm run build   # Must build successfully
+   yarn lint    # Must pass with 0 warnings
+   yarn test    # All tests must pass
+   yarn build   # Must build successfully
    ```
 
 5. **Push to your fork:**

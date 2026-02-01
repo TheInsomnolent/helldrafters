@@ -7,7 +7,7 @@ This project enforces consistent code style through ESLint and Prettier. All cod
 Style enforcement is **automatic**. After cloning:
 
 ```bash
-npm install  # Automatically sets up git hooks via postinstall
+yarn  # Automatically sets up git hooks via postinstall
 ```
 
 That's it! Pre-commit hooks will format and lint your code automatically.
@@ -165,10 +165,10 @@ If either fails, the commit is blocked until issues are fixed.
 ### PR Checks
 
 All pull requests run:
-1. Format verification (`npm run format:check`)
-2. Linting (`npm run lint`)
-3. Tests (`npm test`)
-4. Build verification (`npm run build`)
+1. Format verification (`yarn format:check`)
+2. Linting (`yarn lint`)
+3. Tests (`yarn test`)
+4. Build verification (`yarn build`)
 
 PRs with style violations cannot be merged.
 
@@ -176,12 +176,12 @@ PRs with style violations cannot be merged.
 
 | Command | Description |
 |---------|-------------|
-| `npm run lint` | Check for ESLint errors |
-| `npm run lint:fix` | Auto-fix ESLint errors |
-| `npm run format` | Format all files with Prettier |
-| `npm run format:check` | Check if files are formatted |
-| `npm run style` | Run both format and lint |
-| `npm run style:fix` | Fix all style issues |
+| `yarn lint` | Check for ESLint errors |
+| `yarn lint:fix` | Auto-fix ESLint errors |
+| `yarn format` | Format all files with Prettier |
+| `yarn format:check` | Check if files are formatted |
+| `yarn style` | Run both format:check and lint |
+| `yarn style:fix` | Fix all style issues |
 
 ## Editor Setup
 
@@ -220,7 +220,7 @@ Build outputs, `node_modules`, and minified files are excluded from formatting.
 
 ### "Pre-commit hook failed"
 
-Run `npm run style:fix` to auto-fix most issues, then commit again.
+Run `yarn style:fix` to auto-fix most issues, then commit again.
 
 ### "My editor isn't formatting"
 
@@ -230,7 +230,7 @@ Run `npm run style:fix` to auto-fix most issues, then commit again.
 
 ### "ESLint errors in new code"
 
-Run `npm run lint:fix` to auto-fix what's possible. Manual fixes needed for:
+Run `yarn lint:fix` to auto-fix what's possible. Manual fixes needed for:
 - Unused variables (remove or prefix with `_`)
 - Missing dependencies in useEffect
 
