@@ -1,7 +1,7 @@
 /* eslint-disable jest/no-conditional-expect */
 import { getDraftHandSize, getWeightedPool, generateDraftHand, generateRandomDraftOrder } from './draftHelpers';
-import { TYPE, FACTION, TAGS, RARITY } from '../constants/types';
-import { MASTER_DB, SUPERSTORE_ITEMS } from '../data/itemsByWarbond';
+import { TYPE, FACTION, TAGS } from '../constants/types';
+import { SUPERSTORE_ITEMS } from '../data/itemsByWarbond';
 
 describe('Utils - Draft Helpers', () => {
   describe('generateRandomDraftOrder', () => {
