@@ -1,4 +1,4 @@
-import { Bug, CheckCircle, RefreshCw, Users, XCircle } from 'lucide-react';
+import { Bug, CheckCircle, MessageSquare, RefreshCw, Users, XCircle } from 'lucide-react';
 import React, { useEffect, useReducer } from 'react';
 import { HashRouter, Route, Routes } from 'react-router-dom';
 import CardLibrary from './components/CardLibrary';
@@ -2346,6 +2346,46 @@ function HelldiversRoguelikeApp() {
                 }}
               >
                 <Bug size={16} /> Report Bug/Feedback
+              </a>
+            </div>
+
+            {/* Community Discussions Button */}
+            <div style={{ marginTop: '12px' }}>
+              <a
+                href="https://github.com/TheInsomnolent/helldrafters/discussions"
+                target="_blank"
+                rel="noopener noreferrer"
+                style={{
+                  width: '100%',
+                  padding: '12px',
+                  fontSize: '14px',
+                  letterSpacing: '0.1em',
+                  borderRadius: '4px',
+                  border: `1px solid ${COLORS.CARD_BORDER}`,
+                  backgroundColor: 'transparent',
+                  color: COLORS.TEXT_MUTED,
+                  fontWeight: '700',
+                  textTransform: 'uppercase',
+                  cursor: 'pointer',
+                  transition: 'all 0.2s',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: '8px',
+                  textDecoration: 'none'
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.borderColor = '#a78bfa';
+                  e.currentTarget.style.color = '#a78bfa';
+                  e.currentTarget.style.backgroundColor = 'rgba(139, 92, 246, 0.1)';
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.borderColor = COLORS.CARD_BORDER;
+                  e.currentTarget.style.color = COLORS.TEXT_MUTED;
+                  e.currentTarget.style.backgroundColor = 'transparent';
+                }}
+              >
+                <MessageSquare size={16} /> Discussions
               </a>
             </div>
 
