@@ -1,0 +1,58 @@
+{
+    // Format on save - ensures all code is formatted before commit
+    "editor.formatOnSave": true,
+    "editor.formatOnPaste": true,
+
+    // Default formatter for all files
+    "editor.defaultFormatter": "esbenp.prettier-vscode",
+
+    // Language-specific settings
+    "[javascript]": {
+        "editor.defaultFormatter": "esbenp.prettier-vscode",
+        "editor.codeActionsOnSave": {
+            "source.fixAll.eslint": "explicit"
+        }
+    },
+    "[javascriptreact]": {
+        "editor.defaultFormatter": "esbenp.prettier-vscode",
+        "editor.codeActionsOnSave": {
+            "source.fixAll.eslint": "explicit"
+        }
+    },
+    "[json]": {
+        "editor.defaultFormatter": "esbenp.prettier-vscode"
+    },
+    "[markdown]": {
+        "editor.defaultFormatter": "esbenp.prettier-vscode"
+    },
+
+    // ESLint settings
+    "eslint.enable": true,
+    "eslint.validate": ["javascript", "javascriptreact"],
+
+    // File associations
+    "files.associations": {
+        "*.jsx": "javascriptreact"
+    },
+
+    // Ensure consistent line endings
+    "files.eol": "\n",
+
+    // Trim trailing whitespace
+    "files.trimTrailingWhitespace": true,
+    "files.insertFinalNewline": true,
+
+    // Exclude from search/watch
+    "files.exclude": {
+        "**/node_modules": true,
+        "**/build": true,
+        "**/coverage": true
+    },
+
+    // Recommended extensions for this project
+    "extensions.recommendations": [
+        "esbenp.prettier-vscode",
+        "dbaeumer.vscode-eslint",
+        "editorconfig.editorconfig"
+    ]
+}
