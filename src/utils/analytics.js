@@ -1,12 +1,16 @@
 /**
  * Firebase Analytics utility for tracking user interactions and events
- * 
+ *
  * This module provides a centralized way to track user behavior in the app.
  * All analytics calls are safe to use even if Firebase Analytics is not initialized.
  */
 
-import { logEvent, setUserProperties } from 'firebase/analytics';
-import { getFirebaseAnalytics, isAnalyticsConsoleLogging, isAnalyticsDebugMode } from '../systems/multiplayer/firebaseConfig';
+import { logEvent, setUserProperties } from 'firebase/analytics'
+import {
+    getFirebaseAnalytics,
+    isAnalyticsConsoleLogging,
+    isAnalyticsDebugMode,
+} from '../systems/multiplayer/firebaseConfig'
 
 /**
  * Safely log an event to Firebase Analytics
@@ -14,60 +18,62 @@ import { getFirebaseAnalytics, isAnalyticsConsoleLogging, isAnalyticsDebugMode }
  * @param {object} eventParams - Parameters to include with the event
  */
 export const trackEvent = (eventName, eventParams = {}) => {
-  const analytics = getFirebaseAnalytics();
-  
-  // Log to console in development for debugging
-  if (isAnalyticsConsoleLogging()) {
-    console.log(`📊 Analytics Event: ${eventName}`, eventParams);
-  }
-  
-  if (analytics) {
-    try {
-      // Add debug_mode parameter when in debug mode - this enables DebugView in Firebase Console
-      const params = isAnalyticsDebugMode() 
-        ? { ...eventParams, debug_mode: true }
-        : eventParams;
-      
-      logEvent(analytics, eventName, params);
-    } catch (error) {
-      console.warn('Failed to log analytics event:', error);
+    const analytics = getFirebaseAnalytics()
+
+    // Log to console in development for debugging
+    if (isAnalyticsConsoleLogging()) {
+        // eslint-disable-next-line no-console
+        console.log(`📊 Analytics Event: ${eventName}`, eventParams)
     }
-  } else if (isAnalyticsConsoleLogging()) {
-    console.warn('⚠️ Analytics not initialized - event not sent to Firebase');
-  }
-};
+
+    if (analytics) {
+        try {
+            // Add debug_mode parameter when in debug mode - this enables DebugView in Firebase Console
+            const params = isAnalyticsDebugMode()
+                ? { ...eventParams, debug_mode: true }
+                : eventParams
+
+            logEvent(analytics, eventName, params)
+        } catch (error) {
+            console.warn('Failed to log analytics event:', error)
+        }
+    } else if (isAnalyticsConsoleLogging()) {
+        console.warn('⚠️ Analytics not initialized - event not sent to Firebase')
+    }
+}
 
 /**
  * Track page/screen views
  * @param {string} pageName - Name of the page/screen
  */
 export const trackPageView = (pageName) => {
-  trackEvent('page_view', {
-    page_title: pageName,
-    page_location: window.location.href,
-    page_path: window.location.pathname
-  });
-};
+    trackEvent('page_view', {
+        page_title: pageName,
+        page_location: window.location.href,
+        page_path: window.location.pathname,
+    })
+}
 
 /**
  * Set user properties for analytics segmentation
  * @param {object} properties - User properties to set
  */
 export const setAnalyticsUserProperties = (properties) => {
-  const analytics = getFirebaseAnalytics();
-  
-  if (isAnalyticsConsoleLogging()) {
-    console.log('📊 Analytics User Properties:', properties);
-  }
-  
-  if (analytics) {
-    try {
-      setUserProperties(analytics, properties);
-    } catch (error) {
-      console.warn('Failed to set user properties:', error);
+    const analytics = getFirebaseAnalytics()
+
+    if (isAnalyticsConsoleLogging()) {
+        // eslint-disable-next-line no-console
+        console.log('📊 Analytics User Properties:', properties)
     }
-  }
-};
+
+    if (analytics) {
+        try {
+            setUserProperties(analytics, properties)
+        } catch (error) {
+            console.warn('Failed to set user properties:', error)
+        }
+    }
+}
 
 // Game-specific tracking functions
 
@@ -77,11 +83,11 @@ export const setAnalyticsUserProperties = (properties) => {
  * @param {string} difficulty - Game difficulty level
  */
 export const trackGameStart = (gameMode, difficulty) => {
-  trackEvent('game_start', {
-    game_mode: gameMode,
-    difficulty: difficulty
-  });
-};
+    trackEvent('game_start', {
+        game_mode: gameMode,
+        difficulty,
+    })
+}
 
 /**
  * Track game completion
@@ -91,13 +97,13 @@ export const trackGameStart = (gameMode, difficulty) => {
  * @param {boolean} victory - Whether the game was won
  */
 export const trackGameEnd = (gameMode, missionsCompleted, gameTimeSeconds, victory) => {
-  trackEvent('game_end', {
-    game_mode: gameMode,
-    missions_completed: missionsCompleted,
-    game_time_seconds: gameTimeSeconds,
-    victory: victory
-  });
-};
+    trackEvent('game_end', {
+        game_mode: gameMode,
+        missions_completed: missionsCompleted,
+        game_time_seconds: gameTimeSeconds,
+        victory,
+    })
+}
 
 /**
  * Track mission completion
@@ -106,12 +112,12 @@ export const trackGameEnd = (gameMode, missionsCompleted, gameTimeSeconds, victo
  * @param {boolean} success - Whether mission was successful
  */
 export const trackMissionComplete = (missionNumber, difficulty, success) => {
-  trackEvent('mission_complete', {
-    mission_number: missionNumber,
-    difficulty: difficulty,
-    success: success
-  });
-};
+    trackEvent('mission_complete', {
+        mission_number: missionNumber,
+        difficulty,
+        success,
+    })
+}
 
 /**
  * Track draft selection
@@ -120,12 +126,12 @@ export const trackMissionComplete = (missionNumber, difficulty, success) => {
  * @param {number} draftRound - Which draft round this was
  */
 export const trackDraftSelection = (itemType, itemRarity, draftRound) => {
-  trackEvent('draft_selection', {
-    item_type: itemType,
-    item_rarity: itemRarity,
-    draft_round: draftRound
-  });
-};
+    trackEvent('draft_selection', {
+        item_type: itemType,
+        item_rarity: itemRarity,
+        draft_round: draftRound,
+    })
+}
 
 /**
  * Track event selection (in-game events)
@@ -133,11 +139,11 @@ export const trackDraftSelection = (itemType, itemRarity, draftRound) => {
  * @param {string} choiceId - Which choice was selected
  */
 export const trackEventChoice = (eventType, choiceId) => {
-  trackEvent('event_choice', {
-    event_type: eventType,
-    choice_id: choiceId
-  });
-};
+    trackEvent('event_choice', {
+        event_type: eventType,
+        choice_id: choiceId,
+    })
+}
 
 /**
  * Track multiplayer lobby actions
@@ -145,12 +151,12 @@ export const trackEventChoice = (eventType, choiceId) => {
  * @param {number} playerCount - Number of players in lobby
  */
 export const trackMultiplayerAction = (action, playerCount = null) => {
-  const params = { action: action };
-  if (playerCount !== null) {
-    params.player_count = playerCount;
-  }
-  trackEvent('multiplayer_action', params);
-};
+    const params = { action }
+    if (playerCount !== null) {
+        params.player_count = playerCount
+    }
+    trackEvent('multiplayer_action', params)
+}
 
 /**
  * Track errors
@@ -159,22 +165,22 @@ export const trackMultiplayerAction = (action, playerCount = null) => {
  * @param {string} context - Where the error occurred
  */
 export const trackError = (errorType, errorMessage, context) => {
-  trackEvent('app_error', {
-    error_type: errorType,
-    error_message: errorMessage,
-    context: context
-  });
-};
+    trackEvent('app_error', {
+        error_type: errorType,
+        error_message: errorMessage,
+        context,
+    })
+}
 
 /**
  * Track modal opens
  * @param {string} modalName - Name of the modal
  */
 export const trackModalOpen = (modalName) => {
-  trackEvent('modal_open', {
-    modal_name: modalName
-  });
-};
+    trackEvent('modal_open', {
+        modal_name: modalName,
+    })
+}
 
 /**
  * Track settings changes
@@ -182,11 +188,11 @@ export const trackModalOpen = (modalName) => {
  * @param {any} value - New value
  */
 export const trackSettingChange = (setting, value) => {
-  trackEvent('setting_change', {
-    setting: setting,
-    value: String(value)
-  });
-};
+    trackEvent('setting_change', {
+        setting,
+        value: String(value),
+    })
+}
 
 /**
  * Track loadout actions
@@ -194,8 +200,8 @@ export const trackSettingChange = (setting, value) => {
  * @param {string} itemType - Type of item
  */
 export const trackLoadoutAction = (action, itemType) => {
-  trackEvent('loadout_action', {
-    action: action,
-    item_type: itemType
-  });
-};
+    trackEvent('loadout_action', {
+        action,
+        item_type: itemType,
+    })
+}

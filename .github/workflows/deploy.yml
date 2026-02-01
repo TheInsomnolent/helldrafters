@@ -11,7 +11,7 @@ permissions:
 jobs:
   deploy:
     runs-on: ubuntu-latest
-    
+
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -19,11 +19,11 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: '18'
-          cache: 'npm'
+          node-version: '22'
+          cache: 'yarn'
 
       - name: Install dependencies
-        run: npm ci
+        run: yarn --frozen-lockfile
 
       - name: Copy CHANGELOG to build
         run: |
@@ -31,7 +31,7 @@ jobs:
           cp CHANGELOG.md public/CHANGELOG.md
 
       - name: Build application
-        run: npm run build
+        run: yarn build
         env:
           REACT_APP_BUILD_TIME: ${{ github.event.head_commit.timestamp }}
           REACT_APP_COMMIT_SHA: ${{ github.sha }}
@@ -46,7 +46,7 @@ jobs:
       - name: Install Firebase Functions dependencies
         run: |
           cd functions
-          npm ci
+          yarn --frozen-lockfile
 
       - name: Setup Firebase project
         run: |
