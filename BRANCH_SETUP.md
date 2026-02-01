@@ -5,12 +5,12 @@ This guide documents how to set up the `develop` branch and configure branch pro
 ## Overview
 
 **Branch Strategy:**
-- **`master`** — Production branch. Auto-deploys to GitHub Pages when updated. Protected.
+- **`main`** — Production branch. Auto-deploys to GitHub Pages when updated. Protected.
 - **`develop`** — Integration branch for community contributions. All PRs target this branch.
 
 **Deployment Flow:**
 ```
-Contributor fork → PR to develop → Approved & merged → Maintainer merges develop → master → Auto-deploy
+Contributor fork → PR to develop → Approved & merged → Maintainer merges develop → main → Auto-deploy
 ```
 
 ## Step 1: Create the `develop` Branch
@@ -18,11 +18,11 @@ Contributor fork → PR to develop → Approved & merged → Maintainer merges d
 Run these commands locally:
 
 ```bash
-# Ensure you're on the latest master
-git checkout master
-git pull origin master
+# Ensure you're on the latest main
+git checkout main
+git pull origin main
 
-# Create develop branch from master
+# Create develop branch from main
 git checkout -b develop
 
 # Push develop to GitHub
@@ -39,10 +39,10 @@ git push -u origin develop
 
 **Why?** New contributors will automatically target `develop` when creating PRs, and the repo will display `develop` as the main branch.
 
-## Step 3: Configure `master` Branch Protection
+## Step 3: Configure `main` Branch Protection
 
 1. Go to **Settings** → **Branches** → **Add rule**
-2. **Branch name pattern:** `master`
+2. **Branch name pattern:** `main`
 3. Enable these rules:
 
 ### Required Settings
@@ -124,10 +124,10 @@ git push -u origin develop
 
 ## Step 5: Verify Workflows Run on PRs
 
-The [pr-check.yml](.github/workflows/pr-check.yml) workflow will automatically run on all PRs to `develop` and `master`. After the first PR is submitted:
+The [pr-check.yml](.github/workflows/pr-check.yml) workflow will automatically run on all PRs to `develop` and `main`. After the first PR is submitted:
 
 1. Go to **Settings** → **Branches**
-2. Edit the `master` and `develop` branch rules
+2. Edit the `main` and `develop` branch rules
 3. Under "Require status checks to pass before merging," search for and add:
    - `test` (the job name from pr-check.yml)
 
@@ -163,34 +163,34 @@ Once setup is complete:
 
 ## Ongoing Maintenance
 
-### Merging `develop` → `master`
+### Merging `develop` → `main`
 
 When you're ready to deploy changes from `develop`:
 
 ```bash
-git checkout master
-git pull origin master
+git checkout main
+git pull origin main
 git merge develop
-git push origin master
+git push origin main
 ```
 
 The [deploy.yml](.github/workflows/deploy.yml) workflow will automatically build and deploy to GitHub Pages.
 
 ### Keeping `develop` in Sync
 
-Periodically sync `develop` with `master` if hotfixes are made directly to `master`:
+Periodically sync `develop` with `main` if hotfixes are made directly to `main`:
 
 ```bash
 git checkout develop
-git merge master
+git merge main
 git push origin develop
 ```
 
-**Best practice:** Avoid committing directly to `master`. Always merge through `develop` → `master`.
+**Best practice:** Avoid committing directly to `main`. Always merge through `develop` → `main`.
 
 ## Summary of Branch Protection Rules
 
-| Rule | `master` | `develop` | Reason |
+| Rule | `main` | `develop` | Reason |
 |------|----------|-----------|--------|
 | Require PR | ✅ (1 approval) | ✅ (1 approval) | Code review required |
 | Require status checks | ✅ | ✅ | Lint, test, build must pass |
