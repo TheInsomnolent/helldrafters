@@ -5,16 +5,36 @@ All notable changes to Helldrafters will be documented in this file.
 ## 2026-02-01
 
 ### Added
+- Post-run analytics dashboard with comprehensive charts on win/loss screens
+- Samples collection chart showing common, rare, and super rare samples over time
+- Requisition tracking chart with spend event annotations
+- Mission performance radar chart with difficulty star visualization
+- Death timeline showing player deaths across missions
+- Loadout evolution timeline tracking weapon, armor, booster, and stratagem changes per player
+- Screenshot capture functionality for sharing run results
+- Twitter/X sharing integration for run results
+
+### Changed
+- Samples and requisition charts now use mission-based X-axis (M1, M2, M3...) instead of time-based
+- Mission radar chart now shows "(×2)" indicator for repeated difficulties
+- Stratagem slots tracked independently (stratagem0-3) for accurate evolution history
+
+### Fixed
+- **Analytics bug**: Stratagem snapshots now properly show changes during run (fixed shallow copy issue)
+- **Analytics bug**: Duplicate player entries no longer appear in loadout timeline
+- **Analytics bug**: Mission count now correctly reflects actual missions played, not final difficulty
 - Comprehensive draft filtering test suite (16+ tests for warbond/superstore filtering)
 - Debug logging infrastructure for draft mechanics (enable via localStorage: `DEBUG_DRAFT_FILTERING`)
 - Armor combo validation tests in itemHelpers
-
-### Fixed
 - **Critical multiplayer bug**: Late-joining players now properly inherit lobby warbond configuration instead of empty array
 - **Critical multiplayer bug**: Catch-up draft count is now deterministic (difficulty - 1) instead of using cumulative draft history
 - Draft history now properly resets between games to prevent cumulative catch-up drafts
 - Retrospective draft system now uses deterministic difficulty progression (1, 2, 3...) instead of relying on draft history
 - **UX improvement**: Removed cards during draft are now permanently added to excluded items list in localStorage, preventing them from appearing in future sessions
+
+### Removed
+- Copy Text button from share panel
+- Reddit share button from share panel
 
 ## 2026-01-23
 
