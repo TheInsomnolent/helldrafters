@@ -3,11 +3,21 @@
  */
 
 import React, { useState, useEffect, useRef } from 'react';
-import { Copy, Check, Users, Crown, Wifi, WifiOff, RefreshCw } from 'lucide-react';
+import { Copy, Check, Users, Crown, Wifi, WifiOff, RefreshCw, Link } from 'lucide-react';
 import { COLORS, SHADOWS, GRADIENTS, getFactionColors } from '../constants/theme';
 import { useMultiplayer } from '../systems/multiplayer';
 import { trackMultiplayerAction } from '../utils/analytics';
 import GameConfiguration from './GameConfiguration';
+
+/**
+ * Generate a shareable join link for a lobby
+ * @param {string} lobbyId - The lobby UUID
+ * @returns {string} The full shareable URL
+ */
+export function generateJoinLink(lobbyId) {
+  const baseUrl = window.location.origin + window.location.pathname;
+  return `${baseUrl}?join=${lobbyId}`;
+}
 
 /**
  * Host/Join selection screen
@@ -198,12 +208,13 @@ export function MultiplayerModeSelect({ gameConfig, onHost, onJoin, onBack }) {
 /**
  * Join game screen - enter lobby code
  */
-export function JoinGameScreen({ gameConfig, onJoinLobby, onBack }) {
+export function JoinGameScreen({ gameConfig, initialLobbyCode, onJoinLobby, onBack }) {
   const factionColors = getFactionColors(gameConfig.faction);
   const { checkLobbyExists, error, clearError } = useMultiplayer();
   
   // Load saved player name from localStorage
-  const [lobbyCode, setLobbyCode] = useState('');
+  // Initialize lobbyCode from initialLobbyCode if provided (from URL param)
+  const [lobbyCode, setLobbyCode] = useState(initialLobbyCode || '');
   const [playerName, setPlayerName] = useState(() => {
     try {
       return localStorage.getItem('helldrafters_mp_name') || '';
@@ -610,6 +621,7 @@ export function MultiplayerWaitingRoom({
   const factionColors = getFactionColors(gameConfig.faction);
   const { isHost, lobbyId, lobbyData, playerSlot, disconnect, changeSlot, kickPlayerFromLobby } = useMultiplayer();
   const [copied, setCopied] = useState(false);
+  const [copiedLink, setCopiedLink] = useState(false);
   const [changingSlot, setChangingSlot] = useState(false);
   const [lobbyCodeVisible, setLobbyCodeVisible] = useState(false);
 
@@ -617,6 +629,13 @@ export function MultiplayerWaitingRoom({
     navigator.clipboard.writeText(lobbyId);
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
+  };
+
+  const copyJoinLink = () => {
+    const link = generateJoinLink(lobbyId);
+    navigator.clipboard.writeText(link);
+    setCopiedLink(true);
+    setTimeout(() => setCopiedLink(false), 2000);
   };
 
   const allPlayers = lobbyData?.players ? Object.values(lobbyData.players) : [];
@@ -699,7 +718,8 @@ export function MultiplayerWaitingRoom({
               borderRadius: '4px',
               border: `1px solid ${COLORS.CARD_BORDER}`,
               cursor: 'pointer',
-              transition: 'all 0.2s'
+              transition: 'all 0.2s',
+              flexWrap: 'wrap'
             }}
             onMouseEnter={() => setLobbyCodeVisible(true)}
             onMouseLeave={() => setLobbyCodeVisible(false)}
@@ -715,27 +735,48 @@ export function MultiplayerWaitingRoom({
             }}>
               {lobbyId}
             </code>
-            <button
-              onClick={copyLobbyCode}
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: '8px',
-                padding: '8px 16px',
-                backgroundColor: copied ? '#22c55e' : 'transparent',
-                color: copied ? 'white' : COLORS.TEXT_MUTED,
-                border: `1px solid ${copied ? '#22c55e' : COLORS.CARD_BORDER}`,
-                borderRadius: '4px',
-                cursor: 'pointer',
-                transition: 'all 0.2s'
-              }}
-            >
-              {copied ? <Check size={16} /> : <Copy size={16} />}
-              {copied ? 'Copied!' : 'Copy'}
-            </button>
+            <div style={{ display: 'flex', gap: '8px' }}>
+              <button
+                onClick={copyLobbyCode}
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '8px',
+                  padding: '8px 16px',
+                  backgroundColor: copied ? '#22c55e' : 'transparent',
+                  color: copied ? 'white' : COLORS.TEXT_MUTED,
+                  border: `1px solid ${copied ? '#22c55e' : COLORS.CARD_BORDER}`,
+                  borderRadius: '4px',
+                  cursor: 'pointer',
+                  transition: 'all 0.2s'
+                }}
+              >
+                {copied ? <Check size={16} /> : <Copy size={16} />}
+                {copied ? 'Copied!' : 'Copy Code'}
+              </button>
+              <button
+                onClick={copyJoinLink}
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '8px',
+                  padding: '8px 16px',
+                  backgroundColor: copiedLink ? '#22c55e' : factionColors.PRIMARY,
+                  color: copiedLink ? 'white' : 'black',
+                  border: `1px solid ${copiedLink ? '#22c55e' : factionColors.PRIMARY}`,
+                  borderRadius: '4px',
+                  cursor: 'pointer',
+                  transition: 'all 0.2s',
+                  fontWeight: 'bold'
+                }}
+              >
+                {copiedLink ? <Check size={16} /> : <Link size={16} />}
+                {copiedLink ? 'Copied!' : 'Copy Link'}
+              </button>
+            </div>
           </div>
           <p style={{ fontSize: '11px', color: COLORS.TEXT_DISABLED, marginTop: '8px', margin: '8px 0 0 0' }}>
-            Hidden for streaming - hover to reveal
+            Hidden for streaming - hover to reveal. Share the link for easy joining!
           </p>
         </div>
 
@@ -943,8 +984,9 @@ export function MultiplayerStatusBar({ gameConfig, onDisconnect }) {
   const [lobbyCodeVisible, setLobbyCodeVisible] = useState(false);
   const factionColors = getFactionColors(gameConfig?.faction || 'terminid');
 
-  const copyLobbyCode = () => {
-    navigator.clipboard.writeText(lobbyId);
+  const copyJoinLink = () => {
+    const link = generateJoinLink(lobbyId);
+    navigator.clipboard.writeText(link);
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
   };
@@ -995,7 +1037,7 @@ export function MultiplayerStatusBar({ gameConfig, onDisconnect }) {
             Lobby:
           </span>
           <button
-            onClick={copyLobbyCode}
+            onClick={copyJoinLink}
             style={{
               display: 'flex',
               alignItems: 'center',
@@ -1007,7 +1049,7 @@ export function MultiplayerStatusBar({ gameConfig, onDisconnect }) {
               cursor: 'pointer',
               transition: 'all 0.2s'
             }}
-            title={lobbyCodeVisible ? `Copy full lobby code: ${lobbyId}` : 'Hover to reveal lobby code'}
+            title={lobbyCodeVisible ? `Copy join link for lobby: ${lobbyId}` : 'Hover to reveal, click to copy join link'}
           >
             <code style={{ 
               fontSize: '11px', 
@@ -1022,7 +1064,7 @@ export function MultiplayerStatusBar({ gameConfig, onDisconnect }) {
             {copied ? (
               <Check size={12} style={{ color: '#22c55e' }} />
             ) : (
-              <Copy size={12} style={{ color: COLORS.TEXT_DISABLED }} />
+              <Link size={12} style={{ color: COLORS.TEXT_DISABLED }} />
             )}
           </button>
         </div>

@@ -151,6 +151,21 @@ function HelldiversRoguelikeApp() {
   // UI-only state (not part of game state)
   const [selectedPlayer, setSelectedPlayer] = React.useState(0); // For custom setup phase
   const [multiplayerMode, setMultiplayerMode] = React.useState(null); // null, 'select', 'host', 'join', 'waiting'
+  const [initialLobbyCode, setInitialLobbyCode] = React.useState(null); // For auto-populating join from URL
+  
+  // Check for ?join=<lobbyId> URL parameter on mount
+  React.useEffect(() => {
+    const urlParams = new URLSearchParams(window.location.search);
+    const joinCode = urlParams.get('join');
+    if (joinCode && firebaseReady) {
+      // Auto-navigate to join screen with the lobby code
+      setInitialLobbyCode(joinCode);
+      setMultiplayerMode('join');
+      // Clean up the URL without reloading
+      const newUrl = window.location.pathname + window.location.hash;
+      window.history.replaceState({}, '', newUrl);
+    }
+  }, [firebaseReady]);
   const [showExplainer, setShowExplainer] = React.useState(false); // For explainer modal
   const [showPatchNotes, setShowPatchNotes] = React.useState(false); // For patch notes modal
   const [showGenAIDisclosure, setShowGenAIDisclosure] = React.useState(false); // For Gen AI disclosure modal
@@ -2010,13 +2025,18 @@ function HelldiversRoguelikeApp() {
     return (
       <JoinGameScreen
         gameConfig={gameConfig}
+        initialLobbyCode={initialLobbyCode}
         onJoinLobby={async (joinLobbyId, name, slot) => {
           const success = await joinGame(joinLobbyId, name, slot);
           if (success) {
+            setInitialLobbyCode(null); // Clear after successful join
             setMultiplayerMode('waiting');
           }
         }}
-        onBack={() => setMultiplayerMode('select')}
+        onBack={() => {
+          setInitialLobbyCode(null); // Clear when going back
+          setMultiplayerMode('select');
+        }}
       />
     );
   }
