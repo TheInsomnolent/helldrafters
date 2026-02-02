@@ -1,17 +1,24 @@
-import { Bug, CheckCircle, MessageSquare, RefreshCw, Users, XCircle } from 'lucide-react'
+import { CheckCircle, RefreshCw, XCircle } from 'lucide-react'
 import React, { useEffect, useReducer } from 'react'
 import { HashRouter, Route, Routes } from 'react-router-dom'
 import { ThemeProvider } from 'styled-components'
-import { theme, GlobalStyles } from './styles'
+import { theme, GlobalStyles, Button, Caption, SPACING } from './styles'
 import CardLibrary from './components/CardLibrary'
 import ContributorsModal from './components/ContributorsModal'
 import EventDisplay from './components/EventDisplay'
 import ExplainerModal from './components/ExplainerModal'
-import GameConfiguration from './components/GameConfiguration'
 import GameFooter from './components/GameFooter'
 import GameHeader from './components/GameHeader'
+import ExportButton from './components/ExportButton'
+import { ItemCard, isArmorCombo, isItem } from './components/ItemCard'
+import KickedScreen from './components/KickedScreen'
+import LoadingScreen from './components/LoadingScreen'
+import MenuScreen from './components/MenuScreen'
+import RemoveCardConfirmModal from './components/RemoveCardConfirmModal'
+import SacrificeConfirmModal from './components/SacrificeConfirmModal'
+import SoloConfigScreen from './components/SoloConfigScreen'
+import StratagemReplacementModal from './components/StratagemReplacementModal'
 import GameLobby, { addExcludedItemsToSavedConfig } from './components/GameLobby'
-import GenAIDisclosureModal from './components/GenAIDisclosureModal'
 import LoadoutDisplay from './components/LoadoutDisplay'
 import {
     JoinGameScreen,
@@ -19,19 +26,83 @@ import {
     MultiplayerStatusBar,
     MultiplayerWaitingRoom,
 } from './components/MultiplayerLobby'
-import PatchNotesModal from './components/PatchNotesModal'
 import RunHistoryModal from './components/RunHistoryModal'
 import { AnalyticsDashboard } from './components/analytics'
-import { ARMOR_PASSIVE_DESCRIPTIONS } from './constants/armorPassives'
+import {
+    PageWrapper,
+    ContentWrapper,
+    CenteredContent,
+    SectionHeader,
+    PhaseSubtitle,
+    PhaseTitle,
+    TitleSeparator,
+    PhaseDescription,
+    SectionBox,
+    AlertBox,
+    AlertTitle,
+    AlertSubtitle,
+    WaitingMessage,
+    WaitingText,
+    ItemGrid,
+    LoadoutOverview,
+    LoadoutLabel,
+    LoadoutItems,
+    LoadoutSlot,
+    LoadoutSlotLabel,
+    LoadoutSlotValue,
+    ButtonRow,
+    ActionButton,
+    SkipButton,
+    HintText,
+    MonoText,
+    SacrificeHeader,
+    SacrificePenaltyBadge,
+    SacrificePenaltyTitle,
+    SacrificePenaltySubtext,
+    SacrificeCard,
+    SacrificeCardSlot,
+    SacrificeCardName,
+    SacrificeCardRarity,
+    SacrificeCardHint,
+    EmptyBox,
+    EmptyIcon,
+    EmptyTitle,
+    EmptyDescription,
+    FormSectionLabel,
+    DifficultyButton,
+    PlayerTabs,
+    PlayerTab,
+    LoadoutField,
+    LoadoutFieldLabel,
+    LoadoutSelect,
+    StratagemGrid,
+    StratagemSelect,
+    CustomSetupActions,
+    ExportRow,
+    DifficultyGrid,
+    DifficultyLabel,
+    SectionBoxSpaced,
+    CustomSetupPhaseTitle,
+    LoadoutConfigTitle,
+    LoadoutFieldSpaced,
+    LoadoutSelectColored,
+    StratagemGap,
+    RequisitionDisplay,
+    SacrificeWaitSection,
+    SacrificeWaitText,
+    FlexButton,
+    StartOperationButton,
+} from './components/App.styles'
+import { useGamePersistence } from './hooks'
 import {
     DIFFICULTY_CONFIG,
     getMissionsForDifficulty,
     STARTING_LOADOUT,
 } from './constants/gameConfig'
 import { Subfaction } from './constants/balancingConfig'
-import { BUTTON_STYLES, COLORS, getFactionColors, GRADIENTS, SHADOWS } from './constants/theme'
-import { RARITY, TYPE, type Rarity } from './constants/types'
-import { DEFAULT_WARBONDS, getWarbondById } from './constants/warbonds'
+import { BUTTON_STYLES, COLORS, getFactionColors, SHADOWS } from './constants/theme'
+import { TYPE } from './constants/types'
+import { DEFAULT_WARBONDS } from './constants/warbonds'
 import { MASTER_DB } from './data/itemsByWarbond'
 import * as actions from './state/actions'
 import * as types from './state/actionTypes'
@@ -53,24 +124,17 @@ import {
     type EventOutcome,
 } from './systems/events/events'
 import { initializeAnalytics, MultiplayerProvider, useMultiplayer } from './systems/multiplayer'
-import {
-    exportGameStateToFile,
-    normalizeLoadedState,
-    parseSaveFile,
-    saveRunToHistory,
-} from './systems/persistence/saveManager'
+import { saveRunToHistory } from './systems/persistence/saveManager'
 import {
     trackDraftSelection,
     trackEventChoice,
     trackGameEnd,
     trackGameStart,
     trackMissionComplete,
-    trackModalOpen,
     trackMultiplayerAction,
     trackPageView,
 } from './utils/analytics'
 import { generateDraftHand, getDraftHandSize, getWeightedPool } from './utils/draftHelpers'
-import { getItemIconUrl } from './utils/iconHelpers'
 import { ArmorCombo, getArmorComboDisplayName, getItemById } from './utils/itemHelpers'
 import { areStratagemSlotsFull, getFirstEmptyStratagemSlot } from './utils/loadoutHelpers'
 import type {
@@ -103,14 +167,6 @@ declare global {
         __boosterOutcome?: unknown
     }
 }
-
-// Type guard for ArmorCombo (has items array)
-const isArmorCombo = (item: DraftHandItem): item is ArmorCombo =>
-    'items' in item && Array.isArray((item as ArmorCombo).items)
-
-// Type guard for regular Item (has id string directly)
-const isItem = (item: DraftHandItem): item is Item =>
-    'id' in item && typeof (item as Item).id === 'string' && !('items' in item)
 
 // Helper to create a Player with all required fields and sensible defaults
 const createPlayer = (
@@ -270,8 +326,18 @@ function HelldiversRoguelikeApp() {
     const [showRunHistory, setShowRunHistory] = React.useState(false) // For run history modal
     // Note: runAnalyticsData is now stored in game state (state.runAnalyticsData) so it syncs to clients
 
-    // Ref for the hidden file input
-    const fileInputRef = React.useRef<HTMLInputElement>(null)
+    // Game persistence (save/load functionality)
+    const { exportGameState, importGameState, fileInputRef } = useGamePersistence({
+        state,
+        dispatch,
+        firebaseReady,
+        hostGame,
+        startMultiplayerGame,
+        syncState,
+        setSelectedPlayer,
+        setGameStartTime,
+        loadGameStateAction: actions.loadGameState,
+    })
 
     // Track app initialization - initialize analytics first, then track page view
     useEffect(() => {
@@ -463,93 +529,22 @@ function HelldiversRoguelikeApp() {
         window.scrollTo({ top: 0, behavior: 'smooth' })
     }, [phase])
 
-    // --- SAVE/LOAD FUNCTIONS ---
-
-    const exportGameState = () => {
-        exportGameStateToFile(state)
+    // Helper to calculate max stars based on difficulty
+    // D1-D2: max 2 stars, D3-D4: max 3 stars, D5-D6: max 4 stars, D7+: max 5 stars
+    const getMaxStarsForDifficulty = (diff: number) => {
+        if (diff <= 2) return 2
+        if (diff <= 4) return 3
+        if (diff <= 6) return 4
+        return 5
     }
 
-    // Import functionality for loading JSON save files
-    const importGameState = async (event: React.ChangeEvent<HTMLInputElement>) => {
-        const file = event.target.files?.[0]
-        if (!file) return
-
-        try {
-            const loadedState = await parseSaveFile(file)
-            const normalizedState = normalizeLoadedState(loadedState)
-
-            // Check if this is a multiplayer game (more than 1 player)
-            const isMultiplayerGame = normalizedState.gameConfig?.playerCount > 1
-
-            if (isMultiplayerGame && firebaseReady) {
-                // Create a multiplayer lobby for loaded multiplayer game
-                const hostName = prompt('Enter your name for multiplayer:', 'Host') || 'Host'
-                const newLobbyId = await hostGame(hostName, normalizedState.gameConfig)
-
-                if (newLobbyId) {
-                    // Start the multiplayer game (this sets up action subscription)
-                    await startMultiplayerGame(newLobbyId, true)
-
-                    // Load the game state
-                    dispatch(actions.loadGameState(normalizedState))
-                    setSelectedPlayer(normalizedState.selectedPlayer || 0)
-
-                    // Initialize analytics for loaded game
-                    runAnalytics.initializeAnalytics(
-                        normalizedState.gameConfig,
-                        normalizedState.players,
-                    )
-                    setGameStartTime(Date.now())
-
-                    // Sync the loaded state to all clients
-                    await syncState(normalizedState)
-
-                    alert(
-                        `Multiplayer game loaded! Share this lobby ID with other players:\n${newLobbyId}\n\nOther players can join mid-game.`,
-                    )
-                } else {
-                    alert('Failed to create multiplayer lobby. Loading as solo game instead.')
-                    // Fall back to solo loading
-                    dispatch(actions.loadGameState(normalizedState))
-                    setSelectedPlayer(normalizedState.selectedPlayer || 0)
-
-                    // Initialize analytics for loaded game
-                    runAnalytics.initializeAnalytics(
-                        normalizedState.gameConfig,
-                        normalizedState.players,
-                    )
-                    setGameStartTime(Date.now())
-                }
-            } else {
-                // Single player game or Firebase not ready - load normally
-                dispatch(actions.loadGameState(normalizedState))
-                setSelectedPlayer(normalizedState.selectedPlayer || 0)
-
-                // Initialize analytics for loaded game
-                runAnalytics.initializeAnalytics(
-                    normalizedState.gameConfig,
-                    normalizedState.players,
-                )
-                setGameStartTime(Date.now())
-
-                if (isMultiplayerGame && !firebaseReady) {
-                    alert(
-                        'Game loaded successfully!\n\nNote: This is a multiplayer save but Firebase is not configured. Loading as solo game.',
-                    )
-                } else {
-                    alert('Game loaded successfully!')
-                }
-            }
-        } catch (error) {
-            console.error('Failed to load game:', error)
-            alert(
-                (error instanceof Error ? error.message : String(error)) ||
-                    'Failed to load save file. File may be corrupted.',
-            )
+    // Default star rating to max allowed when entering DASHBOARD phase
+    useEffect(() => {
+        if (phase === 'DASHBOARD') {
+            const maxStars = getMaxStarsForDifficulty(currentDiff)
+            dispatch(actions.updateGameConfig({ starRating: maxStars }))
         }
-
-        event.target.value = '' // Reset input
-    }
+    }, [phase, currentDiff, dispatch])
 
     // --- INITIALIZATION ---
 
@@ -2010,339 +2005,6 @@ function HelldiversRoguelikeApp() {
         }
     }
 
-    // --- UI COMPONENTS ---
-
-    const RarityBadge = ({ rarity }: { rarity: Rarity }) => {
-        const colors: Record<Rarity, { bg: string; color: string }> = {
-            [RARITY.COMMON]: { bg: '#6b7280', color: 'white' },
-            [RARITY.UNCOMMON]: { bg: '#22c55e', color: 'black' },
-            [RARITY.RARE]: { bg: '#f97316', color: 'black' },
-            [RARITY.LEGENDARY]: { bg: '#9333ea', color: 'white' },
-        }
-        const style = colors[rarity] || colors[RARITY.COMMON]
-        return (
-            <span
-                style={{
-                    fontSize: '10px',
-                    textTransform: 'uppercase',
-                    fontWeight: 'bold',
-                    padding: '2px 8px',
-                    borderRadius: '4px',
-                    backgroundColor: style.bg,
-                    color: style.color,
-                }}
-            >
-                {rarity}
-            </span>
-        )
-    }
-
-    const ItemCard = ({
-        item,
-        onSelect,
-        onRemove,
-    }: {
-        item: DraftHandItem
-        onSelect?: (item: DraftHandItem) => void
-        onRemove?: (item: DraftHandItem) => void
-    }) => {
-        // Guard: if item is undefined, don't render
-        if (!item) {
-            console.debug('[ItemCard] Skipping null item')
-            return null
-        }
-
-        // Check if this is an armor combo using the type guard
-        const isArmorComboItem = isArmorCombo(item)
-
-        console.debug('[ItemCard] Rendering item:', {
-            name: isItem(item) ? item.name : undefined,
-            id: isItem(item) ? item.id : undefined,
-            passive: isArmorComboItem ? item.passive : undefined,
-            isArmorCombo: isArmorComboItem,
-            itemsLength: isArmorComboItem ? item.items.length : undefined,
-            items: isArmorComboItem ? item.items : undefined,
-        })
-
-        // Guard: for regular items, require name; for armor combos, require items with names
-        if (!isArmorComboItem && isItem(item) && !item.name) {
-            console.debug('[ItemCard] Skipping - not armor combo and no name')
-            return null
-        }
-
-        // For armor combos, use the first item as representative for display
-        const displayItem = isArmorComboItem ? item.items[0] : (item as Item)
-
-        // Guard: if displayItem is invalid, don't render
-        if (!displayItem || !displayItem.name) {
-            console.debug('[ItemCard] Skipping - displayItem invalid:', displayItem)
-            return null
-        }
-
-        // For armor combos, create a slash-delimited name
-        const displayName = isArmorComboItem
-            ? item.items.map((armor: Item) => armor?.name || 'Unknown').join(' / ')
-            : displayItem.name
-
-        let armorPassiveDescription = null
-        let armorPassiveKey = null
-        const isArmorItem = isArmorComboItem || displayItem?.type === TYPE.ARMOR
-        if (isArmorItem) {
-            armorPassiveKey = isArmorComboItem
-                ? item.passive
-                : (item as Item & { passive?: string }).passive
-            if (armorPassiveKey) {
-                const description = ARMOR_PASSIVE_DESCRIPTIONS[armorPassiveKey]
-                if (!description && process.env.NODE_ENV === 'development') {
-                    const armorIdentifier = isArmorComboItem
-                        ? displayName
-                        : displayItem.name || displayItem.id || 'unknown armor'
-                    console.warn(
-                        `Missing armor passive description for ${armorPassiveKey} (${armorIdentifier})`,
-                    )
-                }
-                armorPassiveDescription = description || 'Passive effect details unavailable.'
-            }
-        }
-
-        // Get warbond info for display
-        const warbondId = displayItem.warbond
-        const isSuperstore = displayItem.superstore
-        const warbondInfo = warbondId ? getWarbondById(warbondId) : null
-        const sourceName = isSuperstore ? 'Superstore' : warbondInfo?.name || 'Unknown'
-        const tags: string[] = [...(displayItem.tags || [])]
-
-        // Show armor class in tags
-        const armorClass = isArmorComboItem ? item.armorClass : undefined
-        const armorClassDisplay = armorClass
-            ? armorClass.slice(0, 1).toUpperCase() + armorClass.slice(1)
-            : null
-        if (armorClassDisplay && !tags.includes(armorClassDisplay)) {
-            tags.push(armorClassDisplay)
-        }
-
-        // Get item icon URL - use helper function
-        const iconUrl = getItemIconUrl(displayItem)
-
-        return (
-            <div
-                style={{
-                    position: 'relative',
-                    backgroundColor: '#283548',
-                    border: '2px solid rgba(100, 116, 139, 0.5)',
-                    padding: '16px',
-                    borderRadius: '8px',
-                    transition: 'all 0.2s',
-                    display: 'flex',
-                    flexDirection: 'column',
-                    minHeight: '280px',
-                    width: '280px',
-                    flexShrink: 0,
-                }}
-            >
-                {onRemove && (
-                    <button
-                        onClick={(e) => {
-                            e.stopPropagation()
-                            onRemove(item)
-                        }}
-                        style={{
-                            position: 'absolute',
-                            top: '8px',
-                            right: '8px',
-                            width: '28px',
-                            height: '28px',
-                            borderRadius: '4px',
-                            backgroundColor: 'rgba(239, 68, 68, 0.8)',
-                            color: 'white',
-                            border: 'none',
-                            cursor: 'pointer',
-                            fontSize: '18px',
-                            display: 'flex',
-                            alignItems: 'center',
-                            justifyContent: 'center',
-                            padding: 0,
-                            zIndex: 10,
-                        }}
-                        onMouseEnter={(e) =>
-                            (e.currentTarget.style.backgroundColor = 'rgba(239, 68, 68, 1)')
-                        }
-                        onMouseLeave={(e) =>
-                            (e.currentTarget.style.backgroundColor = 'rgba(239, 68, 68, 0.8)')
-                        }
-                        title="Remove this card"
-                    >
-                        ×
-                    </button>
-                )}
-                <div
-                    onClick={() => onSelect && onSelect(item)}
-                    style={{
-                        cursor: onSelect ? 'pointer' : 'default',
-                        flexGrow: 1,
-                        display: 'flex',
-                        flexDirection: 'column',
-                        paddingTop: onRemove ? '32px' : '0',
-                    }}
-                    onMouseEnter={(e) =>
-                        onSelect &&
-                        e.currentTarget.parentElement &&
-                        (e.currentTarget.parentElement.style.borderColor = factionColors.PRIMARY)
-                    }
-                    onMouseLeave={(e) =>
-                        onSelect &&
-                        e.currentTarget.parentElement &&
-                        (e.currentTarget.parentElement.style.borderColor =
-                            'rgba(100, 116, 139, 0.5)')
-                    }
-                >
-                    <div
-                        style={{
-                            display: 'flex',
-                            justifyContent: 'space-between',
-                            alignItems: 'flex-start',
-                            marginBottom: '8px',
-                        }}
-                    >
-                        <RarityBadge rarity={displayItem.rarity} />
-                        <div
-                            style={{
-                                color: factionColors.PRIMARY,
-                                fontSize: '12px',
-                                fontFamily: 'monospace',
-                                marginRight: onRemove ? '8px' : '0',
-                            }}
-                        >
-                            {displayItem.type}
-                            {isArmorComboItem ? ` (×${item.items.length})` : ''}
-                        </div>
-                    </div>
-
-                    {/* Item Icon */}
-                    {iconUrl && (
-                        <div
-                            style={{
-                                display: 'flex',
-                                justifyContent: 'center',
-                                alignItems: 'center',
-                                marginBottom: '12px',
-                                height: '80px',
-                                backgroundColor: 'rgba(0, 0, 0, 0.2)',
-                                borderRadius: '4px',
-                                padding: '8px',
-                            }}
-                        >
-                            <img
-                                src={iconUrl}
-                                alt={displayName}
-                                style={{
-                                    maxHeight: '100%',
-                                    maxWidth: '100%',
-                                    objectFit: 'contain',
-                                }}
-                                onError={(e) => {
-                                    ;(e.target as HTMLImageElement).style.display = 'none'
-                                }}
-                            />
-                        </div>
-                    )}
-
-                    <h3
-                        style={{
-                            color: 'white',
-                            fontWeight: 'bold',
-                            fontSize: isArmorComboItem ? '14px' : '18px',
-                            lineHeight: '1.2',
-                            marginBottom: '4px',
-                            wordBreak: 'break-word',
-                        }}
-                    >
-                        {displayName}
-                    </h3>
-
-                    {/* Warbond Source */}
-                    <div
-                        style={{
-                            fontSize: '10px',
-                            color: isSuperstore ? '#c084fc' : '#60a5fa',
-                            fontWeight: 'bold',
-                            textTransform: 'uppercase',
-                            letterSpacing: '0.5px',
-                            marginBottom: '8px',
-                        }}
-                    >
-                        {sourceName}
-                    </div>
-
-                    <div style={{ flexGrow: 1 }}>
-                        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px' }}>
-                            {(displayItem.tags || []).map((tag: string) => (
-                                <span
-                                    key={tag}
-                                    style={{
-                                        fontSize: '10px',
-                                        backgroundColor: 'rgba(51, 65, 85, 0.5)',
-                                        color: '#cbd5e1',
-                                        padding: '2px 4px',
-                                        borderRadius: '2px',
-                                        border: '1px solid rgba(71, 85, 105, 0.5)',
-                                    }}
-                                >
-                                    {tag}
-                                </span>
-                            ))}
-                        </div>
-                        {armorPassiveDescription && (
-                            <div style={{ marginTop: '10px' }}>
-                                <div
-                                    style={{
-                                        color: '#94a3b8',
-                                        fontSize: '9px',
-                                        textTransform: 'uppercase',
-                                        letterSpacing: '1px',
-                                    }}
-                                >
-                                    Armor Passive - {armorPassiveKey}
-                                </div>
-                                <div
-                                    style={{
-                                        color: '#cbd5e1',
-                                        fontSize: '11px',
-                                        lineHeight: '1.4',
-                                        marginTop: '4px',
-                                    }}
-                                >
-                                    {armorPassiveDescription}
-                                </div>
-                            </div>
-                        )}
-                    </div>
-
-                    <div
-                        style={{
-                            marginTop: '16px',
-                            paddingTop: '16px',
-                            borderTop: '1px solid rgba(71, 85, 105, 0.5)',
-                            textAlign: 'center',
-                        }}
-                    >
-                        <span
-                            style={{
-                                color: factionColors.PRIMARY,
-                                fontWeight: 'bold',
-                                textTransform: 'uppercase',
-                                letterSpacing: '2px',
-                                fontSize: '14px',
-                            }}
-                        >
-                            REQUISITION
-                        </span>
-                    </div>
-                </div>
-            </div>
-        )
-    }
-
     // --- RENDER PHASES ---
 
     if (phase === 'VICTORY') {
@@ -2388,76 +2050,13 @@ function HelldiversRoguelikeApp() {
     // Kicked screen - shown when host kicks the player
     if (phase === 'KICKED') {
         return (
-            <div
-                style={{
-                    minHeight: '100vh',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    backgroundColor: '#0f1419',
-                    padding: '24px',
+            <KickedScreen
+                faction={gameConfig.faction}
+                onReturnToMenu={() => {
+                    clearWasKicked()
+                    dispatch(actions.setPhase('MENU'))
                 }}
-            >
-                <div style={{ maxWidth: '500px', textAlign: 'center' }}>
-                    <div style={{ marginBottom: '40px' }}>
-                        <div style={{ fontSize: '80px', marginBottom: '16px' }}>🚫</div>
-                        <h1
-                            style={{
-                                fontSize: '48px',
-                                fontWeight: '900',
-                                color: '#ef4444',
-                                margin: '0 0 16px 0',
-                                textTransform: 'uppercase',
-                                letterSpacing: '0.05em',
-                            }}
-                        >
-                            REMOVED FROM SQUAD
-                        </h1>
-                        <p
-                            style={{
-                                fontSize: '18px',
-                                color: '#94a3b8',
-                                lineHeight: '1.6',
-                                margin: '0',
-                            }}
-                        >
-                            The host has removed you from the game session.
-                            <br />
-                            <br />
-                            You can rejoin using the same lobby code if the host allows it.
-                        </p>
-                    </div>
-
-                    <button
-                        onClick={() => {
-                            clearWasKicked()
-                            dispatch(actions.setPhase('MENU'))
-                        }}
-                        style={{
-                            width: '100%',
-                            padding: '20px',
-                            backgroundColor: factionColors.PRIMARY,
-                            color: 'black',
-                            border: 'none',
-                            borderRadius: '4px',
-                            fontWeight: '900',
-                            fontSize: '18px',
-                            textTransform: 'uppercase',
-                            letterSpacing: '0.2em',
-                            cursor: 'pointer',
-                            transition: 'all 0.2s',
-                        }}
-                        onMouseEnter={(e) =>
-                            (e.currentTarget.style.backgroundColor = factionColors.PRIMARY_HOVER)
-                        }
-                        onMouseLeave={(e) =>
-                            (e.currentTarget.style.backgroundColor = factionColors.PRIMARY)
-                        }
-                    >
-                        Return to Menu
-                    </button>
-                </div>
-            </div>
+            />
         )
     }
 
@@ -2525,883 +2124,44 @@ function HelldiversRoguelikeApp() {
 
     if (phase === 'MENU') {
         return (
-            <div style={{ minHeight: '100vh', padding: '80px 24px' }}>
-                <div style={{ maxWidth: '600px', margin: '0 auto', textAlign: 'center' }}>
-                    <h1
-                        style={{
-                            fontSize: '72px',
-                            fontWeight: '900',
-                            color: factionColors.PRIMARY,
-                            margin: '0 0 0 0',
-                            letterSpacing: '0.02em',
-                            textTransform: 'uppercase',
-                        }}
-                    >
-                        HELLDRAFTERS
-                    </h1>
-                    <div style={{ margin: '20px auto' }}>
-                        <img
-                            src={`${process.env.PUBLIC_URL}/logo.png`}
-                            alt="Helldrafters Logo"
-                            style={{
-                                width: '200px',
-                                height: 'auto',
-                                display: 'block',
-                                margin: '0 auto',
-                            }}
-                        />
-                    </div>
-                    <div
-                        style={{
-                            background: 'linear-gradient(to right, #5a5142, #6b6052)',
-                            padding: '12px',
-                            marginBottom: '60px',
-                            maxWidth: '620px',
-                            margin: '0 auto 60px auto',
-                        }}
-                    >
-                        <h2
-                            style={{
-                                fontSize: '20px',
-                                fontWeight: 'bold',
-                                color: 'white',
-                                textTransform: 'uppercase',
-                                letterSpacing: '0.3em',
-                                margin: 0,
-                            }}
-                        >
-                            Roguelike Director
-                        </h2>
-                    </div>
-
-                    <div
-                        style={{
-                            backgroundColor: '#283548',
-                            padding: '40px',
-                            borderRadius: '8px',
-                            border: '1px solid rgba(100, 116, 139, 0.5)',
-                        }}
-                    >
-                        {/* Hidden file input for loading saves */}
-                        <input
-                            type="file"
-                            ref={fileInputRef}
-                            accept=".json"
-                            onChange={importGameState}
-                            style={{ display: 'none' }}
-                        />
-
-                        {/* Start Buttons */}
-                        <div
-                            style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}
-                        >
-                            <button
-                                onClick={startGame}
-                                style={{
-                                    ...BUTTON_STYLES.PRIMARY,
-                                    width: '100%',
-                                    padding: '16px',
-                                    fontSize: '16px',
-                                    letterSpacing: '0.15em',
-                                    borderRadius: '4px',
-                                    border: 'none',
-                                }}
-                                onMouseEnter={(e) => {
-                                    e.currentTarget.style.backgroundColor = COLORS.PRIMARY_HOVER
-                                    e.currentTarget.style.boxShadow = SHADOWS.BUTTON_PRIMARY_HOVER
-                                }}
-                                onMouseLeave={(e) => {
-                                    e.currentTarget.style.backgroundColor = COLORS.PRIMARY
-                                    e.currentTarget.style.boxShadow = SHADOWS.BUTTON_PRIMARY
-                                }}
-                            >
-                                Solo
-                            </button>
-
-                            <button
-                                onClick={() => setMultiplayerMode('select')}
-                                style={{
-                                    width: '100%',
-                                    padding: '16px',
-                                    fontSize: '16px',
-                                    letterSpacing: '0.15em',
-                                    borderRadius: '4px',
-                                    border: `2px solid ${COLORS.ACCENT_BLUE}`,
-                                    backgroundColor: 'transparent',
-                                    color: COLORS.ACCENT_BLUE,
-                                    fontWeight: '900',
-                                    textTransform: 'uppercase',
-                                    cursor: 'pointer',
-                                    transition: 'all 0.2s',
-                                    display: 'flex',
-                                    alignItems: 'center',
-                                    justifyContent: 'center',
-                                    gap: '8px',
-                                }}
-                                onMouseEnter={(e) => {
-                                    e.currentTarget.style.backgroundColor = `${COLORS.ACCENT_BLUE}20`
-                                    e.currentTarget.style.boxShadow = SHADOWS.GLOW_BLUE
-                                }}
-                                onMouseLeave={(e) => {
-                                    e.currentTarget.style.backgroundColor = 'transparent'
-                                    e.currentTarget.style.boxShadow = 'none'
-                                }}
-                            >
-                                <Users size={18} />
-                                Multiplayer
-                            </button>
-                        </div>
-
-                        {/* Load Game Button */}
-                        <div style={{ marginTop: '12px' }}>
-                            <button
-                                onClick={() => fileInputRef.current?.click()}
-                                style={{
-                                    width: '100%',
-                                    padding: '12px',
-                                    fontSize: '14px',
-                                    letterSpacing: '0.1em',
-                                    borderRadius: '4px',
-                                    border: `1px solid ${COLORS.CARD_BORDER}`,
-                                    backgroundColor: 'transparent',
-                                    color: COLORS.TEXT_MUTED,
-                                    fontWeight: '700',
-                                    textTransform: 'uppercase',
-                                    cursor: 'pointer',
-                                    transition: 'all 0.2s',
-                                }}
-                                onMouseEnter={(e) => {
-                                    e.currentTarget.style.borderColor = COLORS.TEXT_SECONDARY
-                                    e.currentTarget.style.color = COLORS.TEXT_SECONDARY
-                                    e.currentTarget.style.backgroundColor =
-                                        'rgba(100, 116, 139, 0.1)'
-                                }}
-                                onMouseLeave={(e) => {
-                                    e.currentTarget.style.borderColor = COLORS.CARD_BORDER
-                                    e.currentTarget.style.color = COLORS.TEXT_MUTED
-                                    e.currentTarget.style.backgroundColor = 'transparent'
-                                }}
-                            >
-                                Load Game
-                            </button>
-                        </div>
-
-                        {/* Past Runs Button */}
-                        <div style={{ marginTop: '12px' }}>
-                            <button
-                                onClick={() => {
-                                    trackModalOpen('run_history')
-                                    setShowRunHistory(true)
-                                }}
-                                style={{
-                                    width: '100%',
-                                    padding: '12px',
-                                    fontSize: '14px',
-                                    letterSpacing: '0.1em',
-                                    borderRadius: '4px',
-                                    border: `1px solid ${COLORS.CARD_BORDER}`,
-                                    backgroundColor: 'transparent',
-                                    color: COLORS.TEXT_MUTED,
-                                    fontWeight: '700',
-                                    textTransform: 'uppercase',
-                                    cursor: 'pointer',
-                                    transition: 'all 0.2s',
-                                    display: 'flex',
-                                    alignItems: 'center',
-                                    justifyContent: 'center',
-                                    gap: '8px',
-                                }}
-                                onMouseEnter={(e) => {
-                                    e.currentTarget.style.borderColor = COLORS.ACCENT_PURPLE
-                                    e.currentTarget.style.color = COLORS.ACCENT_PURPLE
-                                    e.currentTarget.style.backgroundColor = `${COLORS.ACCENT_PURPLE}10`
-                                }}
-                                onMouseLeave={(e) => {
-                                    e.currentTarget.style.borderColor = COLORS.CARD_BORDER
-                                    e.currentTarget.style.color = COLORS.TEXT_MUTED
-                                    e.currentTarget.style.backgroundColor = 'transparent'
-                                }}
-                            >
-                                <span style={{ fontSize: '16px' }}>📊</span> Past Runs
-                            </button>
-                        </div>
-
-                        {/* Help Button */}
-                        <div style={{ marginTop: '12px' }}>
-                            <button
-                                onClick={() => {
-                                    trackModalOpen('explainer')
-                                    setShowExplainer(true)
-                                }}
-                                style={{
-                                    width: '100%',
-                                    padding: '12px',
-                                    fontSize: '14px',
-                                    letterSpacing: '0.1em',
-                                    borderRadius: '4px',
-                                    border: `1px solid ${COLORS.CARD_BORDER}`,
-                                    backgroundColor: 'transparent',
-                                    color: COLORS.TEXT_MUTED,
-                                    fontWeight: '700',
-                                    textTransform: 'uppercase',
-                                    cursor: 'pointer',
-                                    transition: 'all 0.2s',
-                                    display: 'flex',
-                                    alignItems: 'center',
-                                    justifyContent: 'center',
-                                    gap: '8px',
-                                }}
-                                onMouseEnter={(e) => {
-                                    e.currentTarget.style.borderColor = factionColors.PRIMARY
-                                    e.currentTarget.style.color = factionColors.PRIMARY
-                                    e.currentTarget.style.backgroundColor = `${factionColors.PRIMARY}10`
-                                }}
-                                onMouseLeave={(e) => {
-                                    e.currentTarget.style.borderColor = COLORS.CARD_BORDER
-                                    e.currentTarget.style.color = COLORS.TEXT_MUTED
-                                    e.currentTarget.style.backgroundColor = 'transparent'
-                                }}
-                            >
-                                <span style={{ fontSize: '16px' }}>📖</span> How to Play
-                            </button>
-                        </div>
-
-                        {/* Patch Notes Button */}
-                        <div style={{ marginTop: '12px' }}>
-                            <button
-                                onClick={() => {
-                                    trackModalOpen('patch_notes')
-                                    setShowPatchNotes(true)
-                                }}
-                                style={{
-                                    width: '100%',
-                                    padding: '12px',
-                                    fontSize: '14px',
-                                    letterSpacing: '0.1em',
-                                    borderRadius: '4px',
-                                    border: `1px solid ${COLORS.CARD_BORDER}`,
-                                    backgroundColor: 'transparent',
-                                    color: COLORS.TEXT_MUTED,
-                                    fontWeight: '700',
-                                    textTransform: 'uppercase',
-                                    cursor: 'pointer',
-                                    transition: 'all 0.2s',
-                                    display: 'flex',
-                                    alignItems: 'center',
-                                    justifyContent: 'center',
-                                    gap: '8px',
-                                }}
-                                onMouseEnter={(e) => {
-                                    e.currentTarget.style.borderColor = factionColors.PRIMARY
-                                    e.currentTarget.style.color = factionColors.PRIMARY
-                                    e.currentTarget.style.backgroundColor = `${factionColors.PRIMARY}10`
-                                }}
-                                onMouseLeave={(e) => {
-                                    e.currentTarget.style.borderColor = COLORS.CARD_BORDER
-                                    e.currentTarget.style.color = COLORS.TEXT_MUTED
-                                    e.currentTarget.style.backgroundColor = 'transparent'
-                                }}
-                            >
-                                <span style={{ fontSize: '16px' }}>📝</span> Patch Notes
-                            </button>
-                        </div>
-
-                        {/* Report Bug/Feedback Button */}
-                        <div style={{ marginTop: '12px' }}>
-                            <a
-                                href="https://github.com/TheInsomnolent/helldrafters/issues"
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                style={{
-                                    width: '100%',
-                                    padding: '12px',
-                                    fontSize: '14px',
-                                    letterSpacing: '0.1em',
-                                    borderRadius: '4px',
-                                    border: `1px solid ${COLORS.CARD_BORDER}`,
-                                    backgroundColor: 'transparent',
-                                    color: COLORS.TEXT_MUTED,
-                                    fontWeight: '700',
-                                    textTransform: 'uppercase',
-                                    cursor: 'pointer',
-                                    transition: 'all 0.2s',
-                                    display: 'flex',
-                                    alignItems: 'center',
-                                    justifyContent: 'center',
-                                    gap: '8px',
-                                    textDecoration: 'none',
-                                }}
-                                onMouseEnter={(e) => {
-                                    e.currentTarget.style.borderColor = COLORS.TEXT_SECONDARY
-                                    e.currentTarget.style.color = COLORS.TEXT_SECONDARY
-                                    e.currentTarget.style.backgroundColor =
-                                        'rgba(100, 116, 139, 0.1)'
-                                }}
-                                onMouseLeave={(e) => {
-                                    e.currentTarget.style.borderColor = COLORS.CARD_BORDER
-                                    e.currentTarget.style.color = COLORS.TEXT_MUTED
-                                    e.currentTarget.style.backgroundColor = 'transparent'
-                                }}
-                            >
-                                <Bug size={16} /> Report Bug/Feedback
-                            </a>
-                        </div>
-
-                        {/* Community Discussions Button */}
-                        <div style={{ marginTop: '12px' }}>
-                            <a
-                                href="https://github.com/TheInsomnolent/helldrafters/discussions"
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                style={{
-                                    width: '100%',
-                                    padding: '12px',
-                                    fontSize: '14px',
-                                    letterSpacing: '0.1em',
-                                    borderRadius: '4px',
-                                    border: `1px solid ${COLORS.CARD_BORDER}`,
-                                    backgroundColor: 'transparent',
-                                    color: COLORS.TEXT_MUTED,
-                                    fontWeight: '700',
-                                    textTransform: 'uppercase',
-                                    cursor: 'pointer',
-                                    transition: 'all 0.2s',
-                                    display: 'flex',
-                                    alignItems: 'center',
-                                    justifyContent: 'center',
-                                    gap: '8px',
-                                    textDecoration: 'none',
-                                }}
-                                onMouseEnter={(e) => {
-                                    e.currentTarget.style.borderColor = '#a78bfa'
-                                    e.currentTarget.style.color = '#a78bfa'
-                                    e.currentTarget.style.backgroundColor =
-                                        'rgba(139, 92, 246, 0.1)'
-                                }}
-                                onMouseLeave={(e) => {
-                                    e.currentTarget.style.borderColor = COLORS.CARD_BORDER
-                                    e.currentTarget.style.color = COLORS.TEXT_MUTED
-                                    e.currentTarget.style.backgroundColor = 'transparent'
-                                }}
-                            >
-                                <MessageSquare size={16} /> Discussions
-                            </a>
-                        </div>
-
-                        {/* Gen AI Disclosure Button */}
-                        <div style={{ marginTop: '12px' }}>
-                            <button
-                                onClick={() => {
-                                    trackModalOpen('genai_disclosure')
-                                    setShowGenAIDisclosure(true)
-                                }}
-                                style={{
-                                    width: '100%',
-                                    padding: '12px',
-                                    fontSize: '14px',
-                                    letterSpacing: '0.1em',
-                                    borderRadius: '4px',
-                                    border: `1px solid ${COLORS.CARD_BORDER}`,
-                                    backgroundColor: 'transparent',
-                                    color: COLORS.TEXT_MUTED,
-                                    fontWeight: '700',
-                                    textTransform: 'uppercase',
-                                    cursor: 'pointer',
-                                    transition: 'all 0.2s',
-                                    display: 'flex',
-                                    alignItems: 'center',
-                                    justifyContent: 'center',
-                                    gap: '8px',
-                                }}
-                                onMouseEnter={(e) => {
-                                    e.currentTarget.style.borderColor = factionColors.PRIMARY
-                                    e.currentTarget.style.color = factionColors.PRIMARY
-                                    e.currentTarget.style.backgroundColor = `${factionColors.PRIMARY}10`
-                                }}
-                                onMouseLeave={(e) => {
-                                    e.currentTarget.style.borderColor = COLORS.CARD_BORDER
-                                    e.currentTarget.style.color = COLORS.TEXT_MUTED
-                                    e.currentTarget.style.backgroundColor = 'transparent'
-                                }}
-                            >
-                                <span style={{ fontSize: '16px' }}>✨</span> Gen AI Disclosure
-                            </button>
-                        </div>
-
-                        {/* Contributors Button */}
-                        <div style={{ marginTop: '12px' }}>
-                            <button
-                                onClick={() => {
-                                    // eslint-disable-next-line no-console
-                                    console.log(
-                                        'Contributors button clicked, showContributors:',
-                                        showContributors,
-                                    )
-                                    trackModalOpen('contributors')
-                                    setShowContributors(true)
-                                    // eslint-disable-next-line no-console
-                                    console.log('setShowContributors(true) called')
-                                }}
-                                style={{
-                                    width: '100%',
-                                    padding: '12px',
-                                    fontSize: '14px',
-                                    letterSpacing: '0.1em',
-                                    borderRadius: '4px',
-                                    border: `1px solid ${COLORS.CARD_BORDER}`,
-                                    backgroundColor: 'transparent',
-                                    color: COLORS.TEXT_MUTED,
-                                    fontWeight: '700',
-                                    textTransform: 'uppercase',
-                                    cursor: 'pointer',
-                                    transition: 'all 0.2s',
-                                    display: 'flex',
-                                    alignItems: 'center',
-                                    justifyContent: 'center',
-                                    gap: '8px',
-                                }}
-                                onMouseEnter={(e) => {
-                                    e.currentTarget.style.borderColor = '#ff5e5b'
-                                    e.currentTarget.style.color = '#ff5e5b'
-                                    e.currentTarget.style.backgroundColor = 'rgba(255, 94, 91, 0.1)'
-                                }}
-                                onMouseLeave={(e) => {
-                                    e.currentTarget.style.borderColor = COLORS.CARD_BORDER
-                                    e.currentTarget.style.color = COLORS.TEXT_MUTED
-                                    e.currentTarget.style.backgroundColor = 'transparent'
-                                }}
-                            >
-                                <span style={{ fontSize: '16px' }}>❤️</span> Community Supporters
-                            </button>
-                        </div>
-
-                        {/* Code Contributors Button */}
-                        <div style={{ marginTop: '12px' }}>
-                            <a
-                                href="https://github.com/TheInsomnolent/helldrafters/graphs/contributors"
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                style={{
-                                    width: '100%',
-                                    padding: '12px',
-                                    fontSize: '14px',
-                                    letterSpacing: '0.1em',
-                                    borderRadius: '4px',
-                                    border: `1px solid ${COLORS.CARD_BORDER}`,
-                                    backgroundColor: 'transparent',
-                                    color: COLORS.TEXT_MUTED,
-                                    fontWeight: '700',
-                                    textTransform: 'uppercase',
-                                    cursor: 'pointer',
-                                    transition: 'all 0.2s',
-                                    display: 'flex',
-                                    alignItems: 'center',
-                                    justifyContent: 'center',
-                                    gap: '8px',
-                                    textDecoration: 'none',
-                                    boxSizing: 'border-box',
-                                }}
-                                onMouseEnter={(e) => {
-                                    e.currentTarget.style.borderColor = '#a78bfa'
-                                    e.currentTarget.style.color = '#a78bfa'
-                                    e.currentTarget.style.backgroundColor =
-                                        'rgba(139, 92, 246, 0.1)'
-                                }}
-                                onMouseLeave={(e) => {
-                                    e.currentTarget.style.borderColor = COLORS.CARD_BORDER
-                                    e.currentTarget.style.color = COLORS.TEXT_MUTED
-                                    e.currentTarget.style.backgroundColor = 'transparent'
-                                }}
-                            >
-                                <Users size={16} /> Contributors
-                            </a>
-                        </div>
-
-                        {/* Build Info */}
-                        <div
-                            style={{
-                                marginTop: '24px',
-                                paddingTop: '24px',
-                                borderTop: '1px solid rgba(100, 116, 139, 0.3)',
-                                textAlign: 'center',
-                            }}
-                        >
-                            <div
-                                style={{
-                                    fontSize: '10px',
-                                    color: '#475569',
-                                    fontFamily: 'monospace',
-                                }}
-                            >
-                                {process.env.REACT_APP_BUILD_TIME && (
-                                    <div>Build: {process.env.REACT_APP_BUILD_TIME}</div>
-                                )}
-                                {process.env.REACT_APP_COMMIT_SHA && (
-                                    <div>
-                                        Commit: {process.env.REACT_APP_COMMIT_SHA.substring(0, 7)}
-                                    </div>
-                                )}
-                                {!process.env.REACT_APP_BUILD_TIME &&
-                                    !process.env.REACT_APP_COMMIT_SHA && (
-                                        <div>Local Development Build</div>
-                                    )}
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
-                {/* FOOTER */}
-                <GameFooter />
-
-                {/* Remove Card Confirmation Modal */}
-                {showRemoveCardConfirm && (
-                    <div
-                        style={{
-                            position: 'fixed',
-                            top: 0,
-                            left: 0,
-                            right: 0,
-                            bottom: 0,
-                            backgroundColor: 'rgba(0, 0, 0, 0.85)',
-                            display: 'flex',
-                            alignItems: 'center',
-                            justifyContent: 'center',
-                            zIndex: 2000,
-                            padding: '24px',
-                        }}
-                    >
-                        <div
-                            style={{
-                                backgroundColor: '#283548',
-                                borderRadius: '12px',
-                                border: '3px solid #f59e0b',
-                                padding: '32px',
-                                maxWidth: '600px',
-                                width: '100%',
-                                boxShadow: '0 8px 32px rgba(0, 0, 0, 0.5)',
-                            }}
-                        >
-                            <h2
-                                style={{
-                                    color: '#f59e0b',
-                                    fontSize: '28px',
-                                    fontWeight: 'bold',
-                                    textAlign: 'center',
-                                    marginBottom: '24px',
-                                    textTransform: 'uppercase',
-                                    letterSpacing: '0.05em',
-                                }}
-                            >
-                                ⚠️ Remove Card
-                            </h2>
-
-                            <div
-                                style={{
-                                    backgroundColor: '#1f2937',
-                                    padding: '20px',
-                                    borderRadius: '8px',
-                                    marginBottom: '24px',
-                                    border: '1px solid rgba(245, 158, 11, 0.3)',
-                                }}
-                            >
-                                <p
-                                    style={{
-                                        color: '#cbd5e1',
-                                        fontSize: '16px',
-                                        lineHeight: '1.6',
-                                        marginBottom: '16px',
-                                    }}
-                                >
-                                    <strong style={{ color: '#f59e0b' }}>
-                                        ⚠️ Important Notice:
-                                    </strong>
-                                </p>
-                                <p
-                                    style={{
-                                        color: '#cbd5e1',
-                                        fontSize: '15px',
-                                        lineHeight: '1.6',
-                                        marginBottom: '12px',
-                                    }}
-                                >
-                                    This feature should{' '}
-                                    <strong style={{ color: '#fbbf24' }}>only be used</strong> if
-                                    you misconfigured your warbonds and do not have access to an
-                                    item that appeared in your draft.
-                                </p>
-                                <p
-                                    style={{
-                                        color: '#94a3b8',
-                                        fontSize: '14px',
-                                        lineHeight: '1.6',
-                                        fontStyle: 'italic',
-                                    }}
-                                >
-                                    The card will be replaced with a new random card from your pool.
-                                    This action cannot be undone.
-                                </p>
-                            </div>
-
-                            {pendingCardRemoval && (
-                                <div
-                                    style={{
-                                        backgroundColor: '#1f2937',
-                                        padding: '16px',
-                                        borderRadius: '8px',
-                                        marginBottom: '24px',
-                                        textAlign: 'center',
-                                    }}
-                                >
-                                    <p
-                                        style={{
-                                            color: '#94a3b8',
-                                            fontSize: '14px',
-                                            marginBottom: '8px',
-                                        }}
-                                    >
-                                        Removing:
-                                    </p>
-                                    <p
-                                        style={{
-                                            color: '#F5C642',
-                                            fontSize: '18px',
-                                            fontWeight: 'bold',
-                                        }}
-                                    >
-                                        {isItem(pendingCardRemoval)
-                                            ? pendingCardRemoval.name
-                                            : isArmorCombo(pendingCardRemoval)
-                                              ? getArmorComboDisplayName(
-                                                    pendingCardRemoval.passive,
-                                                    pendingCardRemoval.armorClass,
-                                                )
-                                              : 'Unknown Item'}
-                                    </p>
-                                </div>
-                            )}
-
-                            <div style={{ display: 'flex', gap: '12px' }}>
-                                <button
-                                    onClick={() => {
-                                        setShowRemoveCardConfirm(false)
-                                        setPendingCardRemoval(null)
-                                    }}
-                                    style={{
-                                        flex: 1,
-                                        padding: '14px 24px',
-                                        fontSize: '16px',
-                                        fontWeight: 'bold',
-                                        textTransform: 'uppercase',
-                                        letterSpacing: '0.05em',
-                                        borderRadius: '6px',
-                                        border: '2px solid #64748b',
-                                        backgroundColor: 'transparent',
-                                        color: '#cbd5e1',
-                                        cursor: 'pointer',
-                                        transition: 'all 0.2s',
-                                    }}
-                                    onMouseEnter={(e) => {
-                                        e.currentTarget.style.backgroundColor =
-                                            'rgba(100, 116, 139, 0.2)'
-                                        e.currentTarget.style.borderColor = '#94a3b8'
-                                    }}
-                                    onMouseLeave={(e) => {
-                                        e.currentTarget.style.backgroundColor = 'transparent'
-                                        e.currentTarget.style.borderColor = '#64748b'
-                                    }}
-                                >
-                                    Cancel
-                                </button>
-                                <button
-                                    onClick={confirmRemoveCardFromDraft}
-                                    style={{
-                                        flex: 1,
-                                        padding: '14px 24px',
-                                        fontSize: '16px',
-                                        fontWeight: 'bold',
-                                        textTransform: 'uppercase',
-                                        letterSpacing: '0.05em',
-                                        borderRadius: '6px',
-                                        border: '2px solid #f59e0b',
-                                        backgroundColor: '#f59e0b',
-                                        color: '#1f2937',
-                                        cursor: 'pointer',
-                                        transition: 'all 0.2s',
-                                    }}
-                                    onMouseEnter={(e) => {
-                                        e.currentTarget.style.backgroundColor = '#d97706'
-                                        e.currentTarget.style.borderColor = '#d97706'
-                                        e.currentTarget.style.transform = 'translateY(-1px)'
-                                        e.currentTarget.style.boxShadow =
-                                            '0 4px 12px rgba(245, 158, 11, 0.4)'
-                                    }}
-                                    onMouseLeave={(e) => {
-                                        e.currentTarget.style.backgroundColor = '#f59e0b'
-                                        e.currentTarget.style.borderColor = '#f59e0b'
-                                        e.currentTarget.style.transform = 'translateY(0)'
-                                        e.currentTarget.style.boxShadow = 'none'
-                                    }}
-                                >
-                                    Confirm Remove
-                                </button>
-                            </div>
-                        </div>
-                    </div>
-                )}
-
-                {/* Explainer Modal */}
-                <ExplainerModal
-                    isOpen={showExplainer}
-                    onClose={() => setShowExplainer(false)}
-                    faction={gameConfig.faction}
-                />
-
-                {/* Patch Notes Modal */}
-                <PatchNotesModal
-                    isOpen={showPatchNotes}
-                    onClose={() => setShowPatchNotes(false)}
-                    faction={gameConfig.faction}
-                />
-
-                {/* Gen AI Disclosure Modal */}
-                <GenAIDisclosureModal
-                    isOpen={showGenAIDisclosure}
-                    onClose={() => setShowGenAIDisclosure(false)}
-                    faction={gameConfig.faction}
-                />
-
-                {/* Contributors Modal */}
-                <ContributorsModal
-                    isOpen={showContributors}
-                    onClose={() => setShowContributors(false)}
-                    faction={gameConfig.faction}
-                />
-
-                {/* Run History Modal */}
-                <RunHistoryModal isOpen={showRunHistory} onClose={() => setShowRunHistory(false)} />
-            </div>
+            <MenuScreen
+                faction={gameConfig.faction}
+                onStartSolo={startGame}
+                onStartMultiplayer={() => setMultiplayerMode('select')}
+                onLoadGame={() => fileInputRef.current?.click()}
+                fileInputRef={fileInputRef}
+                onImportGameState={importGameState}
+                showExplainer={showExplainer}
+                setShowExplainer={setShowExplainer}
+                showPatchNotes={showPatchNotes}
+                setShowPatchNotes={setShowPatchNotes}
+                showGenAIDisclosure={showGenAIDisclosure}
+                setShowGenAIDisclosure={setShowGenAIDisclosure}
+                showContributors={showContributors}
+                setShowContributors={setShowContributors}
+                showRunHistory={showRunHistory}
+                setShowRunHistory={setShowRunHistory}
+                showRemoveCardConfirm={showRemoveCardConfirm}
+                setShowRemoveCardConfirm={setShowRemoveCardConfirm}
+                pendingCardRemoval={pendingCardRemoval}
+                setPendingCardRemoval={setPendingCardRemoval}
+                confirmRemoveCardFromDraft={confirmRemoveCardFromDraft}
+            />
         )
     }
 
     // SOLO_CONFIG PHASE - Game configuration for solo play
     if (phase === 'SOLO_CONFIG') {
         return (
-            <div
-                style={{
-                    minHeight: '100vh',
-                    background: GRADIENTS.BACKGROUND,
-                    color: 'white',
-                    padding: '80px 24px',
-                }}
-            >
-                <div style={{ maxWidth: '600px', margin: '0 auto' }}>
-                    {/* Header */}
-                    <div style={{ textAlign: 'center', marginBottom: '48px' }}>
-                        <h1
-                            style={{
-                                fontSize: '48px',
-                                fontWeight: '900',
-                                color: factionColors.PRIMARY,
-                                margin: '0 0 8px 0',
-                                letterSpacing: '0.05em',
-                                textTransform: 'uppercase',
-                                textShadow: factionColors.GLOW,
-                            }}
-                        >
-                            SOLO OPERATION
-                        </h1>
-                        <div
-                            style={{
-                                background: GRADIENTS.HEADER_BAR,
-                                padding: '12px',
-                                margin: '0 auto',
-                                maxWidth: '400px',
-                            }}
-                        >
-                            <p
-                                style={{
-                                    fontSize: '14px',
-                                    fontWeight: 'bold',
-                                    color: 'white',
-                                    textTransform: 'uppercase',
-                                    letterSpacing: '0.3em',
-                                    margin: 0,
-                                }}
-                            >
-                                Configure Your Mission
-                            </p>
-                        </div>
-                    </div>
-
-                    {/* Game Configuration */}
-                    <div
-                        style={{
-                            backgroundColor: COLORS.CARD_BG,
-                            padding: '32px',
-                            borderRadius: '8px',
-                            border: `1px solid ${COLORS.CARD_BORDER}`,
-                            marginBottom: '32px',
-                        }}
-                    >
-                        <GameConfiguration
-                            gameConfig={gameConfig}
-                            eventsEnabled={eventsEnabled}
-                            onUpdateGameConfig={(updates) =>
-                                dispatch(actions.updateGameConfig(updates))
-                            }
-                            onSetSubfaction={(subfaction) =>
-                                dispatch(actions.setSubfaction(subfaction))
-                            }
-                            onSetEventsEnabled={(enabled) =>
-                                dispatch(actions.setEventsEnabled(enabled))
-                            }
-                            factionColors={factionColors}
-                        />
-                    </div>
-
-                    {/* Action Buttons */}
-                    <div style={{ display: 'flex', gap: '16px' }}>
-                        <button
-                            onClick={() => dispatch(actions.setPhase('MENU'))}
-                            style={{
-                                flex: 1,
-                                padding: '16px',
-                                backgroundColor: 'transparent',
-                                color: COLORS.TEXT_MUTED,
-                                border: `2px solid ${COLORS.CARD_BORDER}`,
-                                borderRadius: '4px',
-                                fontWeight: '900',
-                                fontSize: '14px',
-                                textTransform: 'uppercase',
-                                cursor: 'pointer',
-                                transition: 'all 0.2s',
-                            }}
-                            onMouseEnter={(e) => {
-                                e.currentTarget.style.borderColor = COLORS.TEXT_DISABLED
-                                e.currentTarget.style.color = COLORS.TEXT_SECONDARY
-                            }}
-                            onMouseLeave={(e) => {
-                                e.currentTarget.style.borderColor = COLORS.CARD_BORDER
-                                e.currentTarget.style.color = COLORS.TEXT_MUTED
-                            }}
-                        >
-                            ← BACK TO MENU
-                        </button>
-                        <button
-                            onClick={() => dispatch(actions.setPhase('LOBBY'))}
-                            style={{
-                                ...BUTTON_STYLES.PRIMARY,
-                                flex: 2,
-                                padding: '16px',
-                                fontSize: '16px',
-                                letterSpacing: '0.15em',
-                            }}
-                        >
-                            CONTINUE →
-                        </button>
-                    </div>
-                </div>
-            </div>
+            <SoloConfigScreen
+                gameConfig={gameConfig}
+                eventsEnabled={eventsEnabled}
+                onUpdateGameConfig={(updates) => dispatch(actions.updateGameConfig(updates))}
+                onSetSubfaction={(subfaction) => dispatch(actions.setSubfaction(subfaction))}
+                onSetEventsEnabled={(enabled) => dispatch(actions.setEventsEnabled(enabled))}
+                onBack={() => dispatch(actions.setPhase('MENU'))}
+                onContinue={() => dispatch(actions.setPhase('LOBBY'))}
+            />
         )
     }
 
@@ -3420,91 +2180,17 @@ function HelldiversRoguelikeApp() {
         // Clients should wait for the host to finish
         if (isMultiplayer && !isHost) {
             return (
-                <div style={{ minHeight: '100vh', padding: '24px', backgroundColor: '#1a2332' }}>
-                    <div style={{ maxWidth: '1200px', margin: '0 auto' }}>
-                        <div style={{ textAlign: 'center', marginTop: '120px' }}>
-                            <h1
-                                style={{
-                                    fontSize: '48px',
-                                    fontWeight: '900',
-                                    color: factionColors.PRIMARY,
-                                    margin: '0 0 16px 0',
-                                }}
-                            >
-                                HOST CONFIGURING CUSTOM START
-                            </h1>
-                            <p style={{ color: '#94a3b8', marginBottom: '32px', fontSize: '18px' }}>
-                                Please wait while the host configures the starting difficulty and
-                                loadouts...
-                            </p>
-                            <div
-                                style={{
-                                    display: 'flex',
-                                    justifyContent: 'center',
-                                    gap: '12px',
-                                    marginTop: '32px',
-                                }}
-                            >
-                                <div
-                                    style={{
-                                        width: '12px',
-                                        height: '12px',
-                                        borderRadius: '50%',
-                                        backgroundColor: factionColors.PRIMARY,
-                                        animation: 'pulse 1.5s infinite',
-                                    }}
-                                />
-                                <div
-                                    style={{
-                                        width: '12px',
-                                        height: '12px',
-                                        borderRadius: '50%',
-                                        backgroundColor: factionColors.PRIMARY,
-                                        animation: 'pulse 1.5s infinite 0.2s',
-                                    }}
-                                />
-                                <div
-                                    style={{
-                                        width: '12px',
-                                        height: '12px',
-                                        borderRadius: '50%',
-                                        backgroundColor: factionColors.PRIMARY,
-                                        animation: 'pulse 1.5s infinite 0.4s',
-                                    }}
-                                />
-                            </div>
-                        </div>
-                    </div>
-                    <style>{`
-            @keyframes pulse {
-              0%, 100% { opacity: 0.3; transform: scale(0.8); }
-              50% { opacity: 1; transform: scale(1.2); }
-            }
-          `}</style>
-                </div>
+                <LoadingScreen
+                    title="HOST CONFIGURING CUSTOM START"
+                    subtitle="Please wait while the host configures the starting difficulty and loadouts..."
+                    factionColors={factionColors}
+                />
             )
         }
 
         // Safety check: ensure customSetup.loadouts exists before proceeding
         if (!customSetup || !customSetup.loadouts) {
-            return (
-                <div style={{ minHeight: '100vh', padding: '24px', backgroundColor: '#1a2332' }}>
-                    <div style={{ maxWidth: '1200px', margin: '0 auto' }}>
-                        <div style={{ textAlign: 'center', marginTop: '120px' }}>
-                            <h1
-                                style={{
-                                    fontSize: '48px',
-                                    fontWeight: '900',
-                                    color: factionColors.PRIMARY,
-                                    margin: '0 0 16px 0',
-                                }}
-                            >
-                                LOADING...
-                            </h1>
-                        </div>
-                    </div>
-                </div>
-            )
+            return <LoadingScreen title="LOADING..." factionColors={factionColors} />
         }
 
         const updateLoadoutSlot = (playerIdx: number, slotType: string, itemId: string | null) => {
@@ -3531,155 +2217,66 @@ function HelldiversRoguelikeApp() {
         }
 
         return (
-            <div style={{ minHeight: '100vh', padding: '24px', backgroundColor: '#1a2332' }}>
-                <div style={{ maxWidth: '1200px', margin: '0 auto' }}>
-                    <div style={{ textAlign: 'center', marginBottom: '32px' }}>
-                        <h1
-                            style={{
-                                fontSize: '48px',
-                                fontWeight: '900',
-                                color: factionColors.PRIMARY,
-                                margin: '0 0 16px 0',
-                            }}
-                        >
+            <PageWrapper $withPadding>
+                <CenteredContent>
+                    <SectionHeader $center $marginBottom={SPACING.xxl}>
+                        <CustomSetupPhaseTitle $color={factionColors.PRIMARY}>
                             CUSTOM START SETUP
-                        </h1>
-                        <p style={{ color: '#94a3b8', margin: 0 }}>
+                        </CustomSetupPhaseTitle>
+                        <PhaseDescription>
                             Configure starting difficulty and loadouts
-                        </p>
-                    </div>
+                        </PhaseDescription>
+                    </SectionHeader>
 
                     {/* Difficulty Selection */}
-                    <div
-                        style={{
-                            backgroundColor: '#283548',
-                            padding: '24px',
-                            borderRadius: '8px',
-                            marginBottom: '24px',
-                            border: '1px solid rgba(100, 116, 139, 0.5)',
-                        }}
-                    >
-                        <label
-                            style={{
-                                display: 'block',
-                                fontSize: '12px',
-                                fontWeight: 'bold',
-                                color: '#94a3b8',
-                                textTransform: 'uppercase',
-                                marginBottom: '16px',
-                            }}
-                        >
-                            Starting Difficulty
-                        </label>
-                        <div
-                            style={{
-                                display: 'grid',
-                                gridTemplateColumns: 'repeat(10, 1fr)',
-                                gap: '8px',
-                            }}
-                        >
+                    <SectionBoxSpaced $marginBottom={SPACING.xl}>
+                        <FormSectionLabel>Starting Difficulty</FormSectionLabel>
+                        <DifficultyGrid>
                             {DIFFICULTY_CONFIG.map((diff) => (
-                                <button
+                                <DifficultyButton
                                     key={diff.level}
                                     onClick={() =>
                                         dispatch(
                                             actions.updateCustomSetup({ difficulty: diff.level }),
                                         )
                                     }
-                                    style={{
-                                        padding: '12px 8px',
-                                        backgroundColor:
-                                            customSetup.difficulty === diff.level
-                                                ? factionColors.PRIMARY
-                                                : 'transparent',
-                                        color:
-                                            customSetup.difficulty === diff.level
-                                                ? 'black'
-                                                : '#cbd5e1',
-                                        border:
-                                            customSetup.difficulty === diff.level
-                                                ? `2px solid ${factionColors.PRIMARY}`
-                                                : '1px solid rgba(100, 116, 139, 0.5)',
-                                        borderRadius: '4px',
-                                        fontWeight: 'bold',
-                                        fontSize: '16px',
-                                        cursor: 'pointer',
-                                        transition: 'all 0.2s',
-                                    }}
+                                    $selected={customSetup.difficulty === diff.level}
+                                    $factionColor={factionColors.PRIMARY}
                                     title={diff.name}
                                 >
                                     {diff.level}
-                                </button>
+                                </DifficultyButton>
                             ))}
-                        </div>
-                        <div
-                            style={{
-                                marginTop: '8px',
-                                textAlign: 'center',
-                                color: factionColors.PRIMARY,
-                                fontSize: '14px',
-                            }}
-                        >
+                        </DifficultyGrid>
+                        <DifficultyLabel $color={factionColors.PRIMARY}>
                             {DIFFICULTY_CONFIG[customSetup.difficulty - 1]?.name}
-                        </div>
-                    </div>
+                        </DifficultyLabel>
+                    </SectionBoxSpaced>
 
                     {/* Player Tabs */}
-                    <div style={{ display: 'flex', gap: '8px', marginBottom: '24px' }}>
+                    <PlayerTabs>
                         {customSetup.loadouts.map((_, i) => (
-                            <button
+                            <PlayerTab
                                 key={i}
                                 onClick={() => setSelectedPlayer(i)}
-                                style={{
-                                    padding: '12px 24px',
-                                    backgroundColor:
-                                        selectedPlayer === i ? factionColors.PRIMARY : '#283548',
-                                    color: selectedPlayer === i ? 'black' : '#cbd5e1',
-                                    border: '1px solid rgba(100, 116, 139, 0.5)',
-                                    borderRadius: '4px',
-                                    fontWeight: 'bold',
-                                    cursor: 'pointer',
-                                    transition: 'all 0.2s',
-                                }}
+                                $active={selectedPlayer === i}
+                                $factionColor={factionColors.PRIMARY}
                             >
                                 Helldiver {i + 1}
-                            </button>
+                            </PlayerTab>
                         ))}
-                    </div>
+                    </PlayerTabs>
 
                     {/* Loadout Editor */}
-                    <div
-                        style={{
-                            backgroundColor: '#283548',
-                            padding: '24px',
-                            borderRadius: '8px',
-                            border: '1px solid rgba(100, 116, 139, 0.5)',
-                        }}
-                    >
-                        <h3
-                            style={{
-                                color: factionColors.PRIMARY,
-                                marginBottom: '16px',
-                                fontSize: '18px',
-                            }}
-                        >
+                    <SectionBox>
+                        <LoadoutConfigTitle $color={factionColors.PRIMARY}>
                             Loadout Configuration
-                        </h3>
+                        </LoadoutConfigTitle>
 
                         {/* Primary */}
-                        <div style={{ marginBottom: '16px' }}>
-                            <label
-                                style={{
-                                    display: 'block',
-                                    fontSize: '11px',
-                                    color: '#64748b',
-                                    textTransform: 'uppercase',
-                                    marginBottom: '8px',
-                                }}
-                            >
-                                Primary
-                            </label>
-                            <select
+                        <LoadoutFieldSpaced $marginBottom={SPACING.lg}>
+                            <LoadoutFieldLabel>Primary</LoadoutFieldLabel>
+                            <LoadoutSelectColored
                                 value={currentLoadout.primary || ''}
                                 onChange={(e) =>
                                     updateLoadoutSlot(
@@ -3688,15 +2285,7 @@ function HelldiversRoguelikeApp() {
                                         e.target.value || null,
                                     )
                                 }
-                                style={{
-                                    width: '100%',
-                                    padding: '8px',
-                                    backgroundColor: '#1f2937',
-                                    color: factionColors.PRIMARY,
-                                    border: '1px solid rgba(100, 116, 139, 0.5)',
-                                    borderRadius: '4px',
-                                    fontSize: '14px',
-                                }}
+                                $color={factionColors.PRIMARY}
                             >
                                 <option value="">None</option>
                                 {itemsByType.primary.map((item) => (
@@ -3704,23 +2293,13 @@ function HelldiversRoguelikeApp() {
                                         {item.name} ({item.rarity})
                                     </option>
                                 ))}
-                            </select>
-                        </div>
+                            </LoadoutSelectColored>
+                        </LoadoutFieldSpaced>
 
                         {/* Secondary */}
-                        <div style={{ marginBottom: '16px' }}>
-                            <label
-                                style={{
-                                    display: 'block',
-                                    fontSize: '11px',
-                                    color: '#64748b',
-                                    textTransform: 'uppercase',
-                                    marginBottom: '8px',
-                                }}
-                            >
-                                Secondary
-                            </label>
-                            <select
+                        <LoadoutFieldSpaced $marginBottom={SPACING.lg}>
+                            <LoadoutFieldLabel>Secondary</LoadoutFieldLabel>
+                            <LoadoutSelect
                                 value={currentLoadout.secondary || ''}
                                 onChange={(e) =>
                                     updateLoadoutSlot(
@@ -3729,15 +2308,6 @@ function HelldiversRoguelikeApp() {
                                         e.target.value || null,
                                     )
                                 }
-                                style={{
-                                    width: '100%',
-                                    padding: '8px',
-                                    backgroundColor: '#1f2937',
-                                    color: 'white',
-                                    border: '1px solid rgba(100, 116, 139, 0.5)',
-                                    borderRadius: '4px',
-                                    fontSize: '14px',
-                                }}
                             >
                                 <option value="">None</option>
                                 {itemsByType.secondary.map((item) => (
@@ -3745,23 +2315,13 @@ function HelldiversRoguelikeApp() {
                                         {item.name} ({item.rarity})
                                     </option>
                                 ))}
-                            </select>
-                        </div>
+                            </LoadoutSelect>
+                        </LoadoutFieldSpaced>
 
                         {/* Grenade */}
-                        <div style={{ marginBottom: '16px' }}>
-                            <label
-                                style={{
-                                    display: 'block',
-                                    fontSize: '11px',
-                                    color: '#64748b',
-                                    textTransform: 'uppercase',
-                                    marginBottom: '8px',
-                                }}
-                            >
-                                Grenade
-                            </label>
-                            <select
+                        <LoadoutFieldSpaced $marginBottom={SPACING.lg}>
+                            <LoadoutFieldLabel>Grenade</LoadoutFieldLabel>
+                            <LoadoutSelect
                                 value={currentLoadout.grenade || ''}
                                 onChange={(e) =>
                                     updateLoadoutSlot(
@@ -3770,15 +2330,6 @@ function HelldiversRoguelikeApp() {
                                         e.target.value || null,
                                     )
                                 }
-                                style={{
-                                    width: '100%',
-                                    padding: '8px',
-                                    backgroundColor: '#1f2937',
-                                    color: '#cbd5e1',
-                                    border: '1px solid rgba(100, 116, 139, 0.5)',
-                                    borderRadius: '4px',
-                                    fontSize: '14px',
-                                }}
                             >
                                 <option value="">None</option>
                                 {itemsByType.grenade.map((item) => (
@@ -3786,23 +2337,13 @@ function HelldiversRoguelikeApp() {
                                         {item.name} ({item.rarity})
                                     </option>
                                 ))}
-                            </select>
-                        </div>
+                            </LoadoutSelect>
+                        </LoadoutFieldSpaced>
 
                         {/* Armor */}
-                        <div style={{ marginBottom: '16px' }}>
-                            <label
-                                style={{
-                                    display: 'block',
-                                    fontSize: '11px',
-                                    color: '#64748b',
-                                    textTransform: 'uppercase',
-                                    marginBottom: '8px',
-                                }}
-                            >
-                                Armor
-                            </label>
-                            <select
+                        <LoadoutFieldSpaced $marginBottom={SPACING.lg}>
+                            <LoadoutFieldLabel>Armor</LoadoutFieldLabel>
+                            <LoadoutSelect
                                 value={currentLoadout.armor || ''}
                                 onChange={(e) =>
                                     updateLoadoutSlot(
@@ -3811,15 +2352,6 @@ function HelldiversRoguelikeApp() {
                                         e.target.value || null,
                                     )
                                 }
-                                style={{
-                                    width: '100%',
-                                    padding: '8px',
-                                    backgroundColor: '#1f2937',
-                                    color: '#cbd5e1',
-                                    border: '1px solid rgba(100, 116, 139, 0.5)',
-                                    borderRadius: '4px',
-                                    fontSize: '14px',
-                                }}
                             >
                                 <option value="">None</option>
                                 {itemsByType.armor.map((item) => (
@@ -3827,23 +2359,13 @@ function HelldiversRoguelikeApp() {
                                         {item.name} ({item.rarity})
                                     </option>
                                 ))}
-                            </select>
-                        </div>
+                            </LoadoutSelect>
+                        </LoadoutFieldSpaced>
 
                         {/* Booster */}
-                        <div style={{ marginBottom: '16px' }}>
-                            <label
-                                style={{
-                                    display: 'block',
-                                    fontSize: '11px',
-                                    color: '#64748b',
-                                    textTransform: 'uppercase',
-                                    marginBottom: '8px',
-                                }}
-                            >
-                                Booster
-                            </label>
-                            <select
+                        <LoadoutFieldSpaced $marginBottom={SPACING.lg}>
+                            <LoadoutFieldLabel>Booster</LoadoutFieldLabel>
+                            <LoadoutSelect
                                 value={currentLoadout.booster || ''}
                                 onChange={(e) =>
                                     updateLoadoutSlot(
@@ -3852,15 +2374,6 @@ function HelldiversRoguelikeApp() {
                                         e.target.value || null,
                                     )
                                 }
-                                style={{
-                                    width: '100%',
-                                    padding: '8px',
-                                    backgroundColor: '#1f2937',
-                                    color: '#cbd5e1',
-                                    border: '1px solid rgba(100, 116, 139, 0.5)',
-                                    borderRadius: '4px',
-                                    fontSize: '14px',
-                                }}
                             >
                                 <option value="">None</option>
                                 {itemsByType.booster.map((item) => (
@@ -3868,31 +2381,15 @@ function HelldiversRoguelikeApp() {
                                         {item.name} ({item.rarity})
                                     </option>
                                 ))}
-                            </select>
-                        </div>
+                            </LoadoutSelect>
+                        </LoadoutFieldSpaced>
 
                         {/* Stratagems */}
-                        <div>
-                            <label
-                                style={{
-                                    display: 'block',
-                                    fontSize: '11px',
-                                    color: '#64748b',
-                                    textTransform: 'uppercase',
-                                    marginBottom: '8px',
-                                }}
-                            >
-                                Stratagems
-                            </label>
-                            <div
-                                style={{
-                                    display: 'grid',
-                                    gridTemplateColumns: 'repeat(2, 1fr)',
-                                    gap: '8px',
-                                }}
-                            >
+                        <LoadoutField>
+                            <LoadoutFieldLabel>Stratagems</LoadoutFieldLabel>
+                            <StratagemGrid>
                                 {[0, 1, 2, 3].map((slotIdx) => (
-                                    <select
+                                    <StratagemSelect
                                         key={slotIdx}
                                         value={currentLoadout.stratagems[slotIdx] || ''}
                                         onChange={(e) => {
@@ -3910,14 +2407,6 @@ function HelldiversRoguelikeApp() {
                                                 }),
                                             )
                                         }}
-                                        style={{
-                                            padding: '8px',
-                                            backgroundColor: '#1f2937',
-                                            color: 'white',
-                                            border: '1px solid rgba(100, 116, 139, 0.5)',
-                                            borderRadius: '4px',
-                                            fontSize: '12px',
-                                        }}
                                     >
                                         <option value="">Slot {slotIdx + 1}: None</option>
                                         {itemsByType.stratagem.map((item) => (
@@ -3925,56 +2414,26 @@ function HelldiversRoguelikeApp() {
                                                 {item.name}
                                             </option>
                                         ))}
-                                    </select>
+                                    </StratagemSelect>
                                 ))}
-                            </div>
-                        </div>
-                    </div>
+                            </StratagemGrid>
+                        </LoadoutField>
+                    </SectionBox>
 
                     {/* Action Buttons */}
-                    <div style={{ display: 'flex', gap: '16px', marginTop: '32px' }}>
-                        <button
+                    <CustomSetupActions>
+                        <FlexButton
                             onClick={() => dispatch(actions.setPhase('MENU'))}
-                            style={{
-                                flex: 1,
-                                padding: '16px',
-                                backgroundColor: 'rgba(127, 29, 29, 0.3)',
-                                color: '#ef4444',
-                                border: '1px solid #7f1d1d',
-                                borderRadius: '4px',
-                                fontWeight: 'bold',
-                                textTransform: 'uppercase',
-                                cursor: 'pointer',
-                                transition: 'all 0.2s',
-                            }}
+                            $variant="danger"
                         >
                             Back to Menu
-                        </button>
-                        <button
-                            onClick={startGameFromCustomSetup}
-                            style={{
-                                ...BUTTON_STYLES.PRIMARY,
-                                flex: 2,
-                                padding: '16px',
-                                border: 'none',
-                                borderRadius: '4px',
-                                fontSize: '18px',
-                                letterSpacing: '0.1em',
-                            }}
-                            onMouseEnter={(e) => {
-                                e.currentTarget.style.backgroundColor = COLORS.PRIMARY_HOVER
-                                e.currentTarget.style.boxShadow = SHADOWS.BUTTON_PRIMARY_HOVER
-                            }}
-                            onMouseLeave={(e) => {
-                                e.currentTarget.style.backgroundColor = COLORS.PRIMARY
-                                e.currentTarget.style.boxShadow = SHADOWS.BUTTON_PRIMARY
-                            }}
-                        >
+                        </FlexButton>
+                        <StartOperationButton onClick={startGameFromCustomSetup} $variant="primary">
                             Start Operation
-                        </button>
-                    </div>
-                </div>
-            </div>
+                        </StartOperationButton>
+                    </CustomSetupActions>
+                </CenteredContent>
+            </PageWrapper>
         )
     }
 
@@ -4533,135 +2992,41 @@ function HelldiversRoguelikeApp() {
         })
 
         return (
-            <div
-                style={{
-                    minHeight: '100vh',
-                    display: 'flex',
-                    flexDirection: 'column',
-                    padding: '24px',
-                }}
-            >
-                <div
-                    style={{
-                        display: 'flex',
-                        justifyContent: 'flex-end',
-                        marginBottom: '16px',
-                        gap: '12px',
-                    }}
-                >
-                    <button
-                        onClick={exportGameState}
-                        style={{
-                            display: 'flex',
-                            alignItems: 'center',
-                            gap: '8px',
-                            padding: '8px 16px',
-                            backgroundColor: 'rgba(100, 116, 139, 0.3)',
-                            color: '#94a3b8',
-                            border: '1px solid rgba(100, 116, 139, 0.5)',
-                            borderRadius: '4px',
-                            fontWeight: 'bold',
-                            textTransform: 'uppercase',
-                            fontSize: '12px',
-                            cursor: 'pointer',
-                            transition: 'all 0.2s',
-                        }}
-                        onMouseEnter={(e) => {
-                            e.currentTarget.style.backgroundColor = 'rgba(100, 116, 139, 0.5)'
-                            e.currentTarget.style.color = factionColors.PRIMARY
-                        }}
-                        onMouseLeave={(e) => {
-                            e.currentTarget.style.backgroundColor = 'rgba(100, 116, 139, 0.3)'
-                            e.currentTarget.style.color = '#94a3b8'
-                        }}
-                    >
-                        💾 Export
-                    </button>
-                </div>
+            <PageWrapper $withPadding style={{ display: 'flex', flexDirection: 'column' }}>
+                <ExportRow>
+                    <ExportButton onClick={exportGameState} factionColors={factionColors} />
+                </ExportRow>
 
-                <div
-                    style={{
-                        width: '100%',
-                        maxWidth: '1200px',
-                        margin: '0 auto',
-                        flexGrow: 1,
-                        display: 'flex',
-                        flexDirection: 'column',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                    }}
-                >
-                    <div style={{ textAlign: 'center', marginBottom: '40px' }}>
-                        <div
-                            style={{
-                                backgroundColor: 'rgba(239, 68, 68, 0.15)',
-                                border: '2px solid rgba(239, 68, 68, 0.5)',
-                                borderRadius: '8px',
-                                padding: '16px 32px',
-                                marginBottom: '24px',
-                                display: 'inline-block',
-                            }}
-                        >
-                            <div
-                                style={{
-                                    color: '#ef4444',
-                                    fontSize: '16px',
-                                    fontWeight: 'bold',
-                                    textTransform: 'uppercase',
-                                    letterSpacing: '1px',
-                                }}
-                            >
+                <CenteredContent>
+                    <SacrificeHeader>
+                        <SacrificePenaltyBadge>
+                            <SacrificePenaltyTitle>
                                 ⚠️ EXTRACTION FAILURE PENALTY
-                            </div>
-                            <div style={{ color: '#94a3b8', fontSize: '12px', marginTop: '6px' }}>
+                            </SacrificePenaltyTitle>
+                            <SacrificePenaltySubtext>
                                 Equipment Lost in Combat Zone
-                            </div>
-                        </div>
+                            </SacrificePenaltySubtext>
+                        </SacrificePenaltyBadge>
 
-                        <h1
-                            style={{
-                                fontSize: '36px',
-                                fontWeight: '900',
-                                color: 'white',
-                                textTransform: 'uppercase',
-                                margin: '0 0 8px 0',
-                            }}
-                        >
-                            {player.name} <span style={{ color: '#64748b' }}>//</span> Sacrifice
-                            Item
-                        </h1>
-                        <p style={{ color: '#94a3b8', margin: '0' }}>
+                        <PhaseTitle>
+                            {player.name} <TitleSeparator>//</TitleSeparator> Sacrifice Item
+                        </PhaseTitle>
+                        <PhaseDescription>
                             Select one item from your loadout to sacrifice (minimum gear protected)
-                        </p>
-                    </div>
+                        </PhaseDescription>
+                    </SacrificeHeader>
 
                     {sacrificableItems.length === 0 ? (
-                        <div
-                            style={{
-                                backgroundColor: '#283548',
-                                padding: '40px',
-                                borderRadius: '12px',
-                                border: '1px solid rgba(100, 116, 139, 0.5)',
-                                textAlign: 'center',
-                                maxWidth: '600px',
-                            }}
-                        >
-                            <div style={{ fontSize: '48px', marginBottom: '16px' }}>🛡️</div>
-                            <h3
-                                style={{
-                                    color: factionColors.PRIMARY,
-                                    fontSize: '20px',
-                                    fontWeight: 'bold',
-                                    marginBottom: '8px',
-                                }}
-                            >
+                        <EmptyBox>
+                            <EmptyIcon>🛡️</EmptyIcon>
+                            <EmptyTitle $color={factionColors.PRIMARY}>
                                 No Items to Sacrifice
-                            </h3>
-                            <p style={{ color: '#94a3b8', margin: 0 }}>
+                            </EmptyTitle>
+                            <EmptyDescription>
                                 You only have minimum required equipment (P2-Peacemaker & B-01
                                 Tactical).
-                            </p>
-                            <button
+                            </EmptyDescription>
+                            <Button
                                 onClick={() => {
                                     // Skip this player - move to next or end sacrifice phase
                                     const currentIndex = sacrificeState.sacrificesRequired.indexOf(
@@ -4685,37 +3050,19 @@ function HelldiversRoguelikeApp() {
                                         startDraftPhase()
                                     }
                                 }}
-                                style={{
-                                    ...BUTTON_STYLES.PRIMARY,
-                                    marginTop: '24px',
-                                    padding: '12px 32px',
-                                    border: 'none',
-                                    borderRadius: '4px',
-                                }}
-                                onMouseEnter={(e) => {
-                                    e.currentTarget.style.backgroundColor = COLORS.PRIMARY_HOVER
-                                }}
-                                onMouseLeave={(e) => {
-                                    e.currentTarget.style.backgroundColor = COLORS.PRIMARY
-                                }}
+                                $variant="primary"
+                                style={{ marginTop: '24px' }}
                             >
                                 Continue
-                            </button>
-                        </div>
+                            </Button>
+                        </EmptyBox>
                     ) : (
-                        <div
-                            style={{
-                                display: 'grid',
-                                gridTemplateColumns: `repeat(${Math.min(sacrificableItems.length, 4)}, 1fr)`,
-                                gap: '24px',
-                                marginBottom: '48px',
-                                width: '100%',
-                                opacity: isMyTurn ? 1 : 0.6,
-                                pointerEvents: isMyTurn ? 'auto' : 'none',
-                            }}
+                        <ItemGrid
+                            $columns={Math.min(sacrificableItems.length, 4)}
+                            $disabled={!isMyTurn}
                         >
                             {sacrificableItems.map((item, idx) => (
-                                <div
+                                <SacrificeCard
                                     key={`${item.id}-${idx}`}
                                     onClick={() => {
                                         // eslint-disable-next-line no-console
@@ -4738,276 +3085,43 @@ function HelldiversRoguelikeApp() {
                                         // eslint-disable-next-line no-console
                                         console.log('State update calls completed')
                                     }}
-                                    style={{
-                                        backgroundColor: '#283548',
-                                        border: '2px solid rgba(239, 68, 68, 0.5)',
-                                        borderRadius: '12px',
-                                        padding: '24px',
-                                        cursor: isMyTurn ? 'pointer' : 'not-allowed',
-                                        transition: 'all 0.2s',
-                                        display: 'flex',
-                                        flexDirection: 'column',
-                                        gap: '12px',
-                                    }}
-                                    onMouseEnter={(e) => {
-                                        e.currentTarget.style.borderColor = '#ef4444'
-                                        e.currentTarget.style.backgroundColor = '#1f2937'
-                                        e.currentTarget.style.transform = 'translateY(-4px)'
-                                    }}
-                                    onMouseLeave={(e) => {
-                                        e.currentTarget.style.borderColor = 'rgba(239, 68, 68, 0.5)'
-                                        e.currentTarget.style.backgroundColor = '#283548'
-                                        e.currentTarget.style.transform = 'translateY(0)'
-                                    }}
+                                    $interactive={isMyTurn}
                                 >
-                                    <div
-                                        style={{
-                                            fontSize: '10px',
-                                            color: '#64748b',
-                                            textTransform: 'uppercase',
-                                            letterSpacing: '1px',
-                                        }}
-                                    >
-                                        {item.slot}
-                                    </div>
-                                    <div
-                                        style={{
-                                            color: 'white',
-                                            fontWeight: 'bold',
-                                            fontSize: '18px',
-                                        }}
-                                    >
-                                        {item.name}
-                                    </div>
-                                    <div style={{ fontSize: '12px', color: '#94a3b8' }}>
-                                        {item.rarity}
-                                    </div>
-                                    <div
-                                        style={{
-                                            fontSize: '11px',
-                                            color: '#ef4444',
-                                            fontStyle: 'italic',
-                                            marginTop: 'auto',
-                                        }}
-                                    >
-                                        Click to sacrifice
-                                    </div>
-                                </div>
+                                    <SacrificeCardSlot>{item.slot}</SacrificeCardSlot>
+                                    <SacrificeCardName>{item.name}</SacrificeCardName>
+                                    <SacrificeCardRarity>{item.rarity}</SacrificeCardRarity>
+                                    <SacrificeCardHint>Click to sacrifice</SacrificeCardHint>
+                                </SacrificeCard>
                             ))}
-                        </div>
+                        </ItemGrid>
                     )}
                     {!isMyTurn && (
-                        <div
-                            style={{
-                                backgroundColor: '#283548',
-                                padding: '24px',
-                                borderRadius: '12px',
-                                border: '1px solid rgba(100, 116, 139, 0.5)',
-                                textAlign: 'center',
-                                marginTop: '24px',
-                            }}
-                        >
-                            <div
-                                style={{ fontSize: '16px', color: '#94a3b8', marginBottom: '8px' }}
-                            >
+                        <SacrificeWaitSection>
+                            <SacrificeWaitText>
                                 Waiting for {player.name} to sacrifice an item...
-                            </div>
-                            <div style={{ fontSize: '14px', color: '#64748b' }}>
-                                Please wait for your turn
-                            </div>
-                        </div>
+                            </SacrificeWaitText>
+                            <Caption>Please wait for your turn</Caption>
+                        </SacrificeWaitSection>
                     )}
-                </div>
+                </CenteredContent>
 
                 {/* Sacrifice Item Confirmation Modal */}
-                {showSacrificeConfirm && pendingSacrificeItem && (
-                    <div
-                        style={{
-                            position: 'fixed',
-                            top: 0,
-                            left: 0,
-                            right: 0,
-                            bottom: 0,
-                            backgroundColor: 'rgba(0, 0, 0, 0.85)',
-                            display: 'flex',
-                            alignItems: 'center',
-                            justifyContent: 'center',
-                            zIndex: 2000,
-                            padding: '24px',
-                        }}
-                    >
-                        <div
-                            style={{
-                                backgroundColor: '#283548',
-                                borderRadius: '12px',
-                                border: '3px solid #ef4444',
-                                padding: '32px',
-                                maxWidth: '600px',
-                                width: '100%',
-                                boxShadow: '0 8px 32px rgba(0, 0, 0, 0.5)',
-                            }}
-                        >
-                            <h2
-                                style={{
-                                    color: '#ef4444',
-                                    fontSize: '28px',
-                                    fontWeight: 'bold',
-                                    textAlign: 'center',
-                                    marginBottom: '24px',
-                                    textTransform: 'uppercase',
-                                    letterSpacing: '0.05em',
-                                }}
-                            >
-                                ⚠️ Sacrifice Item
-                            </h2>
-
-                            <div
-                                style={{
-                                    backgroundColor: '#1f2937',
-                                    padding: '20px',
-                                    borderRadius: '8px',
-                                    marginBottom: '24px',
-                                    border: '1px solid rgba(239, 68, 68, 0.3)',
-                                }}
-                            >
-                                <p
-                                    style={{
-                                        color: '#cbd5e1',
-                                        fontSize: '16px',
-                                        lineHeight: '1.6',
-                                        marginBottom: '16px',
-                                    }}
-                                >
-                                    <strong style={{ color: '#ef4444' }}>
-                                        ⚠️ Extraction Failure Penalty
-                                    </strong>
-                                </p>
-                                <p
-                                    style={{
-                                        color: '#cbd5e1',
-                                        fontSize: '15px',
-                                        lineHeight: '1.6',
-                                        marginBottom: '0',
-                                    }}
-                                >
-                                    This item will be{' '}
-                                    <strong style={{ color: '#fca5a5' }}>
-                                        permanently removed
-                                    </strong>{' '}
-                                    from your inventory and loadout. This action cannot be undone.
-                                </p>
-                            </div>
-
-                            <div
-                                style={{
-                                    backgroundColor: '#1f2937',
-                                    padding: '16px',
-                                    borderRadius: '8px',
-                                    marginBottom: '24px',
-                                    textAlign: 'center',
-                                }}
-                            >
-                                <p
-                                    style={{
-                                        color: '#94a3b8',
-                                        fontSize: '14px',
-                                        marginBottom: '8px',
-                                    }}
-                                >
-                                    Sacrificing:
-                                </p>
-                                <p
-                                    style={{
-                                        color: '#ef4444',
-                                        fontSize: '18px',
-                                        fontWeight: 'bold',
-                                        marginBottom: '4px',
-                                    }}
-                                >
-                                    {pendingSacrificeItem.name}
-                                </p>
-                                <p style={{ color: '#64748b', fontSize: '14px' }}>
-                                    {pendingSacrificeItem.slot} • {pendingSacrificeItem.rarity}
-                                </p>
-                            </div>
-
-                            <div style={{ display: 'flex', gap: '12px' }}>
-                                <button
-                                    onClick={() => {
-                                        // eslint-disable-next-line no-console
-                                        console.log('Cancel button clicked')
-                                        setShowSacrificeConfirm(false)
-                                        setPendingSacrificeItem(null)
-                                    }}
-                                    style={{
-                                        flex: 1,
-                                        padding: '14px 24px',
-                                        fontSize: '16px',
-                                        fontWeight: 'bold',
-                                        textTransform: 'uppercase',
-                                        letterSpacing: '0.05em',
-                                        borderRadius: '6px',
-                                        border: '2px solid #64748b',
-                                        backgroundColor: 'transparent',
-                                        color: '#cbd5e1',
-                                        cursor: 'pointer',
-                                        transition: 'all 0.2s',
-                                    }}
-                                    onMouseEnter={(e) => {
-                                        e.currentTarget.style.backgroundColor =
-                                            'rgba(100, 116, 139, 0.2)'
-                                        e.currentTarget.style.borderColor = '#94a3b8'
-                                    }}
-                                    onMouseLeave={(e) => {
-                                        e.currentTarget.style.backgroundColor = 'transparent'
-                                        e.currentTarget.style.borderColor = '#64748b'
-                                    }}
-                                >
-                                    Cancel
-                                </button>
-                                <button
-                                    onClick={() => {
-                                        // eslint-disable-next-line no-console
-                                        console.log('Confirm sacrifice button clicked')
-                                        handleSacrifice(pendingSacrificeItem)
-                                        setShowSacrificeConfirm(false)
-                                        setPendingSacrificeItem(null)
-                                    }}
-                                    style={{
-                                        flex: 1,
-                                        padding: '14px 24px',
-                                        fontSize: '16px',
-                                        fontWeight: 'bold',
-                                        textTransform: 'uppercase',
-                                        letterSpacing: '0.05em',
-                                        borderRadius: '6px',
-                                        border: '2px solid #ef4444',
-                                        backgroundColor: '#ef4444',
-                                        color: 'white',
-                                        cursor: 'pointer',
-                                        transition: 'all 0.2s',
-                                    }}
-                                    onMouseEnter={(e) => {
-                                        e.currentTarget.style.backgroundColor = '#dc2626'
-                                        e.currentTarget.style.borderColor = '#dc2626'
-                                        e.currentTarget.style.transform = 'translateY(-1px)'
-                                        e.currentTarget.style.boxShadow =
-                                            '0 4px 12px rgba(239, 68, 68, 0.4)'
-                                    }}
-                                    onMouseLeave={(e) => {
-                                        e.currentTarget.style.backgroundColor = '#ef4444'
-                                        e.currentTarget.style.borderColor = '#ef4444'
-                                        e.currentTarget.style.transform = 'translateY(0)'
-                                        e.currentTarget.style.boxShadow = 'none'
-                                    }}
-                                >
-                                    Confirm Sacrifice
-                                </button>
-                            </div>
-                        </div>
-                    </div>
-                )}
-            </div>
+                <SacrificeConfirmModal
+                    isOpen={showSacrificeConfirm}
+                    pendingSacrificeItem={pendingSacrificeItem}
+                    onCancel={() => {
+                        setShowSacrificeConfirm(false)
+                        setPendingSacrificeItem(null)
+                    }}
+                    onConfirm={() => {
+                        if (pendingSacrificeItem) {
+                            handleSacrifice(pendingSacrificeItem)
+                        }
+                        setShowSacrificeConfirm(false)
+                        setPendingSacrificeItem(null)
+                    }}
+                />
+            </PageWrapper>
         )
     }
 
@@ -5018,582 +3132,161 @@ function HelldiversRoguelikeApp() {
         const isMyTurn = !isMultiplayer || playerSlot === draftState.activePlayerIndex
 
         return (
-            <div style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column' }}>
+            <PageWrapper>
                 {/* MULTIPLAYER STATUS BAR */}
                 {isMultiplayer && (
                     <MultiplayerStatusBar gameConfig={gameConfig} onDisconnect={disconnect} />
                 )}
 
-                <div style={{ padding: '24px' }}>
-                    <div
-                        style={{
-                            display: 'flex',
-                            justifyContent: 'flex-end',
-                            marginBottom: '16px',
-                            gap: '12px',
-                        }}
-                    >
-                        <button
-                            onClick={exportGameState}
-                            style={{
-                                display: 'flex',
-                                alignItems: 'center',
-                                gap: '8px',
-                                padding: '8px 16px',
-                                backgroundColor: 'rgba(100, 116, 139, 0.3)',
-                                color: '#94a3b8',
-                                border: '1px solid rgba(100, 116, 139, 0.5)',
-                                borderRadius: '4px',
-                                fontWeight: 'bold',
-                                textTransform: 'uppercase',
-                                fontSize: '12px',
-                                cursor: 'pointer',
-                                transition: 'all 0.2s',
-                            }}
-                            onMouseEnter={(e) => {
-                                e.currentTarget.style.backgroundColor = 'rgba(100, 116, 139, 0.5)'
-                                e.currentTarget.style.color = factionColors.PRIMARY
-                            }}
-                            onMouseLeave={(e) => {
-                                e.currentTarget.style.backgroundColor = 'rgba(100, 116, 139, 0.3)'
-                                e.currentTarget.style.color = '#94a3b8'
-                            }}
-                        >
-                            💾 Export
-                        </button>
-                    </div>
+                <ContentWrapper>
+                    <ExportRow>
+                        <ExportButton onClick={exportGameState} factionColors={factionColors} />
+                    </ExportRow>
 
                     {/* Stratagem Replacement Modal */}
-                    {draftState.pendingStratagem && (
-                        <div
-                            style={{
-                                position: 'fixed',
-                                top: 0,
-                                left: 0,
-                                right: 0,
-                                bottom: 0,
-                                backgroundColor: 'rgba(0, 0, 0, 0.8)',
-                                display: 'flex',
-                                alignItems: 'center',
-                                justifyContent: 'center',
-                                zIndex: 1000,
-                                padding: '24px',
-                            }}
-                        >
-                            <div
-                                style={{
-                                    backgroundColor: '#283548',
-                                    borderRadius: '12px',
-                                    border: `2px solid ${factionColors.PRIMARY}`,
-                                    padding: '32px',
-                                    maxWidth: '800px',
-                                    width: '100%',
-                                }}
-                            >
-                                <h2
-                                    style={{
-                                        color: factionColors.PRIMARY,
-                                        fontSize: '24px',
-                                        fontWeight: 'bold',
-                                        textAlign: 'center',
-                                        marginBottom: '16px',
-                                    }}
-                                >
-                                    Replace Stratagem
-                                </h2>
-                                <p
-                                    style={{
-                                        color: '#cbd5e1',
-                                        textAlign: 'center',
-                                        marginBottom: '24px',
-                                    }}
-                                >
-                                    All stratagem slots are full. Select which stratagem to replace
-                                    with:
-                                </p>
-                                <div
-                                    style={{
-                                        backgroundColor: '#1f2937',
-                                        padding: '16px',
-                                        borderRadius: '8px',
-                                        marginBottom: '24px',
-                                        textAlign: 'center',
-                                    }}
-                                >
-                                    <div
-                                        style={{
-                                            color: factionColors.PRIMARY,
-                                            fontWeight: 'bold',
-                                            fontSize: '18px',
-                                        }}
-                                    >
-                                        {draftState.pendingStratagem.name}
-                                    </div>
-                                    <div
-                                        style={{
-                                            color: '#64748b',
-                                            fontSize: '12px',
-                                            marginTop: '4px',
-                                        }}
-                                    >
-                                        {draftState.pendingStratagem.rarity}
-                                    </div>
-                                </div>
+                    <StratagemReplacementModal
+                        isOpen={!!draftState.pendingStratagem}
+                        pendingStratagem={draftState.pendingStratagem}
+                        player={player}
+                        factionColors={factionColors}
+                        onSelectSlot={handleStratagemReplacement}
+                        onCancel={() =>
+                            dispatch(actions.updateDraftState({ pendingStratagem: null }))
+                        }
+                    />
 
-                                <div
-                                    style={{
-                                        display: 'grid',
-                                        gridTemplateColumns: 'repeat(2, 1fr)',
-                                        gap: '16px',
-                                        marginBottom: '24px',
-                                    }}
-                                >
-                                    {player.loadout.stratagems.map((sid, i) => {
-                                        const stratagem = sid ? getItemById(sid) : undefined
-                                        return (
-                                            <button
-                                                key={i}
-                                                onClick={() => handleStratagemReplacement(i)}
-                                                style={{
-                                                    backgroundColor: '#1f2937',
-                                                    border: '2px solid rgba(100, 116, 139, 0.5)',
-                                                    borderRadius: '8px',
-                                                    padding: '16px',
-                                                    cursor: 'pointer',
-                                                    transition: 'all 0.2s',
-                                                    textAlign: 'left',
-                                                }}
-                                                onMouseEnter={(e) =>
-                                                    (e.currentTarget.style.borderColor =
-                                                        factionColors.PRIMARY)
-                                                }
-                                                onMouseLeave={(e) =>
-                                                    (e.currentTarget.style.borderColor =
-                                                        'rgba(100, 116, 139, 0.5)')
-                                                }
-                                            >
-                                                <div
-                                                    style={{
-                                                        fontSize: '10px',
-                                                        color: '#64748b',
-                                                        textTransform: 'uppercase',
-                                                        marginBottom: '4px',
-                                                    }}
-                                                >
-                                                    Slot {i + 1}
-                                                </div>
-                                                <div
-                                                    style={{
-                                                        color: 'white',
-                                                        fontWeight: 'bold',
-                                                        fontSize: '14px',
-                                                    }}
-                                                >
-                                                    {stratagem?.name || 'Empty'}
-                                                </div>
-                                                {stratagem && (
-                                                    <div
-                                                        style={{
-                                                            fontSize: '11px',
-                                                            color: '#94a3b8',
-                                                            marginTop: '4px',
-                                                        }}
-                                                    >
-                                                        {stratagem.rarity}
-                                                    </div>
-                                                )}
-                                            </button>
-                                        )
-                                    })}
-                                </div>
-
-                                <button
-                                    onClick={() =>
-                                        dispatch(
-                                            actions.updateDraftState({ pendingStratagem: null }),
-                                        )
-                                    }
-                                    style={{
-                                        width: '100%',
-                                        padding: '12px',
-                                        backgroundColor: 'rgba(127, 29, 29, 0.3)',
-                                        color: '#ef4444',
-                                        border: '1px solid #7f1d1d',
-                                        borderRadius: '4px',
-                                        fontWeight: 'bold',
-                                        textTransform: 'uppercase',
-                                        cursor: 'pointer',
-                                        transition: 'all 0.2s',
-                                    }}
-                                    onMouseEnter={(e) =>
-                                        (e.currentTarget.style.backgroundColor =
-                                            'rgba(127, 29, 29, 0.5)')
-                                    }
-                                    onMouseLeave={(e) =>
-                                        (e.currentTarget.style.backgroundColor =
-                                            'rgba(127, 29, 29, 0.3)')
-                                    }
-                                >
-                                    Cancel
-                                </button>
-                            </div>
-                        </div>
-                    )}
-
-                    <div
-                        style={{
-                            width: '100%',
-                            maxWidth: '1200px',
-                            margin: '0 auto',
-                            flexGrow: 1,
-                            display: 'flex',
-                            flexDirection: 'column',
-                            alignItems: 'center',
-                            justifyContent: 'center',
-                        }}
-                    >
-                        <div style={{ textAlign: 'center', marginBottom: '40px' }}>
+                    <CenteredContent>
+                        <SectionHeader $center $marginBottom="40px">
                             {draftState.isRetrospective && (
-                                <div
-                                    style={{
-                                        backgroundColor: 'rgba(59, 130, 246, 0.15)',
-                                        border: '2px solid rgba(59, 130, 246, 0.4)',
-                                        borderRadius: '8px',
-                                        padding: '12px 24px',
-                                        marginBottom: '16px',
-                                        display: 'inline-block',
-                                    }}
-                                >
-                                    <div
-                                        style={{
-                                            color: '#3b82f6',
-                                            fontSize: '14px',
-                                            fontWeight: 'bold',
-                                            textTransform: 'uppercase',
-                                            letterSpacing: '1px',
-                                        }}
-                                    >
+                                <AlertBox $variant="info">
+                                    <AlertTitle $color="#3b82f6">
                                         🔄 RETROSPECTIVE DRAFT{' '}
                                         {(player.retrospectiveDraftsCompleted || 0) + 1}/
                                         {player.catchUpDraftsRemaining || draftHistory.length}
-                                    </div>
-                                    <div
-                                        style={{
-                                            color: '#94a3b8',
-                                            fontSize: '11px',
-                                            marginTop: '4px',
-                                        }}
-                                    >
+                                    </AlertTitle>
+                                    <AlertSubtitle>
                                         Catching up on past mission rewards • No rerolls available
-                                    </div>
-                                </div>
+                                    </AlertSubtitle>
+                                </AlertBox>
                             )}
                             {draftState.extraDraftRound > 0 && (
-                                <div
+                                <AlertBox
+                                    $variant="success"
                                     style={{
                                         backgroundColor: `${factionColors.PRIMARY}20`,
-                                        border: `2px solid ${factionColors.PRIMARY}`,
-                                        borderRadius: '8px',
-                                        padding: '12px 24px',
-                                        marginBottom: '16px',
-                                        display: 'inline-block',
+                                        borderColor: factionColors.PRIMARY,
                                     }}
                                 >
-                                    <div
-                                        style={{
-                                            color: factionColors.PRIMARY,
-                                            fontSize: '14px',
-                                            fontWeight: 'bold',
-                                            textTransform: 'uppercase',
-                                            letterSpacing: '1px',
-                                        }}
-                                    >
+                                    <AlertTitle $color={factionColors.PRIMARY}>
                                         🎁 BONUS DRAFT {draftState.extraDraftRound}/
                                         {player.extraDraftCards || 0}
-                                    </div>
-                                    <div
-                                        style={{
-                                            color: '#94a3b8',
-                                            fontSize: '11px',
-                                            marginTop: '4px',
-                                        }}
-                                    >
-                                        Priority Access Equipment
-                                    </div>
-                                </div>
+                                    </AlertTitle>
+                                    <AlertSubtitle>Priority Access Equipment</AlertSubtitle>
+                                </AlertBox>
                             )}
                             {draftState.isRedrafting && (player.redraftRounds ?? 0) > 0 && (
-                                <div
-                                    style={{
-                                        backgroundColor: 'rgba(239, 68, 68, 0.15)',
-                                        border: '2px solid rgba(239, 68, 68, 0.4)',
-                                        borderRadius: '8px',
-                                        padding: '12px 24px',
-                                        marginBottom: '16px',
-                                        display: 'inline-block',
-                                    }}
-                                >
-                                    <div
-                                        style={{
-                                            color: factionColors.PRIMARY,
-                                            fontSize: '14px',
-                                            fontWeight: 'bold',
-                                            textTransform: 'uppercase',
-                                            letterSpacing: '1px',
-                                        }}
-                                    >
+                                <AlertBox $variant="error">
+                                    <AlertTitle $color={factionColors.PRIMARY}>
                                         🔄 ASSET REINVESTMENT
-                                    </div>
-                                    <div
-                                        style={{
-                                            color: '#94a3b8',
-                                            fontSize: '11px',
-                                            marginTop: '4px',
-                                        }}
-                                    >
+                                    </AlertTitle>
+                                    <AlertSubtitle>
                                         Draft {player.redraftRounds} of {player.redraftRounds}{' '}
                                         Remaining
-                                    </div>
-                                </div>
+                                    </AlertSubtitle>
+                                </AlertBox>
                             )}
-                            <h2
-                                style={{
-                                    color: factionColors.PRIMARY,
-                                    fontSize: '14px',
-                                    fontFamily: 'monospace',
-                                    textTransform: 'uppercase',
-                                    marginBottom: '8px',
-                                    letterSpacing: '1px',
-                                }}
-                            >
+                            <PhaseSubtitle $color={factionColors.PRIMARY}>
                                 Priority Requisition Authorized
-                            </h2>
-                            <h1
-                                style={{
-                                    fontSize: '36px',
-                                    fontWeight: '900',
-                                    color: 'white',
-                                    textTransform: 'uppercase',
-                                    margin: '0 0 8px 0',
-                                }}
-                            >
-                                {player.name} <span style={{ color: '#64748b' }}>//</span> Select
-                                Upgrade
-                            </h1>
-                            <p style={{ color: '#94a3b8', margin: '0' }}>
+                            </PhaseSubtitle>
+                            <PhaseTitle>
+                                {player.name} <TitleSeparator>//</TitleSeparator> Select Upgrade
+                            </PhaseTitle>
+                            <PhaseDescription>
                                 Choose wisely. This equipment is vital for Difficulty {currentDiff}.
-                            </p>
-                        </div>
+                            </PhaseDescription>
+                        </SectionHeader>
 
                         {/* Current Loadout Overview */}
-                        <div
-                            style={{
-                                backgroundColor: 'rgba(40, 53, 72, 0.5)',
-                                borderRadius: '8px',
-                                padding: '16px 24px',
-                                marginBottom: '32px',
-                                border: '1px solid rgba(100, 116, 139, 0.3)',
-                            }}
-                        >
-                            <div
-                                style={{
-                                    fontSize: '12px',
-                                    color: '#64748b',
-                                    textTransform: 'uppercase',
-                                    letterSpacing: '1px',
-                                    marginBottom: '12px',
-                                }}
-                            >
-                                {player.name}'s Current Loadout
-                            </div>
-                            <div
-                                style={{
-                                    display: 'flex',
-                                    gap: '24px',
-                                    flexWrap: 'wrap',
-                                    justifyContent: 'center',
-                                }}
-                            >
+                        <LoadoutOverview>
+                            <LoadoutLabel>{player.name}'s Current Loadout</LoadoutLabel>
+                            <LoadoutItems>
                                 {/* Primary */}
-                                <div style={{ textAlign: 'center' }}>
-                                    <div
-                                        style={{
-                                            fontSize: '10px',
-                                            color: '#94a3b8',
-                                            marginBottom: '4px',
-                                        }}
-                                    >
-                                        Primary
-                                    </div>
-                                    <div
-                                        style={{
-                                            padding: '4px 8px',
-                                            backgroundColor: player.loadout.primary
-                                                ? 'rgba(100, 116, 139, 0.3)'
-                                                : 'rgba(100, 116, 139, 0.1)',
-                                            borderRadius: '4px',
-                                            fontSize: '10px',
-                                            color: player.loadout.primary
+                                <LoadoutSlot>
+                                    <LoadoutSlotLabel>Primary</LoadoutSlotLabel>
+                                    <LoadoutSlotValue
+                                        $hasItem={!!player.loadout.primary}
+                                        $color={
+                                            player.loadout.primary
                                                 ? factionColors.PRIMARY
-                                                : '#64748b',
-                                        }}
+                                                : undefined
+                                        }
                                     >
                                         {player.loadout.primary
                                             ? getItemById(player.loadout.primary)?.name || '—'
                                             : '—'}
-                                    </div>
-                                </div>
+                                    </LoadoutSlotValue>
+                                </LoadoutSlot>
 
                                 {/* Stratagems */}
-                                <div style={{ textAlign: 'center' }}>
-                                    <div
-                                        style={{
-                                            fontSize: '10px',
-                                            color: '#94a3b8',
-                                            marginBottom: '4px',
-                                        }}
-                                    >
-                                        Stratagems
-                                    </div>
-                                    <div style={{ display: 'flex', gap: '6px' }}>
+                                <LoadoutSlot>
+                                    <LoadoutSlotLabel>Stratagems</LoadoutSlotLabel>
+                                    <StratagemGap>
                                         {player.loadout.stratagems.map((sid, i) => {
                                             const strat = sid ? getItemById(sid) : null
                                             return (
-                                                <div
+                                                <LoadoutSlotValue
                                                     key={i}
-                                                    style={{
-                                                        padding: '4px 8px',
-                                                        backgroundColor: strat
-                                                            ? 'rgba(100, 116, 139, 0.3)'
-                                                            : 'rgba(100, 116, 139, 0.1)',
-                                                        borderRadius: '4px',
-                                                        fontSize: '10px',
-                                                        color: strat ? '#cbd5e1' : '#64748b',
-                                                        maxWidth: '80px',
-                                                        overflow: 'hidden',
-                                                        textOverflow: 'ellipsis',
-                                                        whiteSpace: 'nowrap',
-                                                    }}
+                                                    $hasItem={!!strat}
                                                     title={strat?.name || 'Empty'}
                                                 >
                                                     {strat?.name || '—'}
-                                                </div>
+                                                </LoadoutSlotValue>
                                             )
                                         })}
-                                    </div>
-                                </div>
+                                    </StratagemGap>
+                                </LoadoutSlot>
 
                                 {/* Secondary */}
-                                <div style={{ textAlign: 'center' }}>
-                                    <div
-                                        style={{
-                                            fontSize: '10px',
-                                            color: '#94a3b8',
-                                            marginBottom: '4px',
-                                        }}
-                                    >
-                                        Secondary
-                                    </div>
-                                    <div
-                                        style={{
-                                            padding: '4px 8px',
-                                            backgroundColor: player.loadout.secondary
-                                                ? 'rgba(100, 116, 139, 0.3)'
-                                                : 'rgba(100, 116, 139, 0.1)',
-                                            borderRadius: '4px',
-                                            fontSize: '10px',
-                                            color: player.loadout.secondary ? '#cbd5e1' : '#64748b',
-                                        }}
-                                    >
+                                <LoadoutSlot>
+                                    <LoadoutSlotLabel>Secondary</LoadoutSlotLabel>
+                                    <LoadoutSlotValue $hasItem={!!player.loadout.secondary}>
                                         {player.loadout.secondary
                                             ? getItemById(player.loadout.secondary)?.name || '—'
                                             : '—'}
-                                    </div>
-                                </div>
+                                    </LoadoutSlotValue>
+                                </LoadoutSlot>
 
                                 {/* Grenade */}
-                                <div style={{ textAlign: 'center' }}>
-                                    <div
-                                        style={{
-                                            fontSize: '10px',
-                                            color: '#94a3b8',
-                                            marginBottom: '4px',
-                                        }}
-                                    >
-                                        Grenade
-                                    </div>
-                                    <div
-                                        style={{
-                                            padding: '4px 8px',
-                                            backgroundColor: player.loadout.grenade
-                                                ? 'rgba(100, 116, 139, 0.3)'
-                                                : 'rgba(100, 116, 139, 0.1)',
-                                            borderRadius: '4px',
-                                            fontSize: '10px',
-                                            color: player.loadout.grenade ? '#cbd5e1' : '#64748b',
-                                        }}
-                                    >
+                                <LoadoutSlot>
+                                    <LoadoutSlotLabel>Grenade</LoadoutSlotLabel>
+                                    <LoadoutSlotValue $hasItem={!!player.loadout.grenade}>
                                         {player.loadout.grenade
                                             ? getItemById(player.loadout.grenade)?.name || '—'
                                             : '—'}
-                                    </div>
-                                </div>
+                                    </LoadoutSlotValue>
+                                </LoadoutSlot>
 
                                 {/* Armor */}
-                                <div style={{ textAlign: 'center' }}>
-                                    <div
-                                        style={{
-                                            fontSize: '10px',
-                                            color: '#94a3b8',
-                                            marginBottom: '4px',
-                                        }}
-                                    >
-                                        Armor
-                                    </div>
-                                    <div
-                                        style={{
-                                            padding: '4px 8px',
-                                            backgroundColor: player.loadout.armor
-                                                ? 'rgba(100, 116, 139, 0.3)'
-                                                : 'rgba(100, 116, 139, 0.1)',
-                                            borderRadius: '4px',
-                                            fontSize: '10px',
-                                            color: player.loadout.armor ? '#cbd5e1' : '#64748b',
-                                        }}
-                                    >
+                                <LoadoutSlot>
+                                    <LoadoutSlotLabel>Armor</LoadoutSlotLabel>
+                                    <LoadoutSlotValue $hasItem={!!player.loadout.armor}>
                                         {player.loadout.armor
                                             ? getItemById(player.loadout.armor)?.name || '—'
                                             : '—'}
-                                    </div>
-                                </div>
+                                    </LoadoutSlotValue>
+                                </LoadoutSlot>
 
                                 {/* Booster */}
                                 {player.loadout.booster && (
-                                    <div style={{ textAlign: 'center' }}>
-                                        <div
-                                            style={{
-                                                fontSize: '10px',
-                                                color: '#94a3b8',
-                                                marginBottom: '4px',
-                                            }}
-                                        >
-                                            Booster
-                                        </div>
-                                        <div
-                                            style={{
-                                                padding: '4px 8px',
-                                                backgroundColor: 'rgba(34, 197, 94, 0.2)',
-                                                borderRadius: '4px',
-                                                fontSize: '10px',
-                                                color: '#22c55e',
-                                            }}
-                                        >
+                                    <LoadoutSlot>
+                                        <LoadoutSlotLabel>Booster</LoadoutSlotLabel>
+                                        <LoadoutSlotValue $hasItem $special>
                                             {getItemById(player.loadout.booster)?.name || '—'}
-                                        </div>
-                                    </div>
+                                        </LoadoutSlotValue>
+                                    </LoadoutSlot>
                                 )}
-                            </div>
-                        </div>
+                            </LoadoutItems>
+                        </LoadoutOverview>
 
                         {/* Filter out any null/undefined items that may have been stripped during sync */}
                         {(() => {
@@ -5606,344 +3299,82 @@ function HelldiversRoguelikeApp() {
                                         : Boolean(item.passive)),
                             )
                             return (
-                                <div
-                                    style={{
-                                        display: 'grid',
-                                        gridTemplateColumns: `repeat(${Math.min(validCards.length, 4)}, 1fr)`,
-                                        gap: '24px',
-                                        marginBottom: '48px',
-                                        opacity: isMyTurn ? 1 : 0.6,
-                                        pointerEvents: isMyTurn ? 'auto' : 'none',
-                                    }}
+                                <ItemGrid
+                                    $columns={Math.min(validCards.length, 4)}
+                                    $disabled={!isMyTurn}
                                 >
                                     {validCards.map((item, idx) => (
                                         <ItemCard
                                             key={`${isItem(item) ? item.id : item.passive}-${idx}`}
                                             item={item}
+                                            factionColors={factionColors}
                                             onSelect={isMyTurn ? handleDraftPick : undefined}
                                             onRemove={isMyTurn ? removeCardFromDraft : undefined}
                                         />
                                     ))}
-                                </div>
+                                </ItemGrid>
                             )
                         })()}
 
                         {/* Not your turn message */}
                         {!isMyTurn && (
-                            <div
-                                style={{
-                                    textAlign: 'center',
-                                    marginBottom: '32px',
-                                    padding: '16px 32px',
-                                    backgroundColor: 'rgba(100, 116, 139, 0.2)',
-                                    border: '2px solid rgba(100, 116, 139, 0.4)',
-                                    borderRadius: '8px',
-                                    display: 'inline-block',
-                                    margin: '0 auto 32px auto',
-                                }}
-                            >
-                                <div
-                                    style={{
-                                        color: '#94a3b8',
-                                        fontSize: '16px',
-                                        fontWeight: 'bold',
-                                        textTransform: 'uppercase',
-                                    }}
-                                >
-                                    Waiting for {player.name} to draft...
-                                </div>
-                            </div>
+                            <WaitingMessage>
+                                <WaitingText>Waiting for {player.name} to draft...</WaitingText>
+                            </WaitingMessage>
                         )}
 
                         {/* Only show draft controls if it's your turn */}
                         {isMyTurn && (
                             <>
-                                <div
-                                    style={{
-                                        display: 'flex',
-                                        justifyContent: 'center',
-                                        gap: '24px',
-                                    }}
-                                >
+                                <ButtonRow>
                                     {/* Disable rerolling during retrospective drafts */}
                                     {!draftState.isRetrospective && (
-                                        <button
+                                        <ActionButton
                                             onClick={() => rerollDraft(1)}
                                             disabled={requisition < 1}
-                                            style={{
-                                                display: 'flex',
-                                                alignItems: 'center',
-                                                gap: '12px',
-                                                padding: '12px 32px',
-                                                borderRadius: '4px',
-                                                fontWeight: 'bold',
-                                                textTransform: 'uppercase',
-                                                letterSpacing: '1px',
-                                                border:
-                                                    requisition >= 1
-                                                        ? '2px solid white'
-                                                        : '2px solid #334155',
-                                                backgroundColor: 'transparent',
-                                                color: requisition >= 1 ? 'white' : '#64748b',
-                                                cursor:
-                                                    requisition >= 1 ? 'pointer' : 'not-allowed',
-                                                transition: 'all 0.2s',
-                                            }}
+                                            $variant="outline"
+                                            $disabled={requisition < 1}
                                         >
                                             <RefreshCw size={20} />
                                             Reroll All Cards (-1 Req)
-                                        </button>
+                                        </ActionButton>
                                     )}
-                                    <button
-                                        onClick={handleSkipDraft}
-                                        style={{
-                                            display: 'flex',
-                                            alignItems: 'center',
-                                            gap: '12px',
-                                            padding: '12px 32px',
-                                            borderRadius: '4px',
-                                            fontWeight: 'bold',
-                                            textTransform: 'uppercase',
-                                            letterSpacing: '1px',
-                                            border: '2px solid #64748b',
-                                            backgroundColor: 'transparent',
-                                            color: '#94a3b8',
-                                            cursor: 'pointer',
-                                            transition: 'all 0.2s',
-                                        }}
-                                        onMouseEnter={(e) => {
-                                            e.currentTarget.style.borderColor = '#94a3b8'
-                                            e.currentTarget.style.color = 'white'
-                                        }}
-                                        onMouseLeave={(e) => {
-                                            e.currentTarget.style.borderColor = '#64748b'
-                                            e.currentTarget.style.color = '#94a3b8'
-                                        }}
-                                    >
-                                        Skip Draft
-                                    </button>
-                                </div>
+                                    <SkipButton onClick={handleSkipDraft}>Skip Draft</SkipButton>
+                                </ButtonRow>
 
-                                <div style={{ marginTop: '16px', textAlign: 'center' }}>
-                                    <p style={{ color: '#64748b', fontSize: '12px', margin: '0' }}>
-                                        Click the × on a card to remove just that card (free)
-                                        <br />
-                                        Or use "Reroll All Cards" to reroll the entire hand
-                                    </p>
-                                </div>
+                                <HintText $center $marginTop={SPACING.lg}>
+                                    Click the × on a card to remove just that card (free)
+                                    <br />
+                                    Or use "Reroll All Cards" to reroll the entire hand
+                                </HintText>
                             </>
                         )}
 
-                        <div style={{ marginTop: '32px', textAlign: 'center' }}>
-                            <span style={{ color: factionColors.PRIMARY, fontFamily: 'monospace' }}>
+                        <RequisitionDisplay>
+                            <MonoText $color={factionColors.PRIMARY}>
                                 Current Requisition: {Math.floor(requisition)} R
-                            </span>
-                        </div>
-                    </div>
-                </div>
+                            </MonoText>
+                        </RequisitionDisplay>
+                    </CenteredContent>
+                </ContentWrapper>
 
                 {/* Remove Card Confirmation Modal */}
-                {showRemoveCardConfirm && (
-                    <div
-                        style={{
-                            position: 'fixed',
-                            top: 0,
-                            left: 0,
-                            right: 0,
-                            bottom: 0,
-                            backgroundColor: 'rgba(0, 0, 0, 0.85)',
-                            display: 'flex',
-                            alignItems: 'center',
-                            justifyContent: 'center',
-                            zIndex: 2000,
-                            padding: '24px',
-                        }}
-                    >
-                        <div
-                            style={{
-                                backgroundColor: '#283548',
-                                borderRadius: '12px',
-                                border: '3px solid #f59e0b',
-                                padding: '32px',
-                                maxWidth: '600px',
-                                width: '100%',
-                                boxShadow: '0 8px 32px rgba(0, 0, 0, 0.5)',
-                            }}
-                        >
-                            <h2
-                                style={{
-                                    color: '#f59e0b',
-                                    fontSize: '28px',
-                                    fontWeight: 'bold',
-                                    textAlign: 'center',
-                                    marginBottom: '24px',
-                                    textTransform: 'uppercase',
-                                    letterSpacing: '0.05em',
-                                }}
-                            >
-                                ⚠️ Remove Card
-                            </h2>
-
-                            <div
-                                style={{
-                                    backgroundColor: '#1f2937',
-                                    padding: '20px',
-                                    borderRadius: '8px',
-                                    marginBottom: '24px',
-                                    border: '1px solid rgba(245, 158, 11, 0.3)',
-                                }}
-                            >
-                                <p
-                                    style={{
-                                        color: '#cbd5e1',
-                                        fontSize: '16px',
-                                        lineHeight: '1.6',
-                                        marginBottom: '16px',
-                                    }}
-                                >
-                                    <strong style={{ color: '#f59e0b' }}>
-                                        ⚠️ Important Notice:
-                                    </strong>
-                                </p>
-                                <p
-                                    style={{
-                                        color: '#cbd5e1',
-                                        fontSize: '15px',
-                                        lineHeight: '1.6',
-                                        marginBottom: '12px',
-                                    }}
-                                >
-                                    This feature should{' '}
-                                    <strong style={{ color: '#fbbf24' }}>only be used</strong> if
-                                    you misconfigured your warbonds and do not have access to an
-                                    item that appeared in your draft.
-                                </p>
-                                <p
-                                    style={{
-                                        color: '#94a3b8',
-                                        fontSize: '14px',
-                                        lineHeight: '1.6',
-                                        fontStyle: 'italic',
-                                    }}
-                                >
-                                    The card will be replaced with a new random card from your pool.
-                                    This action cannot be undone.
-                                </p>
-                            </div>
-
-                            {pendingCardRemoval && (
-                                <div
-                                    style={{
-                                        backgroundColor: '#1f2937',
-                                        padding: '16px',
-                                        borderRadius: '8px',
-                                        marginBottom: '24px',
-                                        textAlign: 'center',
-                                    }}
-                                >
-                                    <p
-                                        style={{
-                                            color: '#94a3b8',
-                                            fontSize: '14px',
-                                            marginBottom: '8px',
-                                        }}
-                                    >
-                                        Removing:
-                                    </p>
-                                    <p
-                                        style={{
-                                            color: '#F5C642',
-                                            fontSize: '18px',
-                                            fontWeight: 'bold',
-                                        }}
-                                    >
-                                        {isItem(pendingCardRemoval)
-                                            ? pendingCardRemoval.name
-                                            : isArmorCombo(pendingCardRemoval)
-                                              ? getArmorComboDisplayName(
-                                                    pendingCardRemoval.passive,
-                                                    pendingCardRemoval.armorClass,
-                                                )
-                                              : 'Unknown Item'}
-                                    </p>
-                                </div>
-                            )}
-
-                            <div style={{ display: 'flex', gap: '12px' }}>
-                                <button
-                                    onClick={() => {
-                                        setShowRemoveCardConfirm(false)
-                                        setPendingCardRemoval(null)
-                                    }}
-                                    style={{
-                                        flex: 1,
-                                        padding: '14px 24px',
-                                        fontSize: '16px',
-                                        fontWeight: 'bold',
-                                        textTransform: 'uppercase',
-                                        letterSpacing: '0.05em',
-                                        borderRadius: '6px',
-                                        border: '2px solid #64748b',
-                                        backgroundColor: 'transparent',
-                                        color: '#cbd5e1',
-                                        cursor: 'pointer',
-                                        transition: 'all 0.2s',
-                                    }}
-                                    onMouseEnter={(e) => {
-                                        e.currentTarget.style.backgroundColor =
-                                            'rgba(100, 116, 139, 0.2)'
-                                        e.currentTarget.style.borderColor = '#94a3b8'
-                                    }}
-                                    onMouseLeave={(e) => {
-                                        e.currentTarget.style.backgroundColor = 'transparent'
-                                        e.currentTarget.style.borderColor = '#64748b'
-                                    }}
-                                >
-                                    Cancel
-                                </button>
-                                <button
-                                    onClick={confirmRemoveCardFromDraft}
-                                    style={{
-                                        flex: 1,
-                                        padding: '14px 24px',
-                                        fontSize: '16px',
-                                        fontWeight: 'bold',
-                                        textTransform: 'uppercase',
-                                        letterSpacing: '0.05em',
-                                        borderRadius: '6px',
-                                        border: '2px solid #f59e0b',
-                                        backgroundColor: '#f59e0b',
-                                        color: '#1f2937',
-                                        cursor: 'pointer',
-                                        transition: 'all 0.2s',
-                                    }}
-                                    onMouseEnter={(e) => {
-                                        e.currentTarget.style.backgroundColor = '#d97706'
-                                        e.currentTarget.style.borderColor = '#d97706'
-                                        e.currentTarget.style.transform = 'translateY(-1px)'
-                                        e.currentTarget.style.boxShadow =
-                                            '0 4px 12px rgba(245, 158, 11, 0.4)'
-                                    }}
-                                    onMouseLeave={(e) => {
-                                        e.currentTarget.style.backgroundColor = '#f59e0b'
-                                        e.currentTarget.style.borderColor = '#f59e0b'
-                                        e.currentTarget.style.transform = 'translateY(0)'
-                                        e.currentTarget.style.boxShadow = 'none'
-                                    }}
-                                >
-                                    Confirm Remove
-                                </button>
-                            </div>
-                        </div>
-                    </div>
-                )}
-            </div>
+                <RemoveCardConfirmModal
+                    isOpen={showRemoveCardConfirm}
+                    pendingCardRemoval={pendingCardRemoval}
+                    onCancel={() => {
+                        setShowRemoveCardConfirm(false)
+                        setPendingCardRemoval(null)
+                    }}
+                    onConfirm={confirmRemoveCardFromDraft}
+                />
+            </PageWrapper>
         )
     }
 
     // DASHBOARD PHASE
     return (
-        <div style={{ minHeight: '100vh', paddingBottom: '80px' }}>
+        <PageWrapper $withFooterMargin>
             {/* MULTIPLAYER STATUS BAR */}
             {isMultiplayer && (
                 <MultiplayerStatusBar gameConfig={gameConfig} onDisconnect={disconnect} />
@@ -6131,15 +3562,6 @@ function HelldiversRoguelikeApp() {
                                 }}
                             >
                                 {[1, 2, 3, 4, 5].map((n) => {
-                                    // Calculate max allowed stars based on current difficulty
-                                    // D1-D2: max 2 stars, D3-D4: max 3 stars, D5-D6: max 4 stars, D7+: max 5 stars
-                                    const getMaxStarsForDifficulty = (diff: number) => {
-                                        if (diff <= 2) return 2
-                                        if (diff <= 4) return 3
-                                        if (diff <= 6) return 4
-                                        return 5
-                                    }
-
                                     const maxStars = getMaxStarsForDifficulty(currentDiff)
                                     const isDisabled = n > maxStars || (isMultiplayer && !isHost)
 
@@ -7209,7 +4631,7 @@ function HelldiversRoguelikeApp() {
 
             {/* Run History Modal */}
             <RunHistoryModal isOpen={showRunHistory} onClose={() => setShowRunHistory(false)} />
-        </div>
+        </PageWrapper>
     )
 }
 

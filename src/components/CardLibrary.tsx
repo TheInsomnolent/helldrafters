@@ -1,249 +1,104 @@
 import { Link } from 'react-router-dom'
+import styled from 'styled-components'
 import { MASTER_DB } from '../data/itemsByWarbond'
-import { TYPE, RARITY, Rarity } from '../constants/types'
-import { ARMOR_PASSIVE_DESCRIPTIONS } from '../constants/armorPassives'
 import { getWarbondById } from '../constants/warbonds'
-import { getItemIconUrl } from '../utils/iconHelpers'
 import { getFactionColors } from '../constants/theme'
-import type { Item } from '../types'
+import { ItemCard } from './ItemCard'
+import { Flex } from '../styles'
+import type { Item, DraftHandItem } from '../types'
 
-interface RarityBadgeProps {
-    rarity: Rarity
-}
+// ============================================================================
+// STYLED COMPONENTS
+// ============================================================================
 
-// Reusable RarityBadge component
-const RarityBadge = ({ rarity }: RarityBadgeProps) => {
-    const rarityColors: Record<string, string> = {
-        [RARITY.COMMON]: '#64748b',
-        [RARITY.UNCOMMON]: '#3b82f6',
-        [RARITY.RARE]: '#a855f7',
-        [RARITY.LEGENDARY]: '#f59e0b',
+const PageWrapper = styled.div`
+    min-height: 100vh;
+    background-color: ${({ theme }) => theme.colors.bgMain};
+    color: ${({ theme }) => theme.colors.textPrimary};
+    padding: ${({ theme }) => theme.spacing.xl};
+`
+
+const HeaderSection = styled.div<{ $borderColor: string }>`
+    text-align: center;
+    margin-bottom: ${({ theme }) => theme.spacing.xxl};
+    padding: ${({ theme }) => theme.spacing.xl};
+    background-color: ${({ theme }) => theme.colors.cardBg};
+    border-radius: ${({ theme }) => theme.radii.lg};
+    border: 2px solid ${({ $borderColor }) => $borderColor};
+`
+
+const HeaderTitle = styled.h1<{ $color: string }>`
+    font-size: 36px;
+    font-weight: ${({ theme }) => theme.fontWeights.bold};
+    color: ${({ $color }) => $color};
+    margin-bottom: ${({ theme }) => theme.spacing.md};
+    text-transform: uppercase;
+    letter-spacing: 2px;
+`
+
+const HeaderSubtitle = styled.p`
+    font-size: ${({ theme }) => theme.fontSizes.sm};
+    color: ${({ theme }) => theme.colors.textSecondary};
+    margin-bottom: ${({ theme }) => theme.spacing.md};
+`
+
+const StatsContainer = styled(Flex)`
+    justify-content: center;
+    gap: ${({ theme }) => theme.spacing.xl};
+    font-size: ${({ theme }) => theme.fontSizes.sm};
+    color: ${({ theme }) => theme.colors.textSecondary};
+`
+
+const StatValue = styled.strong`
+    color: ${({ theme }) => theme.colors.textPrimary};
+`
+
+const WarbondSection = styled.section`
+    margin-bottom: ${({ theme }) => theme.spacing.xxl};
+`
+
+const WarbondTitle = styled.h2<{ $color: string }>`
+    font-size: ${({ theme }) => theme.fontSizes['2xl']};
+    font-weight: ${({ theme }) => theme.fontWeights.bold};
+    color: ${({ $color }) => $color};
+    margin-bottom: ${({ theme }) => theme.spacing.xl};
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    padding-bottom: ${({ theme }) => theme.spacing.md};
+    border-bottom: 2px solid rgba(100, 116, 139, 0.3);
+`
+
+const ItemGrid = styled.div`
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+    gap: ${({ theme }) => theme.spacing.xl};
+`
+
+const FooterSection = styled.div`
+    text-align: center;
+    margin-top: ${({ theme }) => theme.spacing.xxl};
+    padding-top: ${({ theme }) => theme.spacing.xl};
+    border-top: 1px solid rgba(100, 116, 139, 0.3);
+`
+
+const BackLink = styled(Link)<{ $color: string }>`
+    color: ${({ $color }) => $color};
+    text-decoration: none;
+    font-size: ${({ theme }) => theme.fontSizes.md};
+    font-weight: ${({ theme }) => theme.fontWeights.bold};
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    transition: ${({ theme }) => theme.transitions.normal};
+
+    &:hover {
+        opacity: 0.8;
     }
+`
 
-    const color = rarityColors[rarity] || '#64748b'
+// ============================================================================
+// MAIN COMPONENT
+// ============================================================================
 
-    return (
-        <div
-            style={{
-                fontSize: '10px',
-                fontWeight: 'bold',
-                color: 'white',
-                backgroundColor: color,
-                padding: '4px 8px',
-                borderRadius: '4px',
-                textTransform: 'uppercase',
-                letterSpacing: '0.5px',
-            }}
-        >
-            {rarity}
-        </div>
-    )
-}
-
-interface ItemCardProps {
-    item: Item
-}
-
-// Card component for displaying individual items
-const ItemCard = ({ item }: ItemCardProps) => {
-    const factionColors = getFactionColors('terminid')
-
-    if (!item || !item.name) {
-        return null
-    }
-
-    const displayItem = item
-    const displayName = item.name
-
-    let armorPassiveDescription = null
-    let armorPassiveKey = null
-    const isArmorItem = item?.type === TYPE.ARMOR
-
-    if (isArmorItem) {
-        armorPassiveKey = item.passive
-        if (armorPassiveKey) {
-            const description = ARMOR_PASSIVE_DESCRIPTIONS[armorPassiveKey]
-            armorPassiveDescription = description || 'Passive effect details unavailable.'
-        }
-    }
-
-    // Get warbond info for display
-    const warbondId = displayItem.warbond
-    const isSuperstore = displayItem.superstore
-    const warbondInfo = warbondId ? getWarbondById(warbondId) : null
-    const sourceName = isSuperstore ? 'Superstore' : warbondInfo?.name || 'Unknown'
-    const baseTags: string[] = [...(displayItem.tags || [])]
-
-    // Show armor class in tags
-    const armorClass = item.armorClass
-        ? item.armorClass.slice(0, 1).toUpperCase() + item.armorClass.slice(1)
-        : null
-    if (armorClass && !baseTags.includes(armorClass)) {
-        baseTags.push(armorClass)
-    }
-    const tags = baseTags
-
-    // Get item icon URL
-    const iconUrl = getItemIconUrl(displayItem)
-
-    return (
-        <div
-            style={{
-                position: 'relative',
-                backgroundColor: '#283548',
-                border: '2px solid rgba(100, 116, 139, 0.5)',
-                padding: '16px',
-                borderRadius: '8px',
-                display: 'flex',
-                flexDirection: 'column',
-                minHeight: '280px',
-                width: '280px',
-                flexShrink: 0,
-            }}
-        >
-            <div
-                style={{
-                    display: 'flex',
-                    justifyContent: 'space-between',
-                    alignItems: 'flex-start',
-                    marginBottom: '8px',
-                }}
-            >
-                <RarityBadge rarity={displayItem.rarity} />
-                <div
-                    style={{
-                        color: factionColors.PRIMARY,
-                        fontSize: '12px',
-                        fontFamily: 'monospace',
-                    }}
-                >
-                    {displayItem.type}
-                </div>
-            </div>
-
-            {/* Item Icon */}
-            {iconUrl && (
-                <div
-                    style={{
-                        display: 'flex',
-                        justifyContent: 'center',
-                        alignItems: 'center',
-                        marginBottom: '12px',
-                        height: '80px',
-                        backgroundColor: 'rgba(0, 0, 0, 0.2)',
-                        borderRadius: '4px',
-                        padding: '8px',
-                    }}
-                >
-                    <img
-                        src={iconUrl}
-                        alt={displayName}
-                        style={{
-                            maxHeight: '100%',
-                            maxWidth: '100%',
-                            objectFit: 'contain',
-                        }}
-                        onError={(e) => {
-                            ;(e.target as HTMLImageElement).style.display = 'none'
-                        }}
-                    />
-                </div>
-            )}
-
-            <h3
-                style={{
-                    color: 'white',
-                    fontWeight: 'bold',
-                    fontSize: '18px',
-                    lineHeight: '1.2',
-                    marginBottom: '4px',
-                    wordBreak: 'break-word',
-                }}
-            >
-                {displayName}
-            </h3>
-
-            {/* Warbond Source */}
-            <div
-                style={{
-                    fontSize: '10px',
-                    color: isSuperstore ? '#c084fc' : '#60a5fa',
-                    fontWeight: 'bold',
-                    textTransform: 'uppercase',
-                    letterSpacing: '0.5px',
-                    marginBottom: '8px',
-                }}
-            >
-                {sourceName}
-            </div>
-
-            <div style={{ flexGrow: 1 }}>
-                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px' }}>
-                    {tags.map((tag: string, idx: number) => (
-                        <span
-                            key={`${tag}-${idx}`}
-                            style={{
-                                fontSize: '10px',
-                                backgroundColor: 'rgba(51, 65, 85, 0.5)',
-                                color: '#cbd5e1',
-                                padding: '2px 4px',
-                                borderRadius: '2px',
-                                border: '1px solid rgba(71, 85, 105, 0.5)',
-                            }}
-                        >
-                            {tag}
-                        </span>
-                    ))}
-                </div>
-                {armorPassiveDescription && (
-                    <div style={{ marginTop: '10px' }}>
-                        <div
-                            style={{
-                                color: '#94a3b8',
-                                fontSize: '9px',
-                                textTransform: 'uppercase',
-                                letterSpacing: '1px',
-                            }}
-                        >
-                            Armor Passive - {armorPassiveKey}
-                        </div>
-                        <div
-                            style={{
-                                color: '#cbd5e1',
-                                fontSize: '11px',
-                                lineHeight: '1.4',
-                                marginTop: '4px',
-                            }}
-                        >
-                            {armorPassiveDescription}
-                        </div>
-                    </div>
-                )}
-            </div>
-
-            <div
-                style={{
-                    marginTop: '16px',
-                    paddingTop: '16px',
-                    borderTop: '1px solid rgba(71, 85, 105, 0.5)',
-                }}
-            >
-                <div
-                    style={{
-                        color: '#94a3b8',
-                        fontSize: '9px',
-                        textTransform: 'uppercase',
-                        letterSpacing: '1px',
-                    }}
-                >
-                    Item ID: {item.id}
-                </div>
-            </div>
-        </div>
-    )
-}
-
-// Main CardLibrary component
 export default function CardLibrary() {
     const factionColors = getFactionColors('terminid')
 
@@ -261,63 +116,20 @@ export default function CardLibrary() {
     const sortedWarbonds = Object.keys(itemsByWarbond).sort()
 
     return (
-        <div
-            style={{
-                minHeight: '100vh',
-                backgroundColor: '#0f172a',
-                color: 'white',
-                padding: '20px',
-            }}
-        >
+        <PageWrapper>
             {/* Header */}
-            <div
-                style={{
-                    textAlign: 'center',
-                    marginBottom: '40px',
-                    padding: '20px',
-                    backgroundColor: '#1e293b',
-                    borderRadius: '8px',
-                    border: `2px solid ${factionColors.PRIMARY}`,
-                }}
-            >
-                <h1
-                    style={{
-                        fontSize: '36px',
-                        fontWeight: 'bold',
-                        color: factionColors.PRIMARY,
-                        marginBottom: '10px',
-                        textTransform: 'uppercase',
-                        letterSpacing: '2px',
-                    }}
-                >
-                    Card Library
-                </h1>
-                <p
-                    style={{
-                        fontSize: '14px',
-                        color: '#94a3b8',
-                        marginBottom: '10px',
-                    }}
-                >
-                    Development Route - All Items from All Warbonds
-                </p>
-                <div
-                    style={{
-                        display: 'flex',
-                        justifyContent: 'center',
-                        gap: '20px',
-                        fontSize: '12px',
-                        color: '#cbd5e1',
-                    }}
-                >
+            <HeaderSection $borderColor={factionColors.PRIMARY}>
+                <HeaderTitle $color={factionColors.PRIMARY}>Card Library</HeaderTitle>
+                <HeaderSubtitle>Development Route - All Items from All Warbonds</HeaderSubtitle>
+                <StatsContainer>
                     <div>
-                        Total Items: <strong>{MASTER_DB.length}</strong>
+                        Total Items: <StatValue>{MASTER_DB.length}</StatValue>
                     </div>
                     <div>
-                        Warbonds: <strong>{sortedWarbonds.length}</strong>
+                        Warbonds: <StatValue>{sortedWarbonds.length}</StatValue>
                     </div>
-                </div>
-            </div>
+                </StatsContainer>
+            </HeaderSection>
 
             {/* Items grouped by warbond */}
             {sortedWarbonds.map((warbondId) => {
@@ -325,62 +137,33 @@ export default function CardLibrary() {
                 const warbondInfo =
                     warbondId === 'superstore' ? { name: 'Superstore' } : getWarbondById(warbondId)
                 const warbondName = warbondInfo?.name || warbondId
+                const warbondColor = warbondId === 'superstore' ? '#c084fc' : '#60a5fa'
 
                 return (
-                    <div key={warbondId} style={{ marginBottom: '40px' }}>
-                        <h2
-                            style={{
-                                fontSize: '24px',
-                                fontWeight: 'bold',
-                                color: warbondId === 'superstore' ? '#c084fc' : '#60a5fa',
-                                marginBottom: '20px',
-                                textTransform: 'uppercase',
-                                letterSpacing: '1px',
-                                paddingBottom: '10px',
-                                borderBottom: '2px solid rgba(100, 116, 139, 0.3)',
-                            }}
-                        >
+                    <WarbondSection key={warbondId}>
+                        <WarbondTitle $color={warbondColor}>
                             {warbondName} ({items.length} items)
-                        </h2>
+                        </WarbondTitle>
 
-                        <div
-                            style={{
-                                display: 'grid',
-                                gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))',
-                                gap: '20px',
-                            }}
-                        >
+                        <ItemGrid>
                             {items.map((item) => (
-                                <ItemCard key={item.id} item={item} />
+                                <ItemCard
+                                    key={item.id}
+                                    item={item as DraftHandItem}
+                                    factionColors={factionColors}
+                                />
                             ))}
-                        </div>
-                    </div>
+                        </ItemGrid>
+                    </WarbondSection>
                 )
             })}
 
             {/* Back to home link */}
-            <div
-                style={{
-                    textAlign: 'center',
-                    marginTop: '40px',
-                    paddingTop: '20px',
-                    borderTop: '1px solid rgba(100, 116, 139, 0.3)',
-                }}
-            >
-                <Link
-                    to="/"
-                    style={{
-                        color: factionColors.PRIMARY,
-                        textDecoration: 'none',
-                        fontSize: '16px',
-                        fontWeight: 'bold',
-                        textTransform: 'uppercase',
-                        letterSpacing: '1px',
-                    }}
-                >
+            <FooterSection>
+                <BackLink to="/" $color={factionColors.PRIMARY}>
                     ← Back to Game
-                </Link>
-            </div>
-        </div>
+                </BackLink>
+            </FooterSection>
+        </PageWrapper>
     )
 }

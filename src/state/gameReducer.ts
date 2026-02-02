@@ -401,7 +401,7 @@ interface SetRunAnalyticsDataAction extends BaseAction<typeof types.SET_RUN_ANAL
     payload: RunAnalyticsData | null
 }
 
-type GameAction =
+export type GameAction =
     | SetPhaseAction
     | UpdateGameConfigAction
     | SetGameConfigAction
