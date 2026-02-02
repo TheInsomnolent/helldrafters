@@ -14,7 +14,9 @@ import {
     Tooltip,
     ResponsiveContainer,
 } from 'recharts'
+import styled from 'styled-components'
 import { COLORS } from '../../constants/theme'
+import { Card, Text, Flex } from '../../styles'
 import type { SampleSnapshot, MissionResult } from '../../state/analyticsStore'
 
 // Sample rarity colors matching the game UI
@@ -30,6 +32,56 @@ const SAMPLE_ICONS = {
     rare: 'https://helldivers.wiki.gg/images/Rare_Sample_Logo.svg',
     superRare: 'https://helldivers.wiki.gg/images/Super_Sample_Logo.svg',
 }
+
+// ============================================================================
+// STYLED COMPONENTS
+// ============================================================================
+
+const ChartCard = styled(Card)`
+    background-color: ${({ theme }) => theme.colors.cardInner};
+    border-radius: ${({ theme }) => theme.radii.lg};
+    padding: ${({ theme }) => theme.spacing.lg};
+    border: 1px solid ${({ theme }) => theme.colors.cardBorder};
+`
+
+const ChartTitle = styled.h3`
+    color: ${({ theme }) => theme.colors.textPrimary};
+    margin: 0 0 16px 0;
+    font-size: 14px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+`
+
+const EmptyState = styled.div<{ $height: number }>`
+    height: ${({ $height }) => $height}px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: ${({ theme }) => theme.colors.textMuted};
+    background-color: ${({ theme }) => theme.colors.cardInner};
+    border-radius: ${({ theme }) => theme.radii.lg};
+`
+
+const ChartTooltip = styled.div`
+    background-color: ${({ theme }) => theme.colors.cardBg};
+    border: 1px solid ${({ theme }) => theme.colors.cardBorder};
+    border-radius: ${({ theme }) => theme.radii.lg};
+    padding: 12px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+`
+
+const LegendBar = styled.div`
+    display: flex;
+    justify-content: center;
+    gap: 24px;
+    margin-top: 12px;
+    padding-top: 12px;
+    border-top: 1px solid ${({ theme }) => theme.colors.cardBorder};
+`
 
 interface MissionDataPoint {
     mission: number
@@ -52,50 +104,29 @@ const CustomTooltip = ({ active, payload }: CustomTooltipProps): React.ReactElem
     if (!data) return null
 
     return (
-        <div
-            style={{
-                backgroundColor: COLORS.CARD_BG,
-                border: `1px solid ${COLORS.CARD_BORDER}`,
-                borderRadius: '8px',
-                padding: '12px',
-                boxShadow: '0 4px 12px rgba(0,0,0,0.3)',
-            }}
-        >
-            <p
-                style={{
-                    color: COLORS.PRIMARY,
-                    margin: '0 0 8px 0',
-                    fontSize: '13px',
-                    fontWeight: 'bold',
-                }}
-            >
+        <ChartTooltip>
+            <Text $color="primary" style={{ fontWeight: 'bold', marginBottom: '8px' }}>
                 {data?.missionLabel}
-            </p>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+            </Text>
+            <Flex $direction="column" $gap="xs">
+                <Flex $align="center" $gap="sm">
                     <img
                         src={SAMPLE_ICONS.superRare}
                         alt="Super Rare"
                         style={{ width: 14, height: 14 }}
                     />
-                    <span style={{ color: COLORS.TEXT_PRIMARY, fontSize: '13px' }}>
-                        Super Rare: {data?.superRare || 0}
-                    </span>
-                </div>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    <Text $size="sm">Super Rare: {data?.superRare || 0}</Text>
+                </Flex>
+                <Flex $align="center" $gap="sm">
                     <img src={SAMPLE_ICONS.rare} alt="Rare" style={{ width: 14, height: 14 }} />
-                    <span style={{ color: COLORS.TEXT_PRIMARY, fontSize: '13px' }}>
-                        Rare: {data?.rare || 0}
-                    </span>
-                </div>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    <Text $size="sm">Rare: {data?.rare || 0}</Text>
+                </Flex>
+                <Flex $align="center" $gap="sm">
                     <img src={SAMPLE_ICONS.common} alt="Common" style={{ width: 14, height: 14 }} />
-                    <span style={{ color: COLORS.TEXT_PRIMARY, fontSize: '13px' }}>
-                        Common: {data?.common || 0}
-                    </span>
-                </div>
-            </div>
-        </div>
+                    <Text $size="sm">Common: {data?.common || 0}</Text>
+                </Flex>
+            </Flex>
+        </ChartTooltip>
     )
 }
 
@@ -172,48 +203,15 @@ const SamplesChart = ({
     const missionData = transformToMissionData(data, missionStars)
 
     if (!missionData || missionData.length === 0) {
-        return (
-            <div
-                style={{
-                    height,
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    color: COLORS.TEXT_MUTED,
-                    backgroundColor: COLORS.CARD_INNER,
-                    borderRadius: '8px',
-                }}
-            >
-                No sample data recorded
-            </div>
-        )
+        return <EmptyState $height={height}>No sample data recorded</EmptyState>
     }
 
     return (
-        <div
-            style={{
-                backgroundColor: COLORS.CARD_INNER,
-                borderRadius: '8px',
-                padding: '16px',
-                border: `1px solid ${COLORS.CARD_BORDER}`,
-            }}
-        >
-            <h3
-                style={{
-                    color: COLORS.TEXT_PRIMARY,
-                    margin: '0 0 16px 0',
-                    fontSize: '14px',
-                    fontWeight: '600',
-                    textTransform: 'uppercase',
-                    letterSpacing: '0.1em',
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: '8px',
-                }}
-            >
+        <ChartCard>
+            <ChartTitle>
                 <img src={SAMPLE_ICONS.common} alt="Samples" style={{ width: 20, height: 20 }} />
                 Sample Collection
-            </h3>
+            </ChartTitle>
 
             <ResponsiveContainer width="100%" height={height}>
                 <AreaChart data={missionData} margin={{ top: 10, right: 30, left: 0, bottom: 0 }}>
@@ -291,36 +289,31 @@ const SamplesChart = ({
             </ResponsiveContainer>
 
             {/* Legend */}
-            <div
-                style={{
-                    display: 'flex',
-                    justifyContent: 'center',
-                    gap: '24px',
-                    marginTop: '12px',
-                    paddingTop: '12px',
-                    borderTop: `1px solid ${COLORS.CARD_BORDER}`,
-                }}
-            >
-                <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+            <LegendBar>
+                <Flex $align="center" $gap="sm">
                     <img src={SAMPLE_ICONS.common} alt="Common" style={{ width: 16, height: 16 }} />
-                    <span style={{ color: COLORS.TEXT_SECONDARY, fontSize: '12px' }}>Common</span>
-                </div>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                    <Text $size="sm" $color="secondary">
+                        Common
+                    </Text>
+                </Flex>
+                <Flex $align="center" $gap="sm">
                     <img src={SAMPLE_ICONS.rare} alt="Rare" style={{ width: 16, height: 16 }} />
-                    <span style={{ color: COLORS.TEXT_SECONDARY, fontSize: '12px' }}>Rare</span>
-                </div>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                    <Text $size="sm" $color="secondary">
+                        Rare
+                    </Text>
+                </Flex>
+                <Flex $align="center" $gap="sm">
                     <img
                         src={SAMPLE_ICONS.superRare}
                         alt="Super Rare"
                         style={{ width: 16, height: 16 }}
                     />
-                    <span style={{ color: COLORS.TEXT_SECONDARY, fontSize: '12px' }}>
+                    <Text $size="sm" $color="secondary">
                         Super Rare
-                    </span>
-                </div>
-            </div>
-        </div>
+                    </Text>
+                </Flex>
+            </LegendBar>
+        </ChartCard>
     )
 }
 

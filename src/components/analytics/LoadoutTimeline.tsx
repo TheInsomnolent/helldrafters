@@ -7,7 +7,9 @@
  */
 
 import React from 'react'
+import styled from 'styled-components'
 import { COLORS } from '../../constants/theme'
+import { Card, Text, Caption, Flex } from '../../styles'
 import { getItemById } from '../../utils/itemHelpers'
 import type { LoadoutSnapshot, MissionResult } from '../../state/analyticsStore'
 import type { Loadout } from '../../types'
@@ -37,6 +39,102 @@ const SLOT_CONFIG: Record<string, SlotConfig> = {
     stratagem2: { label: 'Stratagem 3', icon: '📡', color: COLORS.TERMINIDS },
     stratagem3: { label: 'Stratagem 4', icon: '📡', color: COLORS.TERMINIDS },
 }
+
+// ============================================================================
+// STYLED COMPONENTS
+// ============================================================================
+
+const ChartCard = styled(Card)`
+    background-color: ${({ theme }) => theme.colors.cardInner};
+    border-radius: ${({ theme }) => theme.radii.lg};
+    padding: ${({ theme }) => theme.spacing.lg};
+    border: 1px solid ${({ theme }) => theme.colors.cardBorder};
+`
+
+const ChartTitle = styled.h3`
+    color: ${({ theme }) => theme.colors.textPrimary};
+    margin: 0 0 12px 0;
+    font-size: 14px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+`
+
+const EmptyState = styled.div`
+    padding: 40px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: ${({ theme }) => theme.colors.textMuted};
+    background-color: ${({ theme }) => theme.colors.cardInner};
+    border-radius: ${({ theme }) => theme.radii.lg};
+`
+
+const SlotLabel = styled.div`
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    min-width: 90px;
+    flex-shrink: 0;
+`
+
+const SegmentCell = styled.div<{ $color: string; $isEmpty: boolean }>`
+    height: 22px;
+    background-color: ${({ $color, $isEmpty }) => ($isEmpty ? 'transparent' : $color)};
+    opacity: ${({ $isEmpty }) => ($isEmpty ? 1 : 0.8)};
+    border: ${({ $isEmpty, theme }) =>
+        $isEmpty ? `1px dashed ${theme.colors.cardBorder}` : 'none'};
+    border-radius: 3px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0 4px;
+    overflow: hidden;
+`
+
+const SegmentText = styled.span<{ $isEmpty: boolean }>`
+    color: ${({ $isEmpty, theme }) => ($isEmpty ? theme.colors.textMuted : 'white')};
+    font-size: 9px;
+    font-weight: 500;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    text-shadow: ${({ $isEmpty }) => ($isEmpty ? 'none' : '0 1px 2px rgba(0,0,0,0.5)')};
+    font-style: ${({ $isEmpty }) => ($isEmpty ? 'italic' : 'normal')};
+`
+
+const PlayerCard = styled.div<{ $playerColor: string }>`
+    margin-bottom: 12px;
+    padding: 12px;
+    background-color: ${({ theme }) => theme.colors.cardBg};
+    border-radius: ${({ theme }) => theme.radii.lg};
+    border: 1px solid ${({ theme }) => theme.colors.cardBorder};
+    border-left: 3px solid ${({ $playerColor }) => $playerColor};
+`
+
+const PlayerNumber = styled.span<{ $playerColor: string }>`
+    width: 20px;
+    height: 20px;
+    border-radius: 50%;
+    background-color: ${({ $playerColor }) => $playerColor};
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: white;
+    font-size: 10px;
+    font-weight: bold;
+`
+
+const MissionAxisHeader = styled.div`
+    display: flex;
+    align-items: center;
+    margin-bottom: 8px;
+    padding-bottom: 8px;
+    border-bottom: 1px solid ${({ theme }) => theme.colors.cardBorder};
+`
 
 /**
  * Get the slot value from a loadout change
@@ -167,81 +265,30 @@ const SlotRow = ({
     const segments = buildMergedSegments(changes, slot, totalMissions, missionTimestamps)
 
     return (
-        <div
-            style={{
-                display: 'flex',
-                alignItems: 'center',
-                marginBottom: '2px',
-            }}
-        >
+        <Flex $align="center" style={{ marginBottom: '2px' }}>
             {/* Slot label */}
-            <div
-                style={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: '4px',
-                    minWidth: '90px',
-                    flexShrink: 0,
-                }}
-            >
+            <SlotLabel>
                 <span style={{ fontSize: '11px' }}>{config.icon}</span>
-                <span
-                    style={{
-                        color: COLORS.TEXT_MUTED,
-                        fontSize: '9px',
-                        textTransform: 'uppercase',
-                        letterSpacing: '0.05em',
-                    }}
-                >
+                <Caption style={{ textTransform: 'uppercase', letterSpacing: '0.05em' }}>
                     {config.label}
-                </span>
-            </div>
+                </Caption>
+            </SlotLabel>
 
             {/* Mission cells */}
-            <div
-                style={{
-                    display: 'flex',
-                    flex: 1,
-                    gap: '1px',
-                }}
-            >
+            <Flex style={{ flex: 1, gap: '1px' }}>
                 {segments.map((segment, index) => (
-                    <div
+                    <SegmentCell
                         key={index}
-                        style={{
-                            flex: segment.span,
-                            minWidth: 0,
-                            height: '22px',
-                            backgroundColor: segment.isEmpty ? 'transparent' : config.color,
-                            opacity: segment.isEmpty ? 1 : 0.8,
-                            border: segment.isEmpty ? `1px dashed ${COLORS.CARD_BORDER}` : 'none',
-                            borderRadius: '3px',
-                            display: 'flex',
-                            alignItems: 'center',
-                            justifyContent: 'center',
-                            padding: '0 4px',
-                            overflow: 'hidden',
-                        }}
+                        $color={config.color}
+                        $isEmpty={segment.isEmpty}
+                        style={{ flex: segment.span, minWidth: 0 }}
                         title={`${segment.value} (Mission ${segment.startMission}${segment.span > 1 ? `-${segment.endMission}` : ''})`}
                     >
-                        <span
-                            style={{
-                                color: segment.isEmpty ? COLORS.TEXT_MUTED : 'white',
-                                fontSize: '9px',
-                                fontWeight: '500',
-                                whiteSpace: 'nowrap',
-                                overflow: 'hidden',
-                                textOverflow: 'ellipsis',
-                                textShadow: segment.isEmpty ? 'none' : '0 1px 2px rgba(0,0,0,0.5)',
-                                fontStyle: segment.isEmpty ? 'italic' : 'normal',
-                            }}
-                        >
-                            {segment.value}
-                        </span>
-                    </div>
+                        <SegmentText $isEmpty={segment.isEmpty}>{segment.value}</SegmentText>
+                    </SegmentCell>
                 ))}
-            </div>
-        </div>
+            </Flex>
+        </Flex>
     )
 }
 
@@ -287,51 +334,12 @@ const PlayerTimeline = ({
     ]
 
     return (
-        <div
-            style={{
-                marginBottom: '12px',
-                padding: '12px',
-                backgroundColor: COLORS.CARD_BG,
-                borderRadius: '8px',
-                border: `1px solid ${COLORS.CARD_BORDER}`,
-                borderLeft: `3px solid ${playerColor}`,
-            }}
-        >
+        <PlayerCard $playerColor={playerColor}>
             {/* Player header */}
-            <div
-                style={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: '8px',
-                    marginBottom: '8px',
-                }}
-            >
-                <span
-                    style={{
-                        width: '20px',
-                        height: '20px',
-                        borderRadius: '50%',
-                        backgroundColor: playerColor,
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        color: 'white',
-                        fontSize: '10px',
-                        fontWeight: 'bold',
-                    }}
-                >
-                    {playerIndex + 1}
-                </span>
-                <span
-                    style={{
-                        color: playerColor,
-                        fontSize: '13px',
-                        fontWeight: '600',
-                    }}
-                >
-                    {playerName}
-                </span>
-            </div>
+            <Flex $align="center" $gap="sm" style={{ marginBottom: '8px' }}>
+                <PlayerNumber $playerColor={playerColor}>{playerIndex + 1}</PlayerNumber>
+                <Text style={{ color: playerColor, fontWeight: 600 }}>{playerName}</Text>
+            </Flex>
 
             {/* Slot rows */}
             {slots.map((slot) => (
@@ -343,7 +351,7 @@ const PlayerTimeline = ({
                     missionTimestamps={missionTimestamps}
                 />
             ))}
-        </div>
+        </PlayerCard>
     )
 }
 
@@ -365,21 +373,7 @@ const LoadoutTimeline = ({
     missionStars = [],
 }: LoadoutTimelineProps): React.ReactElement => {
     if (!data || data.length === 0) {
-        return (
-            <div
-                style={{
-                    padding: '40px',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    color: COLORS.TEXT_MUTED,
-                    backgroundColor: COLORS.CARD_INNER,
-                    borderRadius: '8px',
-                }}
-            >
-                No loadout data recorded
-            </div>
-        )
+        return <EmptyState>No loadout data recorded</EmptyState>
     }
 
     // Filter out any ghost players that might have empty data
@@ -405,83 +399,27 @@ const LoadoutTimeline = ({
     }
 
     if (uniquePlayers.length === 0) {
-        return (
-            <div
-                style={{
-                    padding: '40px',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    color: COLORS.TEXT_MUTED,
-                    backgroundColor: COLORS.CARD_INNER,
-                    borderRadius: '8px',
-                }}
-            >
-                No loadout data recorded
-            </div>
-        )
+        return <EmptyState>No loadout data recorded</EmptyState>
     }
 
     return (
-        <div
-            style={{
-                backgroundColor: COLORS.CARD_INNER,
-                borderRadius: '8px',
-                padding: '16px',
-                border: `1px solid ${COLORS.CARD_BORDER}`,
-            }}
-        >
-            <h3
-                style={{
-                    color: COLORS.TEXT_PRIMARY,
-                    margin: '0 0 12px 0',
-                    fontSize: '14px',
-                    fontWeight: '600',
-                    textTransform: 'uppercase',
-                    letterSpacing: '0.1em',
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: '8px',
-                }}
-            >
+        <ChartCard>
+            <ChartTitle>
                 <span style={{ fontSize: '18px' }}>🎒</span>
                 Loadout Evolution
-            </h3>
+            </ChartTitle>
 
             {/* Mission axis header */}
-            <div
-                style={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    marginBottom: '8px',
-                    paddingBottom: '8px',
-                    borderBottom: `1px solid ${COLORS.CARD_BORDER}`,
-                }}
-            >
+            <MissionAxisHeader>
                 <div style={{ minWidth: '90px', flexShrink: 0 }} />
-                <div
-                    style={{
-                        display: 'flex',
-                        flex: 1,
-                        gap: '1px',
-                    }}
-                >
+                <Flex style={{ flex: 1, gap: '1px' }}>
                     {Array.from({ length: totalMissions }, (_, i) => (
-                        <div
-                            key={i}
-                            style={{
-                                flex: 1,
-                                textAlign: 'center',
-                                color: COLORS.TEXT_MUTED,
-                                fontSize: '9px',
-                                fontWeight: '500',
-                            }}
-                        >
+                        <Caption key={i} style={{ flex: 1, textAlign: 'center', fontWeight: 500 }}>
                             M{i + 1}
-                        </div>
+                        </Caption>
                     ))}
-                </div>
-            </div>
+                </Flex>
+            </MissionAxisHeader>
 
             {/* Player timelines */}
             {uniquePlayers.map((player, index) => (
@@ -495,7 +433,7 @@ const LoadoutTimeline = ({
                     missionTimestamps={missionStars}
                 />
             ))}
-        </div>
+        </ChartCard>
     )
 }
 

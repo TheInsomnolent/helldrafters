@@ -1,7 +1,70 @@
+import styled from 'styled-components'
 import { Lock, Unlock, Wifi, WifiOff } from 'lucide-react'
 import { getFactionColors } from '../constants/theme'
 import { TYPE } from '../constants/types'
 import type { Player, Faction, SlotType, GetItemById, GetArmorComboDisplayName } from '../types'
+import { Card, CardHeader, CardContent, Grid, Flex, Caption, Badge, LockButton } from '../styles'
+
+// ============================================================================
+// STYLED COMPONENTS (component-specific only)
+// ============================================================================
+
+const LoadoutCard = styled(Card)<{ $disconnected?: boolean }>`
+    opacity: ${({ $disconnected }) => ($disconnected ? 0.7 : 1)};
+    border-color: ${({ $disconnected, theme }) =>
+        $disconnected ? 'rgba(239, 68, 68, 0.5)' : theme.colors.cardBorder};
+`
+
+const PlayerName = styled.h3`
+    font-weight: ${({ theme }) => theme.fontWeights.bold};
+    color: ${({ theme }) => theme.colors.textSecondary};
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    margin: 0;
+`
+
+const SlotLabel = styled(Caption)`
+    text-transform: uppercase;
+    margin-bottom: ${({ theme }) => theme.spacing.xs};
+`
+
+const SlotValue = styled.div<{ $variant?: 'primary' | 'secondary' | 'default' }>`
+    font-size: ${({ $variant }) => ($variant === 'primary' ? '14px' : '12px')};
+    font-weight: ${({ $variant }) => ($variant === 'primary' ? 'bold' : 'normal')};
+    color: ${({ $variant, theme }) =>
+        $variant === 'primary'
+            ? 'inherit'
+            : $variant === 'secondary'
+              ? theme.colors.textPrimary
+              : theme.colors.textSecondary};
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+`
+
+const StratagemSlot = styled.div`
+    background-color: ${({ theme }) => theme.colors.cardInner};
+    height: 64px;
+    border-radius: ${({ theme }) => theme.radii.md};
+    border: 1px solid rgba(71, 85, 105, 0.5);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: ${({ theme }) => theme.spacing.xs};
+    text-align: center;
+`
+
+const StratagemName = styled.span`
+    font-size: 9px;
+    line-height: 1.2;
+    color: ${({ theme }) => theme.colors.textPrimary};
+    font-weight: ${({ theme }) => theme.fontWeights.semibold};
+`
+
+const EmptySlot = styled.span`
+    color: ${({ theme }) => theme.colors.textDisabled};
+    font-size: ${({ theme }) => theme.fontSizes.md};
+`
 
 interface LoadoutDisplayProps {
     player: Player | null
@@ -38,27 +101,14 @@ export default function LoadoutDisplay({
     // Guard against undefined player or loadout
     if (!player || !player.loadout) {
         return (
-            <div
-                style={{
-                    backgroundColor: '#283548',
-                    borderRadius: '8px',
-                    border: '1px solid rgba(100, 116, 139, 0.5)',
-                    overflow: 'hidden',
-                }}
-            >
-                <div
-                    style={{
-                        backgroundColor: '#1f2937',
-                        padding: '12px',
-                        borderBottom: '1px solid rgba(100, 116, 139, 0.5)',
-                    }}
-                >
-                    <h3 style={{ fontWeight: 'bold', color: '#64748b', margin: 0 }}>Loading...</h3>
-                </div>
-                <div style={{ padding: '16px', textAlign: 'center', color: '#64748b' }}>
+            <Card>
+                <CardHeader>
+                    <PlayerName style={{ color: '#64748b' }}>Loading...</PlayerName>
+                </CardHeader>
+                <CardContent style={{ textAlign: 'center', color: '#64748b' }}>
                     Waiting for player data...
-                </div>
-            </div>
+                </CardContent>
+            </Card>
         )
     }
 
@@ -87,127 +137,45 @@ export default function LoadoutDisplay({
             !isLocked && requisition >= slotLockCost && lockedSlots.length < maxLockedSlots
         const canUnlock = isLocked
 
+        const variant =
+            label === 'Primary' ? 'primary' : label === 'Secondary' ? 'secondary' : 'default'
+
         return (
-            <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+            <Flex $align="center" $gap="sm">
                 <div style={{ flex: 1, minWidth: 0 }}>
-                    <div
-                        style={{
-                            fontSize: '10px',
-                            color: '#64748b',
-                            textTransform: 'uppercase',
-                            marginBottom: '4px',
-                        }}
-                    >
-                        {label}
-                    </div>
-                    <div
-                        style={{
-                            fontSize: label === 'Primary' ? '14px' : '12px',
-                            fontWeight: label === 'Primary' ? 'bold' : 'normal',
-                            color:
-                                label === 'Primary'
-                                    ? factionColors.PRIMARY
-                                    : label === 'Secondary'
-                                      ? 'white'
-                                      : '#cbd5e1',
-                            overflow: 'hidden',
-                            textOverflow: 'ellipsis',
-                            whiteSpace: 'nowrap',
-                        }}
+                    <SlotLabel>{label}</SlotLabel>
+                    <SlotValue
+                        $variant={variant}
+                        style={label === 'Primary' ? { color: factionColors.PRIMARY } : undefined}
                         title={value ?? undefined}
                     >
                         {value}
-                    </div>
+                    </SlotValue>
                 </div>
                 {onLockSlot && onUnlockSlot && (
-                    <button
+                    <LockButton
+                        $locked={isLocked}
+                        $factionPrimary={factionColors.PRIMARY}
                         onClick={() =>
                             isLocked
                                 ? onUnlockSlot(player.id, slotType)
                                 : onLockSlot(player.id, slotType)
                         }
                         disabled={!canLock && !canUnlock}
-                        style={{
-                            padding: '4px',
-                            backgroundColor: isLocked
-                                ? `${factionColors.PRIMARY}20`
-                                : 'transparent',
-                            border: isLocked
-                                ? `1px solid ${factionColors.PRIMARY}`
-                                : '1px solid rgba(100, 116, 139, 0.5)',
-                            borderRadius: '3px',
-                            cursor: canLock || canUnlock ? 'pointer' : 'not-allowed',
-                            display: 'flex',
-                            alignItems: 'center',
-                            justifyContent: 'center',
-                            color: isLocked
-                                ? factionColors.PRIMARY
-                                : canLock
-                                  ? '#94a3b8'
-                                  : '#334155',
-                            transition: 'all 0.2s',
-                            minWidth: '24px',
-                            minHeight: '24px',
-                        }}
-                        onMouseEnter={(e) => {
-                            if (canLock || canUnlock) {
-                                e.currentTarget.style.borderColor = factionColors.PRIMARY
-                                e.currentTarget.style.color = factionColors.PRIMARY
-                            }
-                        }}
-                        onMouseLeave={(e) => {
-                            if (canLock || canUnlock) {
-                                e.currentTarget.style.borderColor = isLocked
-                                    ? factionColors.PRIMARY
-                                    : 'rgba(100, 116, 139, 0.5)'
-                                e.currentTarget.style.color = isLocked
-                                    ? factionColors.PRIMARY
-                                    : canLock
-                                      ? '#94a3b8'
-                                      : '#334155'
-                            }
-                        }}
                         title={isLocked ? 'Unlock slot (free)' : `Lock slot (${slotLockCost} Req)`}
                     >
                         {isLocked ? <Lock size={12} /> : <Unlock size={12} />}
-                    </button>
+                    </LockButton>
                 )}
-            </div>
+            </Flex>
         )
     }
 
     return (
-        <div
-            style={{
-                backgroundColor: '#283548',
-                borderRadius: '8px',
-                border: `1px solid ${!isConnected && isMultiplayer ? 'rgba(239, 68, 68, 0.5)' : 'rgba(100, 116, 139, 0.5)'}`,
-                overflow: 'hidden',
-                opacity: !isConnected && isMultiplayer ? 0.7 : 1,
-            }}
-        >
-            <div
-                style={{
-                    backgroundColor: '#1f2937',
-                    padding: '12px',
-                    borderBottom: '1px solid rgba(100, 116, 139, 0.5)',
-                    display: 'flex',
-                    justifyContent: 'space-between',
-                    alignItems: 'center',
-                }}
-            >
-                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                    <h3
-                        style={{
-                            fontWeight: 'bold',
-                            color: '#cbd5e1',
-                            textTransform: 'uppercase',
-                            letterSpacing: '1px',
-                            margin: 0,
-                        }}
-                    >
-                        {player.name}
-                    </h3>
+        <LoadoutCard $disconnected={!isConnected && isMultiplayer}>
+            <CardHeader>
+                <Flex $align="center" $gap="sm">
+                    <PlayerName>{player.name}</PlayerName>
                     {/* Connection status indicator for multiplayer */}
                     {isMultiplayer &&
                         (isConnected ? (
@@ -219,154 +187,82 @@ export default function LoadoutDisplay({
                                 aria-label="Disconnected"
                             />
                         ))}
-                </div>
-                <span
-                    style={{
-                        fontSize: '12px',
-                        color: !isConnected && isMultiplayer ? '#ef4444' : '#64748b',
-                    }}
-                >
+                </Flex>
+                <Caption $color={!isConnected && isMultiplayer ? 'error' : undefined}>
                     {!isConnected && isMultiplayer ? 'DISCONNECTED' : 'Loadout Active'}
-                </span>
-            </div>
-            <div
-                style={{
-                    padding: '16px',
-                    display: 'grid',
-                    gridTemplateColumns: 'repeat(4, 1fr)',
-                    gap: '16px',
-                }}
-            >
-                {/* Primary */}
-                <div style={{ gridColumn: 'span 2' }}>
-                    {renderSlotWithLock(
-                        'Primary',
-                        getItemById(player.loadout.primary)?.name || 'None',
-                        TYPE.PRIMARY,
-                    )}
-                </div>
-                {/* Secondary */}
-                <div style={{ gridColumn: 'span 2' }}>
-                    {renderSlotWithLock(
-                        'Secondary',
-                        getItemById(player.loadout.secondary)?.name,
-                        TYPE.SECONDARY,
-                    )}
-                </div>
-
-                {/* Grenade */}
-                <div style={{ gridColumn: 'span 2' }}>
-                    {renderSlotWithLock(
-                        'Grenade',
-                        getItemById(player.loadout.grenade)?.name,
-                        TYPE.GRENADE,
-                    )}
-                </div>
-
-                {/* Armor */}
-                <div style={{ gridColumn: 'span 2' }}>
-                    {renderSlotWithLock('Armor', armorDisplayName, TYPE.ARMOR)}
-                </div>
-
-                {/* Booster */}
-                <div style={{ gridColumn: 'span 2' }}>
-                    <div
-                        style={{
-                            fontSize: '10px',
-                            color: '#64748b',
-                            textTransform: 'uppercase',
-                            marginBottom: '4px',
-                        }}
-                    >
-                        Booster
-                    </div>
-                    <div
-                        style={{
-                            fontSize: '12px',
-                            color: '#cbd5e1',
-                            overflow: 'hidden',
-                            textOverflow: 'ellipsis',
-                            whiteSpace: 'nowrap',
-                        }}
-                    >
-                        {getItemById(player.loadout.booster)?.name || 'None'}
-                    </div>
-                </div>
-
-                {/* Lock info */}
-                {lockedSlots.length > 0 && (
+                </Caption>
+            </CardHeader>
+            <CardContent>
+                <Grid $columns={4} $gap="lg">
+                    {/* Primary */}
                     <div style={{ gridColumn: 'span 2' }}>
-                        <div
-                            style={{
-                                fontSize: '9px',
-                                color: factionColors.PRIMARY,
-                                backgroundColor: `${factionColors.PRIMARY}15`,
-                                padding: '4px 8px',
-                                borderRadius: '3px',
-                                border: `1px solid ${factionColors.PRIMARY}40`,
-                            }}
-                        >
-                            🔒 {lockedSlots.length}/{maxLockedSlots} slots locked
-                        </div>
+                        {renderSlotWithLock(
+                            'Primary',
+                            getItemById(player.loadout.primary)?.name || 'None',
+                            TYPE.PRIMARY,
+                        )}
                     </div>
-                )}
+                    {/* Secondary */}
+                    <div style={{ gridColumn: 'span 2' }}>
+                        {renderSlotWithLock(
+                            'Secondary',
+                            getItemById(player.loadout.secondary)?.name,
+                            TYPE.SECONDARY,
+                        )}
+                    </div>
 
-                {/* Stratagems */}
-                <div style={{ gridColumn: 'span 4', marginTop: '8px' }}>
-                    <div
-                        style={{
-                            fontSize: '10px',
-                            color: '#64748b',
-                            textTransform: 'uppercase',
-                            marginBottom: '4px',
-                        }}
-                    >
-                        Stratagems
+                    {/* Grenade */}
+                    <div style={{ gridColumn: 'span 2' }}>
+                        {renderSlotWithLock(
+                            'Grenade',
+                            getItemById(player.loadout.grenade)?.name,
+                            TYPE.GRENADE,
+                        )}
                     </div>
-                    <div
-                        style={{
-                            display: 'grid',
-                            gridTemplateColumns: 'repeat(4, 1fr)',
-                            gap: '8px',
-                        }}
-                    >
-                        {(player.loadout.stratagems || [null, null, null, null]).map((sid, i) => (
-                            <div
-                                key={i}
-                                style={{
-                                    backgroundColor: '#1f2937',
-                                    height: '64px',
-                                    borderRadius: '4px',
-                                    border: '1px solid rgba(71, 85, 105, 0.5)',
-                                    display: 'flex',
-                                    alignItems: 'center',
-                                    justifyContent: 'center',
-                                    padding: '4px',
-                                    textAlign: 'center',
-                                    position: 'relative',
-                                }}
+
+                    {/* Armor */}
+                    <div style={{ gridColumn: 'span 2' }}>
+                        {renderSlotWithLock('Armor', armorDisplayName, TYPE.ARMOR)}
+                    </div>
+
+                    {/* Booster */}
+                    <div style={{ gridColumn: 'span 2' }}>
+                        <SlotLabel>Booster</SlotLabel>
+                        <SlotValue>{getItemById(player.loadout.booster)?.name || 'None'}</SlotValue>
+                    </div>
+
+                    {/* Lock info */}
+                    {lockedSlots.length > 0 && (
+                        <div style={{ gridColumn: 'span 2' }}>
+                            <Badge
+                                $variant="faction"
+                                $size="sm"
+                                $factionPrimary={factionColors.PRIMARY}
                             >
-                                {sid ? (
-                                    <span
-                                        style={{
-                                            fontSize: '9px',
-                                            lineHeight: '1.2',
-                                            color: 'white',
-                                            fontWeight: '600',
-                                        }}
-                                    >
-                                        {getItemById(sid)?.name}
-                                    </span>
-                                ) : (
-                                    <span style={{ color: '#334155', fontSize: '12px' }}>
-                                        EMPTY
-                                    </span>
-                                )}
-                            </div>
-                        ))}
+                                🔒 {lockedSlots.length}/{maxLockedSlots} slots locked
+                            </Badge>
+                        </div>
+                    )}
+
+                    {/* Stratagems */}
+                    <div style={{ gridColumn: 'span 4', marginTop: '8px' }}>
+                        <SlotLabel>Stratagems</SlotLabel>
+                        <Grid $columns={4} $gap="sm">
+                            {(player.loadout.stratagems || [null, null, null, null]).map(
+                                (sid, i) => (
+                                    <StratagemSlot key={i}>
+                                        {sid ? (
+                                            <StratagemName>{getItemById(sid)?.name}</StratagemName>
+                                        ) : (
+                                            <EmptySlot>EMPTY</EmptySlot>
+                                        )}
+                                    </StratagemSlot>
+                                ),
+                            )}
+                        </Grid>
                     </div>
-                </div>
-            </div>
-        </div>
+                </Grid>
+            </CardContent>
+        </LoadoutCard>
     )
 }

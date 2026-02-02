@@ -14,7 +14,9 @@ import {
     Tooltip,
     ResponsiveContainer,
 } from 'recharts'
+import styled from 'styled-components'
 import { COLORS } from '../../constants/theme'
+import { Card, Text, Caption, Flex } from '../../styles'
 import type { RequisitionSnapshot, MissionResult } from '../../state/analyticsStore'
 
 interface SpendEvent {
@@ -30,6 +32,71 @@ interface MissionDataPoint {
     spendEvents: SpendEvent[]
 }
 
+// ============================================================================
+// STYLED COMPONENTS
+// ============================================================================
+
+const ChartCard = styled(Card)`
+    background-color: ${({ theme }) => theme.colors.cardInner};
+    border-radius: ${({ theme }) => theme.radii.lg};
+    padding: ${({ theme }) => theme.spacing.lg};
+    border: 1px solid ${({ theme }) => theme.colors.cardBorder};
+`
+
+const ChartTitle = styled.h3`
+    color: ${({ theme }) => theme.colors.textPrimary};
+    margin: 0 0 16px 0;
+    font-size: 14px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+`
+
+const EmptyState = styled.div<{ $height: number }>`
+    height: ${({ $height }) => $height}px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: ${({ theme }) => theme.colors.textMuted};
+    background-color: ${({ theme }) => theme.colors.cardInner};
+    border-radius: ${({ theme }) => theme.radii.lg};
+`
+
+const ChartTooltip = styled.div`
+    background-color: ${({ theme }) => theme.colors.cardBg};
+    border: 1px solid ${({ theme }) => theme.colors.cardBorder};
+    border-radius: ${({ theme }) => theme.radii.lg};
+    padding: 12px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+    min-width: 150px;
+`
+
+const SpendEventBox = styled.div`
+    padding: 8px;
+    background-color: rgba(239, 68, 68, 0.1);
+    border-radius: 4px;
+    border: 1px solid ${({ theme }) => theme.colors.accentRed};
+`
+
+const SpendTag = styled.div`
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 4px 8px;
+    background-color: rgba(239, 68, 68, 0.1);
+    border-radius: 4px;
+    border: 1px solid ${({ theme }) => theme.colors.accentRed};
+`
+
+const ExpendituresSection = styled.div`
+    margin-top: 12px;
+    padding-top: 12px;
+    border-top: 1px solid ${({ theme }) => theme.colors.cardBorder};
+`
+
 interface CustomTooltipProps {
     active?: boolean
     payload?: Array<{ payload?: MissionDataPoint }>
@@ -43,86 +110,42 @@ const CustomTooltip = ({ active, payload }: CustomTooltipProps): React.ReactElem
     if (!data) return null
 
     return (
-        <div
-            style={{
-                backgroundColor: COLORS.CARD_BG,
-                border: `1px solid ${COLORS.CARD_BORDER}`,
-                borderRadius: '8px',
-                padding: '12px',
-                boxShadow: '0 4px 12px rgba(0,0,0,0.3)',
-                minWidth: '150px',
-            }}
-        >
-            <p
-                style={{
-                    color: COLORS.PRIMARY,
-                    margin: '0 0 8px 0',
-                    fontSize: '13px',
-                    fontWeight: 'bold',
-                }}
-            >
+        <ChartTooltip>
+            <Text $color="primary" style={{ fontWeight: 'bold', marginBottom: '8px' }}>
                 {data?.missionLabel}
-            </p>
+            </Text>
 
-            <div
-                style={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: '8px',
-                    marginBottom: '8px',
-                }}
-            >
+            <Flex $align="center" $gap="sm" style={{ marginBottom: '8px' }}>
                 <img
                     src="https://helldivers.wiki.gg/images/Requisition_Slip.svg"
                     alt="Requisition"
                     style={{ width: 18, height: 18 }}
                 />
-                <span
-                    style={{
-                        color: COLORS.PRIMARY,
-                        fontSize: '20px',
-                        fontWeight: 'bold',
-                    }}
-                >
+                <Text $color="primary" style={{ fontSize: '20px', fontWeight: 'bold' }}>
                     {data?.amount || 0}
-                </span>
-            </div>
+                </Text>
+            </Flex>
 
             {data?.spendEvents && data.spendEvents.length > 0 && (
-                <div
-                    style={{
-                        padding: '8px',
-                        backgroundColor: 'rgba(239, 68, 68, 0.1)',
-                        borderRadius: '4px',
-                        border: `1px solid ${COLORS.ACCENT_RED}`,
-                    }}
-                >
-                    <p
+                <SpendEventBox>
+                    <Caption
                         style={{
-                            color: COLORS.TEXT_MUTED,
-                            margin: '0 0 4px 0',
-                            fontSize: '10px',
                             textTransform: 'uppercase',
+                            display: 'block',
+                            marginBottom: '4px',
                         }}
                     >
                         Spent this mission:
-                    </p>
+                    </Caption>
                     {data.spendEvents.map((event, idx) => (
-                        <p
-                            key={idx}
-                            style={{
-                                color: COLORS.ACCENT_RED,
-                                margin: '2px 0',
-                                fontSize: '11px',
-                            }}
-                        >
+                        <Text key={idx} $color="error" $size="sm" style={{ margin: '2px 0' }}>
                             -{Math.abs(event.change)} • {event.reason}
                             {event.player && ` (${event.player})`}
-                        </p>
+                        </Text>
                     ))}
-                </div>
+                </SpendEventBox>
             )}
-        </div>
+        </ChartTooltip>
     )
 }
 
@@ -215,55 +238,22 @@ const RequisitionChart = ({
     const missionData = transformToMissionData(data, missionStars)
 
     if (!missionData || missionData.length === 0) {
-        return (
-            <div
-                style={{
-                    height,
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    color: COLORS.TEXT_MUTED,
-                    backgroundColor: COLORS.CARD_INNER,
-                    borderRadius: '8px',
-                }}
-            >
-                No requisition data recorded
-            </div>
-        )
+        return <EmptyState $height={height}>No requisition data recorded</EmptyState>
     }
 
     // Collect all spend events for summary
     const allSpendEvents = missionData.flatMap((m) => m.spendEvents || [])
 
     return (
-        <div
-            style={{
-                backgroundColor: COLORS.CARD_INNER,
-                borderRadius: '8px',
-                padding: '16px',
-                border: `1px solid ${COLORS.CARD_BORDER}`,
-            }}
-        >
-            <h3
-                style={{
-                    color: COLORS.TEXT_PRIMARY,
-                    margin: '0 0 16px 0',
-                    fontSize: '14px',
-                    fontWeight: '600',
-                    textTransform: 'uppercase',
-                    letterSpacing: '0.1em',
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: '8px',
-                }}
-            >
+        <ChartCard>
+            <ChartTitle>
                 <img
                     src="https://helldivers.wiki.gg/images/Requisition_Slip.svg"
                     alt="Requisition"
                     style={{ width: 20, height: 20 }}
                 />
                 Requisition
-            </h3>
+            </ChartTitle>
 
             <ResponsiveContainer width="100%" height={height}>
                 <AreaChart data={missionData} margin={{ top: 10, right: 30, left: 0, bottom: 0 }}>
@@ -316,67 +306,33 @@ const RequisitionChart = ({
 
             {/* Spend events summary */}
             {allSpendEvents.length > 0 && (
-                <div
-                    style={{
-                        marginTop: '12px',
-                        paddingTop: '12px',
-                        borderTop: `1px solid ${COLORS.CARD_BORDER}`,
-                    }}
-                >
-                    <p
+                <ExpendituresSection>
+                    <Caption
                         style={{
-                            color: COLORS.TEXT_MUTED,
-                            fontSize: '11px',
-                            margin: '0 0 8px 0',
                             textTransform: 'uppercase',
                             letterSpacing: '0.05em',
+                            display: 'block',
+                            marginBottom: '8px',
                         }}
                     >
                         Expenditures
-                    </p>
-                    <div
-                        style={{
-                            display: 'flex',
-                            flexWrap: 'wrap',
-                            gap: '8px',
-                        }}
-                    >
+                    </Caption>
+                    <Flex $wrap $gap="sm">
                         {allSpendEvents.map((event, index) => (
-                            <div
-                                key={index}
-                                style={{
-                                    display: 'flex',
-                                    alignItems: 'center',
-                                    gap: '6px',
-                                    padding: '4px 8px',
-                                    backgroundColor: 'rgba(239, 68, 68, 0.1)',
-                                    borderRadius: '4px',
-                                    border: `1px solid ${COLORS.ACCENT_RED}`,
-                                }}
-                            >
-                                <span
-                                    style={{
-                                        color: COLORS.ACCENT_RED,
-                                        fontSize: '12px',
-                                        fontWeight: 'bold',
-                                    }}
-                                >
+                            <SpendTag key={index}>
+                                <Text $color="error" $size="sm" style={{ fontWeight: 'bold' }}>
                                     -{Math.abs(event.change)}
-                                </span>
-                                <span style={{ color: COLORS.TEXT_SECONDARY, fontSize: '11px' }}>
+                                </Text>
+                                <Text $color="secondary" $size="sm">
                                     {event.reason}
-                                </span>
-                                {event.player && (
-                                    <span style={{ color: COLORS.TEXT_MUTED, fontSize: '10px' }}>
-                                        ({event.player})
-                                    </span>
-                                )}
-                            </div>
+                                </Text>
+                                {event.player && <Caption>({event.player})</Caption>}
+                            </SpendTag>
                         ))}
-                    </div>
-                </div>
+                    </Flex>
+                </ExpendituresSection>
             )}
-        </div>
+        </ChartCard>
     )
 }
 

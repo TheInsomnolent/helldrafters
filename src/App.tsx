@@ -1,6 +1,8 @@
 import { Bug, CheckCircle, MessageSquare, RefreshCw, Users, XCircle } from 'lucide-react'
 import React, { useEffect, useReducer } from 'react'
 import { HashRouter, Route, Routes } from 'react-router-dom'
+import { ThemeProvider } from 'styled-components'
+import { theme, GlobalStyles } from './styles'
 import CardLibrary from './components/CardLibrary'
 import ContributorsModal from './components/ContributorsModal'
 import EventDisplay from './components/EventDisplay'
@@ -7214,13 +7216,16 @@ function HelldiversRoguelikeApp() {
 // Wrapper component that provides multiplayer context
 export default function HelldiversRoguelike() {
     return (
-        <HashRouter>
-            <MultiplayerProvider>
-                <Routes>
-                    <Route path="card-library" element={<CardLibrary />} />
-                    <Route path="/" element={<HelldiversRoguelikeApp />} />
-                </Routes>
-            </MultiplayerProvider>
-        </HashRouter>
+        <ThemeProvider theme={theme}>
+            <GlobalStyles />
+            <HashRouter>
+                <MultiplayerProvider>
+                    <Routes>
+                        <Route path="card-library" element={<CardLibrary />} />
+                        <Route path="/" element={<HelldiversRoguelikeApp />} />
+                    </Routes>
+                </MultiplayerProvider>
+            </HashRouter>
+        </ThemeProvider>
     )
 }

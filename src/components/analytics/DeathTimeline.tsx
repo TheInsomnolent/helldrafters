@@ -6,8 +6,10 @@
  */
 
 import React from 'react'
+import styled, { keyframes } from 'styled-components'
 import { COLORS } from '../../constants/theme'
 import { DIFFICULTY_CONFIG } from '../../constants/gameConfig'
+import { Card, Text, Caption, Flex } from '../../styles'
 import type { PlayerDeath } from '../../state/analyticsStore'
 
 interface PlayerInfo {
@@ -29,6 +31,112 @@ const PLAYER_COLORS = [
     COLORS.PRIMARY,
 ]
 
+// ============================================================================
+// STYLED COMPONENTS
+// ============================================================================
+
+const ChartCard = styled(Card)`
+    background-color: ${({ theme }) => theme.colors.cardInner};
+    border-radius: ${({ theme }) => theme.radii.lg};
+    padding: ${({ theme }) => theme.spacing.lg};
+    border: 1px solid ${({ theme }) => theme.colors.cardBorder};
+`
+
+const ChartTitle = styled.h3`
+    color: ${({ theme }) => theme.colors.textPrimary};
+    margin: 0 0 16px 0;
+    font-size: 14px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+`
+
+const EmptyState = styled.div`
+    padding: 24px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    color: ${({ theme }) => theme.colors.textMuted};
+    background-color: ${({ theme }) => theme.colors.cardInner};
+    border-radius: ${({ theme }) => theme.radii.lg};
+    border: 1px solid ${({ theme }) => theme.colors.cardBorder};
+`
+
+const KIABadge = styled.span`
+    margin-left: auto;
+    background-color: ${({ theme }) => theme.colors.accentRed};
+    color: white;
+    padding: 2px 8px;
+    border-radius: 12px;
+    font-size: 12px;
+    font-weight: bold;
+`
+
+const TimelineAxis = styled.div`
+    position: absolute;
+    top: 50%;
+    left: 0;
+    right: 0;
+    height: 2px;
+    background-color: ${({ theme }) => theme.colors.cardBorder};
+    transform: translateY(-50%);
+`
+
+const MissionTick = styled.span`
+    position: absolute;
+    top: 16px;
+    width: 1px;
+    height: 20px;
+    background-color: ${({ theme }) => theme.colors.cardBorder};
+`
+
+const pulse = keyframes`
+    0%, 100% { box-shadow: 0 0 10px ${COLORS.ACCENT_RED}; }
+    50% { box-shadow: 0 0 20px ${COLORS.ACCENT_RED}, 0 0 30px ${COLORS.ACCENT_RED}; }
+`
+
+const SkullMarker = styled.div<{ $playerColor: string }>`
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    background-color: ${({ theme }) => theme.colors.accentRed};
+    border: 3px solid ${({ $playerColor }) => $playerColor};
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 16px;
+    box-shadow: 0 0 10px ${({ theme }) => theme.colors.accentRed};
+    animation: ${pulse} 2s infinite;
+`
+
+const PlayerLabel = styled.div<{ $playerColor: string }>`
+    margin-top: 8px;
+    padding: 2px 6px;
+    background-color: ${({ $playerColor }) => $playerColor};
+    border-radius: 4px;
+    white-space: nowrap;
+`
+
+const DeathDetailsList = styled.div`
+    border-top: 1px solid ${({ theme }) => theme.colors.cardBorder};
+    padding-top: 16px;
+`
+
+const DeathCard = styled.div<{ $playerColor: string }>`
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 10px 12px;
+    background-color: ${({ theme }) => theme.colors.cardBg};
+    border-radius: 6px;
+    border: 1px solid ${({ theme }) => theme.colors.cardBorder};
+    border-left: 4px solid ${({ $playerColor }) => $playerColor};
+`
+
 interface DeathTimelineProps {
     data: PlayerDeath[]
     totalMissions?: number
@@ -42,25 +150,13 @@ const DeathTimeline = ({
 }: DeathTimelineProps): React.ReactElement => {
     if (!data || data.length === 0) {
         return (
-            <div
-                style={{
-                    padding: '24px',
-                    display: 'flex',
-                    flexDirection: 'column',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    color: COLORS.TEXT_MUTED,
-                    backgroundColor: COLORS.CARD_INNER,
-                    borderRadius: '8px',
-                    border: `1px solid ${COLORS.CARD_BORDER}`,
-                }}
-            >
+            <EmptyState>
                 <span style={{ fontSize: '32px', marginBottom: '8px' }}>🎖️</span>
-                <span style={{ fontSize: '14px' }}>No casualties this run!</span>
-                <span style={{ fontSize: '11px', marginTop: '4px', color: COLORS.TEXT_MUTED }}>
+                <Text $size="sm">No casualties this run!</Text>
+                <Caption style={{ marginTop: '4px' }}>
                     All Helldivers extracted successfully
-                </span>
-            </div>
+                </Caption>
+            </EmptyState>
         )
     }
 
@@ -80,74 +176,20 @@ const DeathTimeline = ({
     }
 
     return (
-        <div
-            style={{
-                backgroundColor: COLORS.CARD_INNER,
-                borderRadius: '8px',
-                padding: '16px',
-                border: `1px solid ${COLORS.CARD_BORDER}`,
-            }}
-        >
-            <h3
-                style={{
-                    color: COLORS.TEXT_PRIMARY,
-                    margin: '0 0 16px 0',
-                    fontSize: '14px',
-                    fontWeight: '600',
-                    textTransform: 'uppercase',
-                    letterSpacing: '0.1em',
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: '8px',
-                }}
-            >
+        <ChartCard>
+            <ChartTitle>
                 <span style={{ fontSize: '18px' }}>💀</span>
                 Casualty Report
-                <span
-                    style={{
-                        marginLeft: 'auto',
-                        backgroundColor: COLORS.ACCENT_RED,
-                        color: 'white',
-                        padding: '2px 8px',
-                        borderRadius: '12px',
-                        fontSize: '12px',
-                        fontWeight: 'bold',
-                    }}
-                >
-                    {data.length} KIA
-                </span>
-            </h3>
+                <KIABadge>{data.length} KIA</KIABadge>
+            </ChartTitle>
 
             {/* Timeline visualization */}
-            <div
-                style={{
-                    position: 'relative',
-                    padding: '20px 0',
-                    marginBottom: '16px',
-                }}
-            >
+            <div style={{ position: 'relative', padding: '20px 0', marginBottom: '16px' }}>
                 {/* Timeline axis */}
-                <div
-                    style={{
-                        position: 'absolute',
-                        top: '50%',
-                        left: '0',
-                        right: '0',
-                        height: '2px',
-                        backgroundColor: COLORS.CARD_BORDER,
-                        transform: 'translateY(-50%)',
-                    }}
-                />
+                <TimelineAxis />
 
                 {/* Mission markers */}
-                <div
-                    style={{
-                        display: 'flex',
-                        justifyContent: 'space-between',
-                        marginBottom: '40px',
-                        padding: '0 10px',
-                    }}
-                >
+                <Flex $justify="between" style={{ marginBottom: '40px', padding: '0 10px' }}>
                     {missionMarkers.map((mission) => (
                         <div
                             key={mission}
@@ -158,26 +200,11 @@ const DeathTimeline = ({
                                 position: 'relative',
                             }}
                         >
-                            <span
-                                style={{
-                                    color: COLORS.TEXT_MUTED,
-                                    fontSize: '10px',
-                                }}
-                            >
-                                M{mission}
-                            </span>
-                            <span
-                                style={{
-                                    position: 'absolute',
-                                    top: '16px',
-                                    width: '1px',
-                                    height: '20px',
-                                    backgroundColor: COLORS.CARD_BORDER,
-                                }}
-                            />
+                            <Caption>M{mission}</Caption>
+                            <MissionTick />
                         </div>
                     ))}
-                </div>
+                </Flex>
 
                 {/* Death markers */}
                 <div
@@ -217,34 +244,13 @@ const DeathTimeline = ({
                                 title={`${death.playerName} - ${getDifficultyName(death.difficulty)} - Mission ${mission}`}
                             >
                                 {/* Skull marker */}
-                                <div
-                                    style={{
-                                        width: '32px',
-                                        height: '32px',
-                                        borderRadius: '50%',
-                                        backgroundColor: COLORS.ACCENT_RED,
-                                        border: `3px solid ${playerColor}`,
-                                        display: 'flex',
-                                        alignItems: 'center',
-                                        justifyContent: 'center',
-                                        boxShadow: `0 0 10px ${COLORS.ACCENT_RED}`,
-                                        animation: 'pulse 2s infinite',
-                                    }}
-                                >
-                                    <span style={{ fontSize: '16px' }}>💀</span>
-                                </div>
+                                <SkullMarker $playerColor={playerColor}>
+                                    <span>💀</span>
+                                </SkullMarker>
 
                                 {/* Player name label */}
-                                <div
-                                    style={{
-                                        marginTop: '8px',
-                                        padding: '2px 6px',
-                                        backgroundColor: playerColor,
-                                        borderRadius: '4px',
-                                        whiteSpace: 'nowrap',
-                                    }}
-                                >
-                                    <span
+                                <PlayerLabel $playerColor={playerColor}>
+                                    <Text
                                         style={{
                                             color: 'white',
                                             fontSize: '10px',
@@ -252,8 +258,8 @@ const DeathTimeline = ({
                                         }}
                                     >
                                         {death.playerName}
-                                    </span>
-                                </div>
+                                    </Text>
+                                </PlayerLabel>
                             </div>
                         )
                     })}
@@ -261,107 +267,49 @@ const DeathTimeline = ({
             </div>
 
             {/* Death details list */}
-            <div
-                style={{
-                    borderTop: `1px solid ${COLORS.CARD_BORDER}`,
-                    paddingTop: '16px',
-                }}
-            >
-                <p
+            <DeathDetailsList>
+                <Caption
                     style={{
-                        color: COLORS.TEXT_MUTED,
-                        fontSize: '11px',
-                        margin: '0 0 12px 0',
                         textTransform: 'uppercase',
                         letterSpacing: '0.05em',
+                        display: 'block',
+                        marginBottom: '12px',
                     }}
                 >
                     Fallen Helldivers
-                </p>
+                </Caption>
 
-                <div
-                    style={{
-                        display: 'flex',
-                        flexDirection: 'column',
-                        gap: '8px',
-                    }}
-                >
+                <Flex $direction="column" $gap="sm">
                     {data.map((death, index) => {
                         const playerColor = playerColorMap[death.playerId] || COLORS.ACCENT_RED
 
                         return (
-                            <div
-                                key={index}
-                                style={{
-                                    display: 'flex',
-                                    alignItems: 'center',
-                                    gap: '12px',
-                                    padding: '10px 12px',
-                                    backgroundColor: COLORS.CARD_BG,
-                                    borderRadius: '6px',
-                                    border: `1px solid ${COLORS.CARD_BORDER}`,
-                                    borderLeft: `4px solid ${playerColor}`,
-                                }}
-                            >
+                            <DeathCard key={index} $playerColor={playerColor}>
                                 <span style={{ fontSize: '20px' }}>💀</span>
 
                                 <div style={{ flex: 1 }}>
-                                    <p
-                                        style={{
-                                            color: playerColor,
-                                            margin: 0,
-                                            fontSize: '13px',
-                                            fontWeight: 'bold',
-                                        }}
-                                    >
+                                    <Text style={{ color: playerColor, fontWeight: 'bold' }}>
                                         {death.playerName}
-                                    </p>
-                                    <p
-                                        style={{
-                                            color: COLORS.TEXT_MUTED,
-                                            margin: '2px 0 0 0',
-                                            fontSize: '11px',
-                                        }}
-                                    >
+                                    </Text>
+                                    <Caption style={{ marginTop: '2px' }}>
                                         {death.reason || 'Sacrificed for Democracy'}
-                                    </p>
+                                    </Caption>
                                 </div>
 
                                 <div style={{ textAlign: 'right' }}>
-                                    <p
-                                        style={{
-                                            color: COLORS.ACCENT_RED,
-                                            margin: 0,
-                                            fontSize: '12px',
-                                            fontWeight: 'bold',
-                                        }}
-                                    >
+                                    <Text $color="error" $size="sm" style={{ fontWeight: 'bold' }}>
                                         {getDifficultyName(death.difficulty)}
-                                    </p>
-                                    <p
-                                        style={{
-                                            color: COLORS.TEXT_MUTED,
-                                            margin: '2px 0 0 0',
-                                            fontSize: '10px',
-                                        }}
-                                    >
+                                    </Text>
+                                    <Caption style={{ marginTop: '2px' }}>
                                         Mission {death.mission || 1}
-                                    </p>
+                                    </Caption>
                                 </div>
-                            </div>
+                            </DeathCard>
                         )
                     })}
-                </div>
-            </div>
-
-            {/* CSS for pulse animation */}
-            <style>{`
-        @keyframes pulse {
-          0%, 100% { box-shadow: 0 0 10px ${COLORS.ACCENT_RED}; }
-          50% { box-shadow: 0 0 20px ${COLORS.ACCENT_RED}, 0 0 30px ${COLORS.ACCENT_RED}; }
-        }
-      `}</style>
-        </div>
+                </Flex>
+            </DeathDetailsList>
+        </ChartCard>
     )
 }
 

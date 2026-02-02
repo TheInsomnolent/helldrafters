@@ -6,7 +6,8 @@
 
 import { useState, useEffect } from 'react'
 import { X, Trash2, Clock, Users, Star, Skull, ChevronRight } from 'lucide-react'
-import { COLORS, BUTTON_STYLES, getFactionColors } from '../constants/theme'
+import styled from 'styled-components'
+import { COLORS, getFactionColors } from '../constants/theme'
 import {
     getRunSummaries,
     getRunById,
@@ -16,7 +17,95 @@ import {
     RunHistoryStats,
 } from '../systems/persistence/saveManager'
 import { AnalyticsDashboard } from './analytics'
+import {
+    ModalBackdrop,
+    ModalContainer,
+    ModalHeader,
+    ModalContent,
+    ModalFooter,
+    ModalTitle,
+    Text,
+    Caption,
+    Flex,
+    IconButton,
+    Button,
+} from '../styles'
 import type { AnalyticsStore } from '../state/analyticsStore'
+
+// ============================================================================
+// CUSTOM STYLED COMPONENTS
+// ============================================================================
+
+const RunCard = styled.div`
+    background-color: ${({ theme }) => theme.colors.cardInner};
+    border-radius: ${({ theme }) => theme.radii.xl};
+    border: 1px solid ${({ theme }) => theme.colors.cardBorder};
+    overflow: hidden;
+    transition: all 0.2s;
+`
+
+const RunCardHeader = styled.div`
+    padding: 16px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 16px;
+`
+
+const OutcomeIcon = styled.div<{ $isVictory: boolean }>`
+    width: 48px;
+    height: 48px;
+    border-radius: ${({ theme }) => theme.radii.xl};
+    background-color: ${({ $isVictory }) =>
+        $isVictory ? 'rgba(34, 197, 94, 0.15)' : 'rgba(239, 68, 68, 0.15)'};
+    border: 2px solid
+        ${({ $isVictory, theme }) =>
+            $isVictory ? theme.colors.accentGreen : theme.colors.accentRed};
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 24px;
+    flex-shrink: 0;
+`
+
+const DifficultyBadge = styled.span<{ $color: string }>`
+    color: ${({ $color }) => $color};
+    font-size: 12px;
+    padding: 2px 6px;
+    background-color: ${({ $color }) => `${$color}20`};
+    border-radius: ${({ theme }) => theme.radii.sm};
+`
+
+const StatItem = styled.span`
+    display: flex;
+    align-items: center;
+    gap: 4px;
+`
+
+const ExpandedDetails = styled.div`
+    padding: 0 16px 16px 16px;
+    border-top: 1px solid ${({ theme }) => theme.colors.cardBorder};
+`
+
+const SquadSection = styled.div`
+    padding: 12px 0;
+    border-bottom: 1px solid ${({ theme }) => theme.colors.cardBorder};
+`
+
+const PlayerTag = styled.span`
+    color: ${({ theme }) => theme.colors.textPrimary};
+    font-size: 12px;
+    padding: 4px 8px;
+    background-color: ${({ theme }) => theme.colors.cardBg};
+    border-radius: ${({ theme }) => theme.radii.sm};
+    border: 1px solid ${({ theme }) => theme.colors.cardBorder};
+`
+
+const EmptyState = styled.div`
+    text-align: center;
+    padding: 60px 20px;
+    color: ${({ theme }) => theme.colors.textMuted};
+`
 
 type RunSummaryDisplay = Omit<RunSummary, 'fullData'>
 
@@ -130,266 +219,108 @@ const RunHistoryModal = ({ isOpen, onClose }: RunHistoryModalProps) => {
     }
 
     return (
-        <div
-            style={{
-                position: 'fixed',
-                inset: 0,
-                backgroundColor: 'rgba(0, 0, 0, 0.85)',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                zIndex: 1000,
-                padding: '20px',
-            }}
-        >
-            <div
-                style={{
-                    backgroundColor: COLORS.CARD_BG,
-                    borderRadius: '16px',
-                    border: `2px solid ${COLORS.PRIMARY}`,
-                    maxWidth: '800px',
-                    width: '100%',
-                    maxHeight: '80vh',
-                    display: 'flex',
-                    flexDirection: 'column',
-                    boxShadow: '0 20px 60px rgba(0, 0, 0, 0.5)',
-                }}
+        <ModalBackdrop>
+            <ModalContainer
+                $size="lg"
+                style={{ display: 'flex', flexDirection: 'column', maxHeight: '80vh' }}
             >
                 {/* Header */}
-                <div
-                    style={{
-                        padding: '20px 24px',
-                        borderBottom: `1px solid ${COLORS.CARD_BORDER}`,
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'space-between',
-                    }}
-                >
+                <ModalHeader>
                     <div>
-                        <h2
-                            style={{
-                                color: COLORS.PRIMARY,
-                                fontSize: '20px',
-                                fontWeight: '900',
-                                textTransform: 'uppercase',
-                                letterSpacing: '0.1em',
-                                margin: 0,
-                                display: 'flex',
-                                alignItems: 'center',
-                                gap: '10px',
-                            }}
-                        >
+                        <Flex $align="center" $gap="sm">
                             <span style={{ fontSize: '24px' }}>📊</span>
-                            Past Runs
-                        </h2>
-                        <p
-                            style={{
-                                color: COLORS.TEXT_MUTED,
-                                fontSize: '12px',
-                                margin: '4px 0 0 0',
-                            }}
-                        >
+                            <ModalTitle style={{ margin: 0, fontSize: '20px' }}>
+                                Past Runs
+                            </ModalTitle>
+                        </Flex>
+                        <Caption style={{ marginTop: '4px' }}>
                             {stats.count} of {stats.maxCount} runs saved ({stats.sizeKB}KB used)
-                        </p>
+                        </Caption>
                     </div>
-
-                    <button
-                        onClick={onClose}
-                        style={{
-                            background: 'none',
-                            border: 'none',
-                            color: COLORS.TEXT_MUTED,
-                            cursor: 'pointer',
-                            padding: '8px',
-                            borderRadius: '4px',
-                            display: 'flex',
-                            alignItems: 'center',
-                            justifyContent: 'center',
-                        }}
-                    >
+                    <IconButton onClick={onClose} title="Close">
                         <X size={24} />
-                    </button>
-                </div>
+                    </IconButton>
+                </ModalHeader>
 
                 {/* Run List */}
-                <div
-                    style={{
-                        flex: 1,
-                        overflow: 'auto',
-                        padding: '16px',
-                    }}
-                >
+                <ModalContent $padding="lg" style={{ flex: 1, overflow: 'auto' }}>
                     {runs.length === 0 ? (
-                        <div
-                            style={{
-                                textAlign: 'center',
-                                padding: '60px 20px',
-                                color: COLORS.TEXT_MUTED,
-                            }}
-                        >
+                        <EmptyState>
                             <div style={{ fontSize: '48px', marginBottom: '16px' }}>🎮</div>
-                            <p style={{ fontSize: '16px', margin: '0 0 8px 0' }}>
-                                No past runs yet
-                            </p>
-                            <p style={{ fontSize: '13px', margin: 0 }}>
-                                Complete a game to see your run analytics here
-                            </p>
-                        </div>
+                            <Text style={{ marginBottom: '8px' }}>No past runs yet</Text>
+                            <Caption>Complete a game to see your run analytics here</Caption>
+                        </EmptyState>
                     ) : (
-                        <div
-                            style={{
-                                display: 'flex',
-                                flexDirection: 'column',
-                                gap: '12px',
-                            }}
-                        >
+                        <Flex $direction="column" $gap="md">
                             {runs.map((run) => {
                                 const factionColors = getFactionColors(run.faction)
                                 const isVictory = run.outcome === 'victory'
 
                                 return (
-                                    <div
-                                        key={run.runId}
-                                        style={{
-                                            backgroundColor: COLORS.CARD_INNER,
-                                            borderRadius: '12px',
-                                            border: `1px solid ${COLORS.CARD_BORDER}`,
-                                            overflow: 'hidden',
-                                            transition: 'all 0.2s',
-                                        }}
-                                    >
-                                        <div
+                                    <RunCard key={run.runId}>
+                                        <RunCardHeader
                                             onClick={() =>
                                                 setSelectedRun(
                                                     selectedRun === run.runId ? null : run.runId,
                                                 )
                                             }
-                                            style={{
-                                                padding: '16px',
-                                                cursor: 'pointer',
-                                                display: 'flex',
-                                                alignItems: 'center',
-                                                gap: '16px',
-                                            }}
                                         >
                                             {/* Outcome Icon */}
-                                            <div
-                                                style={{
-                                                    width: '48px',
-                                                    height: '48px',
-                                                    borderRadius: '12px',
-                                                    backgroundColor: isVictory
-                                                        ? 'rgba(34, 197, 94, 0.15)'
-                                                        : 'rgba(239, 68, 68, 0.15)',
-                                                    border: `2px solid ${isVictory ? COLORS.ACCENT_GREEN : COLORS.ACCENT_RED}`,
-                                                    display: 'flex',
-                                                    alignItems: 'center',
-                                                    justifyContent: 'center',
-                                                    fontSize: '24px',
-                                                    flexShrink: 0,
-                                                }}
-                                            >
+                                            <OutcomeIcon $isVictory={isVictory}>
                                                 {isVictory ? '🏆' : '💀'}
-                                            </div>
+                                            </OutcomeIcon>
 
                                             {/* Run Info */}
                                             <div style={{ flex: 1, minWidth: 0 }}>
-                                                <div
-                                                    style={{
-                                                        display: 'flex',
-                                                        alignItems: 'center',
-                                                        gap: '8px',
-                                                        marginBottom: '4px',
-                                                    }}
+                                                <Flex
+                                                    $align="center"
+                                                    $gap="sm"
+                                                    style={{ marginBottom: '4px' }}
                                                 >
-                                                    <span
+                                                    <Text
+                                                        $color={isVictory ? 'success' : 'error'}
+                                                        $size="sm"
                                                         style={{
-                                                            color: isVictory
-                                                                ? COLORS.ACCENT_GREEN
-                                                                : COLORS.ACCENT_RED,
-                                                            fontSize: '14px',
                                                             fontWeight: 'bold',
                                                             textTransform: 'uppercase',
                                                         }}
                                                     >
                                                         {isVictory ? 'Victory' : 'Defeat'}
-                                                    </span>
-                                                    <span
-                                                        style={{
-                                                            color: factionColors.PRIMARY,
-                                                            fontSize: '12px',
-                                                            padding: '2px 6px',
-                                                            backgroundColor: `${factionColors.PRIMARY}20`,
-                                                            borderRadius: '4px',
-                                                        }}
-                                                    >
+                                                    </Text>
+                                                    <DifficultyBadge $color={factionColors.PRIMARY}>
                                                         D{run.finalDifficulty}
-                                                    </span>
-                                                    <span
-                                                        style={{
-                                                            color: COLORS.TEXT_MUTED,
-                                                            fontSize: '11px',
-                                                        }}
-                                                    >
-                                                        {formatDate(run.savedAt)}
-                                                    </span>
-                                                </div>
+                                                    </DifficultyBadge>
+                                                    <Caption>{formatDate(run.savedAt)}</Caption>
+                                                </Flex>
 
-                                                <div
-                                                    style={{
-                                                        display: 'flex',
-                                                        alignItems: 'center',
-                                                        gap: '12px',
-                                                        color: COLORS.TEXT_SECONDARY,
-                                                        fontSize: '12px',
-                                                    }}
+                                                <Flex
+                                                    $align="center"
+                                                    $gap="md"
+                                                    style={{ fontSize: '12px' }}
                                                 >
-                                                    <span
-                                                        style={{
-                                                            display: 'flex',
-                                                            alignItems: 'center',
-                                                            gap: '4px',
-                                                        }}
-                                                    >
+                                                    <StatItem>
                                                         <Users size={12} />
                                                         {run.playerCount}
-                                                    </span>
-                                                    <span
-                                                        style={{
-                                                            display: 'flex',
-                                                            alignItems: 'center',
-                                                            gap: '4px',
-                                                        }}
-                                                    >
+                                                    </StatItem>
+                                                    <StatItem>
                                                         <Clock size={12} />
                                                         {formatDuration(run.duration)}
-                                                    </span>
+                                                    </StatItem>
                                                     {run.totalEvents > 0 && (
-                                                        <span
-                                                            style={{
-                                                                display: 'flex',
-                                                                alignItems: 'center',
-                                                                gap: '4px',
-                                                            }}
-                                                        >
+                                                        <StatItem>
                                                             <Star size={12} />
                                                             {run.totalEvents} events
-                                                        </span>
+                                                        </StatItem>
                                                     )}
                                                     {run.totalDeaths > 0 && (
-                                                        <span
-                                                            style={{
-                                                                display: 'flex',
-                                                                alignItems: 'center',
-                                                                gap: '4px',
-                                                                color: COLORS.ACCENT_RED,
-                                                            }}
+                                                        <StatItem
+                                                            style={{ color: COLORS.ACCENT_RED }}
                                                         >
                                                             <Skull size={12} />
                                                             {run.totalDeaths}
-                                                        </span>
+                                                        </StatItem>
                                                     )}
-                                                </div>
+                                                </Flex>
                                             </div>
 
                                             {/* Expand Arrow */}
@@ -404,178 +335,97 @@ const RunHistoryModal = ({ isOpen, onClose }: RunHistoryModalProps) => {
                                                     transition: 'transform 0.2s',
                                                 }}
                                             />
-                                        </div>
+                                        </RunCardHeader>
 
                                         {/* Expanded Details */}
                                         {selectedRun === run.runId && (
-                                            <div
-                                                style={{
-                                                    padding: '0 16px 16px 16px',
-                                                    borderTop: `1px solid ${COLORS.CARD_BORDER}`,
-                                                }}
-                                            >
+                                            <ExpandedDetails>
                                                 {/* Player Names */}
                                                 {run.playerNames && run.playerNames.length > 0 && (
-                                                    <div
-                                                        style={{
-                                                            padding: '12px 0',
-                                                            borderBottom: `1px solid ${COLORS.CARD_BORDER}`,
-                                                        }}
-                                                    >
-                                                        <p
+                                                    <SquadSection>
+                                                        <Caption
                                                             style={{
-                                                                color: COLORS.TEXT_MUTED,
-                                                                fontSize: '10px',
                                                                 textTransform: 'uppercase',
                                                                 letterSpacing: '0.05em',
-                                                                margin: '0 0 8px 0',
+                                                                marginBottom: '8px',
+                                                                display: 'block',
                                                             }}
                                                         >
                                                             Squad
-                                                        </p>
-                                                        <div
-                                                            style={{
-                                                                display: 'flex',
-                                                                flexWrap: 'wrap',
-                                                                gap: '8px',
-                                                            }}
-                                                        >
+                                                        </Caption>
+                                                        <Flex $wrap $gap="sm">
                                                             {run.playerNames.map((name, idx) => (
-                                                                <span
-                                                                    key={idx}
-                                                                    style={{
-                                                                        color: COLORS.TEXT_PRIMARY,
-                                                                        fontSize: '12px',
-                                                                        padding: '4px 8px',
-                                                                        backgroundColor:
-                                                                            COLORS.CARD_BG,
-                                                                        borderRadius: '4px',
-                                                                        border: `1px solid ${COLORS.CARD_BORDER}`,
-                                                                    }}
-                                                                >
+                                                                <PlayerTag key={idx}>
                                                                     {name}
-                                                                </span>
+                                                                </PlayerTag>
                                                             ))}
-                                                        </div>
-                                                    </div>
+                                                        </Flex>
+                                                    </SquadSection>
                                                 )}
 
                                                 {/* Actions */}
-                                                <div
-                                                    style={{
-                                                        display: 'flex',
-                                                        gap: '12px',
-                                                        marginTop: '12px',
-                                                    }}
-                                                >
-                                                    <button
+                                                <Flex $gap="md" style={{ marginTop: '12px' }}>
+                                                    <Button
+                                                        $variant="primary"
+                                                        $size="sm"
                                                         onClick={() => handleViewRun(run.runId)}
-                                                        style={{
-                                                            ...BUTTON_STYLES.PRIMARY,
-                                                            flex: 1,
-                                                            padding: '10px 16px',
-                                                            borderRadius: '6px',
-                                                            fontSize: '12px',
-                                                            display: 'flex',
-                                                            alignItems: 'center',
-                                                            justifyContent: 'center',
-                                                            gap: '6px',
-                                                        }}
+                                                        style={{ flex: 1 }}
                                                     >
                                                         <span>📊</span>
                                                         View Analytics
-                                                    </button>
+                                                    </Button>
 
                                                     {confirmDelete === run.runId ? (
-                                                        <div
-                                                            style={{
-                                                                display: 'flex',
-                                                                gap: '8px',
-                                                            }}
-                                                        >
-                                                            <button
+                                                        <Flex $gap="sm">
+                                                            <Button
+                                                                $variant="danger"
+                                                                $size="sm"
                                                                 onClick={() =>
                                                                     handleDeleteRun(run.runId)
                                                                 }
-                                                                style={{
-                                                                    ...BUTTON_STYLES.SECONDARY,
-                                                                    padding: '10px 16px',
-                                                                    borderRadius: '6px',
-                                                                    fontSize: '12px',
-                                                                    color: COLORS.ACCENT_RED,
-                                                                    borderColor: COLORS.ACCENT_RED,
-                                                                }}
                                                             >
                                                                 Confirm
-                                                            </button>
-                                                            <button
+                                                            </Button>
+                                                            <Button
+                                                                $variant="secondary"
+                                                                $size="sm"
                                                                 onClick={() =>
                                                                     setConfirmDelete(null)
                                                                 }
-                                                                style={{
-                                                                    ...BUTTON_STYLES.SECONDARY,
-                                                                    padding: '10px 16px',
-                                                                    borderRadius: '6px',
-                                                                    fontSize: '12px',
-                                                                }}
                                                             >
                                                                 Cancel
-                                                            </button>
-                                                        </div>
+                                                            </Button>
+                                                        </Flex>
                                                     ) : (
-                                                        <button
+                                                        <Button
+                                                            $variant="danger"
+                                                            $size="sm"
                                                             onClick={() =>
                                                                 setConfirmDelete(run.runId)
                                                             }
-                                                            style={{
-                                                                ...BUTTON_STYLES.SECONDARY,
-                                                                padding: '10px 16px',
-                                                                borderRadius: '6px',
-                                                                fontSize: '12px',
-                                                                color: COLORS.ACCENT_RED,
-                                                                borderColor: COLORS.ACCENT_RED,
-                                                                display: 'flex',
-                                                                alignItems: 'center',
-                                                                gap: '6px',
-                                                            }}
                                                         >
                                                             <Trash2 size={14} />
                                                             Delete
-                                                        </button>
+                                                        </Button>
                                                     )}
-                                                </div>
-                                            </div>
+                                                </Flex>
+                                            </ExpandedDetails>
                                         )}
-                                    </div>
+                                    </RunCard>
                                 )
                             })}
-                        </div>
+                        </Flex>
                     )}
-                </div>
+                </ModalContent>
 
                 {/* Footer */}
-                <div
-                    style={{
-                        padding: '16px 24px',
-                        borderTop: `1px solid ${COLORS.CARD_BORDER}`,
-                        display: 'flex',
-                        justifyContent: 'flex-end',
-                    }}
-                >
-                    <button
-                        onClick={onClose}
-                        style={{
-                            ...BUTTON_STYLES.SECONDARY,
-                            padding: '10px 24px',
-                            borderRadius: '6px',
-                            fontSize: '13px',
-                        }}
-                    >
+                <ModalFooter>
+                    <Button $variant="secondary" $size="sm" onClick={onClose}>
                         Close
-                    </button>
-                </div>
-            </div>
-        </div>
+                    </Button>
+                </ModalFooter>
+            </ModalContainer>
+        </ModalBackdrop>
     )
 }
 

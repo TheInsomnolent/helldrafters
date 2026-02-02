@@ -27,7 +27,7 @@ describe('stratagemCodes', () => {
             expect(STRATAGEM_CODES['st_ops']).toBeDefined()
             expect(STRATAGEM_CODES['st_railgun']).toBeDefined()
             expect(STRATAGEM_CODES['st_e_500']).toBeDefined()
-            expect(STRATAGEM_CODES['st_reinforce']).toBeDefined()
+            expect(STRATAGEM_CODES['st_amr']).toBeDefined()
         })
     })
 

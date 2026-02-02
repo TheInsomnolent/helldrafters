@@ -1,8 +1,75 @@
+import styled from 'styled-components'
 import { DIFFICULTY_CONFIG, getMissionsForDifficulty } from '../constants/gameConfig'
 import { HelpCircle } from 'lucide-react'
 import { getFactionColors, FactionColorSet } from '../constants/theme'
 import { SUBFACTION_CONFIG, Subfaction } from '../constants/balancingConfig'
 import type { Faction, Samples } from '../types'
+import { HeaderBar, Flex, Button, DifficultyBadge, Mono, Caption, ProgressCircle } from '../styles'
+
+// ============================================================================
+// STYLED COMPONENTS (component-specific only)
+// ============================================================================
+
+const HeaderContent = styled.div`
+    max-width: 1400px;
+    margin: 0 auto;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+`
+
+const DifficultyTitle = styled.h1`
+    font-size: 18px;
+    font-weight: ${({ theme }) => theme.fontWeights.bold};
+    text-transform: uppercase;
+    color: ${({ theme }) => theme.colors.textPrimary};
+    letter-spacing: 1px;
+    margin: 0;
+`
+
+const TheaterInfo = styled.div<{ $factionColor: string }>`
+    font-size: 12px;
+    color: ${({ $factionColor }) => $factionColor};
+    font-family: monospace;
+`
+
+const OperationBadge = styled.div`
+    display: flex;
+    align-items: center;
+    gap: ${({ theme }) => theme.spacing.sm};
+    margin-left: ${({ theme }) => theme.spacing.lg};
+    padding: 8px 12px;
+    background-color: rgba(100, 116, 139, 0.2);
+    border-radius: ${({ theme }) => theme.radii.md};
+    border: 1px solid rgba(100, 116, 139, 0.3);
+`
+
+const OperationCount = styled.span<{ $factionColor: string }>`
+    font-size: 11px;
+    color: ${({ $factionColor }) => $factionColor};
+    font-weight: ${({ theme }) => theme.fontWeights.bold};
+`
+
+const StatIcon = styled.img`
+    width: 20px;
+    height: 20px;
+`
+
+const SmallStatIcon = styled.img`
+    width: 18px;
+    height: 18px;
+`
+
+const CurrentIndicator = styled.div<{ $factionColor: string }>`
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background-color: ${({ $factionColor }) => $factionColor};
+`
+
+// ============================================================================
+// SUB-COMPONENTS
+// ============================================================================
 
 interface MissionProgressIndicatorProps {
     currentMission: number
@@ -24,36 +91,26 @@ function MissionProgressIndicator({
         const isComplete = i < currentMission
         const isCurrent = i === currentMission
         circles.push(
-            <div
+            <ProgressCircle
                 key={i}
-                style={{
-                    width: '16px',
-                    height: '16px',
-                    borderRadius: '50%',
-                    border: `2px solid ${factionColors.PRIMARY}`,
-                    backgroundColor: isComplete ? factionColors.PRIMARY : 'transparent',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    position: 'relative',
-                }}
+                $complete={isComplete}
+                $factionPrimary={factionColors.PRIMARY}
                 title={`Mission ${i}${isComplete ? ' (Complete)' : isCurrent ? ' (Current)' : ''}`}
             >
-                {isCurrent && (
-                    <div
-                        style={{
-                            width: '6px',
-                            height: '6px',
-                            borderRadius: '50%',
-                            backgroundColor: factionColors.PRIMARY,
-                        }}
-                    />
-                )}
-            </div>,
+                {isCurrent && <CurrentIndicator $factionColor={factionColors.PRIMARY} />}
+            </ProgressCircle>,
         )
     }
-    return <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>{circles}</div>
+    return (
+        <Flex $align="center" $gap="xs">
+            {circles}
+        </Flex>
+    )
 }
+
+// ============================================================================
+// MAIN COMPONENT
+// ============================================================================
 
 interface GameHeaderProps {
     currentDiff: number
@@ -86,250 +143,103 @@ export default function GameHeader({
     const totalMissions = enduranceMode ? getMissionsForDifficulty(currentDiff) : 1
 
     return (
-        <div
-            style={{
-                backgroundColor: '#0f1419',
-                borderBottom: `1px solid ${factionColors.PRIMARY}4D`,
-                padding: '16px',
-                position: 'sticky',
-                top: 0,
-                zIndex: 10,
-            }}
-        >
-            <div
-                style={{
-                    maxWidth: '1400px',
-                    margin: '0 auto',
-                    display: 'flex',
-                    justifyContent: 'space-between',
-                    alignItems: 'center',
-                }}
-            >
-                <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
-                    <div
-                        style={{
-                            backgroundColor: factionColors.PRIMARY,
-                            color: 'black',
-                            padding: '4px 12px',
-                            fontWeight: '900',
-                            fontSize: '20px',
-                            borderRadius: '4px',
-                        }}
-                    >
+        <HeaderBar $factionPrimary={factionColors.PRIMARY}>
+            <HeaderContent>
+                <Flex $align="center" $gap="lg">
+                    <DifficultyBadge $factionPrimary={factionColors.PRIMARY}>
                         D{currentDiff}
-                    </div>
+                    </DifficultyBadge>
                     <div>
-                        <h1
-                            style={{
-                                fontSize: '18px',
-                                fontWeight: 'bold',
-                                textTransform: 'uppercase',
-                                color: 'white',
-                                letterSpacing: '1px',
-                                margin: 0,
-                            }}
-                        >
+                        <DifficultyTitle>
                             {DIFFICULTY_CONFIG[currentDiff - 1]?.name}
-                        </h1>
-                        <div
-                            style={{
-                                fontSize: '12px',
-                                color: factionColors.PRIMARY,
-                                fontFamily: 'monospace',
-                            }}
-                        >
+                        </DifficultyTitle>
+                        <TheaterInfo $factionColor={factionColors.PRIMARY}>
                             Theater: {faction} - {subfactionName}
-                        </div>
+                        </TheaterInfo>
                     </div>
 
                     {/* Endurance Mode Mission Progress */}
                     {enduranceMode && (
-                        <div
-                            style={{
-                                display: 'flex',
-                                alignItems: 'center',
-                                gap: '8px',
-                                marginLeft: '16px',
-                                padding: '8px 12px',
-                                backgroundColor: 'rgba(100, 116, 139, 0.2)',
-                                borderRadius: '4px',
-                                border: '1px solid rgba(100, 116, 139, 0.3)',
-                            }}
-                        >
-                            <span
-                                style={{
-                                    fontSize: '11px',
-                                    color: '#94a3b8',
-                                    textTransform: 'uppercase',
-                                    letterSpacing: '0.5px',
-                                }}
-                            >
-                                Operation
-                            </span>
+                        <OperationBadge>
+                            <Caption>Operation</Caption>
                             <MissionProgressIndicator
                                 currentMission={currentMission || 1}
                                 totalMissions={totalMissions}
                                 factionColors={factionColors}
                             />
-                            <span
-                                style={{
-                                    fontSize: '11px',
-                                    color: factionColors.PRIMARY,
-                                    fontWeight: 'bold',
-                                }}
-                            >
+                            <OperationCount $factionColor={factionColors.PRIMARY}>
                                 {currentMission || 1}/{totalMissions}
-                            </span>
-                        </div>
+                            </OperationCount>
+                        </OperationBadge>
                     )}
-                </div>
+                </Flex>
 
-                <div style={{ display: 'flex', alignItems: 'center', gap: '24px' }}>
+                <Flex $align="center" $gap="xl">
                     {/* Requisition */}
-                    <div
-                        style={{
-                            display: 'flex',
-                            alignItems: 'center',
-                            gap: '8px',
-                            color: factionColors.PRIMARY,
-                        }}
-                    >
-                        <img
+                    <Flex $align="center" $gap="sm">
+                        <StatIcon
                             src="https://helldivers.wiki.gg/images/Requisition_Slip.svg"
                             alt="Requisition"
-                            style={{ width: '20px', height: '20px' }}
                         />
-                        <span
-                            style={{
-                                fontFamily: 'monospace',
-                                fontWeight: 'bold',
-                                fontSize: '20px',
-                            }}
-                        >
+                        <Mono $size="lg" $factionColor={factionColors.PRIMARY} $color="faction">
                             {Math.floor(requisition)}
-                        </span>
-                    </div>
+                        </Mono>
+                    </Flex>
 
                     {/* Samples */}
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                    <Flex $align="center" $gap="md">
                         {/* Common Samples */}
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
-                            <img
+                        <Flex $align="center" $gap="xs">
+                            <SmallStatIcon
                                 src="https://helldivers.wiki.gg/images/Common_Sample_Logo.svg"
                                 alt="Common Samples"
-                                style={{ width: '18px', height: '18px' }}
                             />
-                            <span
-                                style={{
-                                    fontFamily: 'monospace',
-                                    fontWeight: 'bold',
-                                    fontSize: '16px',
-                                    color: '#22c55e',
-                                }}
-                            >
-                                {samples?.common || 0}
-                            </span>
-                        </div>
+                            <Mono $color="success">{samples?.common || 0}</Mono>
+                        </Flex>
 
                         {/* Rare Samples */}
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
-                            <img
+                        <Flex $align="center" $gap="xs">
+                            <SmallStatIcon
                                 src="https://helldivers.wiki.gg/images/Rare_Sample_Logo.svg"
                                 alt="Rare Samples"
-                                style={{ width: '18px', height: '18px' }}
                             />
-                            <span
-                                style={{
-                                    fontFamily: 'monospace',
-                                    fontWeight: 'bold',
-                                    fontSize: '16px',
-                                    color: '#f97316',
-                                }}
-                            >
-                                {samples?.rare || 0}
-                            </span>
-                        </div>
+                            <Mono $color="warning">{samples?.rare || 0}</Mono>
+                        </Flex>
 
                         {/* Super Rare Samples */}
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
-                            <img
+                        <Flex $align="center" $gap="xs">
+                            <SmallStatIcon
                                 src="https://helldivers.wiki.gg/images/Super_Sample_Logo.svg"
                                 alt="Super Rare Samples"
-                                style={{ width: '18px', height: '18px' }}
                             />
-                            <span
-                                style={{
-                                    fontFamily: 'monospace',
-                                    fontWeight: 'bold',
-                                    fontSize: '16px',
-                                    color: '#a855f7',
-                                }}
-                            >
+                            <Mono $factionColor="#a855f7" $color="faction">
                                 {samples?.superRare || 0}
-                            </span>
-                        </div>
-                    </div>
+                            </Mono>
+                        </Flex>
+                    </Flex>
 
                     {/* Action Buttons */}
-                    <button
-                        onClick={onHelp}
-                        style={{
-                            display: 'flex',
-                            alignItems: 'center',
-                            gap: '8px',
-                            padding: '8px 16px',
-                            backgroundColor: 'rgba(100, 116, 139, 0.3)',
-                            color: '#94a3b8',
-                            border: '1px solid rgba(100, 116, 139, 0.5)',
-                            borderRadius: '4px',
-                            fontWeight: 'bold',
-                            textTransform: 'uppercase',
-                            fontSize: '12px',
-                            cursor: 'pointer',
-                            transition: 'all 0.2s',
-                        }}
-                        onMouseEnter={(e) => {
-                            e.currentTarget.style.backgroundColor = 'rgba(100, 116, 139, 0.5)'
-                            e.currentTarget.style.color = factionColors.PRIMARY
-                        }}
-                        onMouseLeave={(e) => {
-                            e.currentTarget.style.backgroundColor = 'rgba(100, 116, 139, 0.3)'
-                            e.currentTarget.style.color = '#94a3b8'
-                        }}
-                    >
-                        <HelpCircle size={16} />
-                        Help
-                    </button>
-                    <button
-                        onClick={onExport}
-                        style={{
-                            display: 'flex',
-                            alignItems: 'center',
-                            gap: '8px',
-                            padding: '8px 16px',
-                            backgroundColor: 'rgba(100, 116, 139, 0.3)',
-                            color: '#94a3b8',
-                            border: '1px solid rgba(100, 116, 139, 0.5)',
-                            borderRadius: '4px',
-                            fontWeight: 'bold',
-                            textTransform: 'uppercase',
-                            fontSize: '12px',
-                            cursor: 'pointer',
-                            transition: 'all 0.2s',
-                        }}
-                        onMouseEnter={(e) => {
-                            e.currentTarget.style.backgroundColor = 'rgba(100, 116, 139, 0.5)'
-                            e.currentTarget.style.color = factionColors.PRIMARY
-                        }}
-                        onMouseLeave={(e) => {
-                            e.currentTarget.style.backgroundColor = 'rgba(100, 116, 139, 0.3)'
-                            e.currentTarget.style.color = '#94a3b8'
-                        }}
-                    >
-                        💾 Export
-                    </button>
-                </div>
-            </div>
-        </div>
+                    <Flex $align="center" $gap="sm">
+                        <Button
+                            $variant="ghost"
+                            $size="sm"
+                            $factionPrimary={factionColors.PRIMARY}
+                            onClick={onHelp}
+                        >
+                            <HelpCircle size={16} />
+                            Help
+                        </Button>
+                        <Button
+                            $variant="ghost"
+                            $size="sm"
+                            $factionPrimary={factionColors.PRIMARY}
+                            onClick={onExport}
+                        >
+                            💾 Export
+                        </Button>
+                    </Flex>
+                </Flex>
+            </HeaderContent>
+        </HeaderBar>
     )
 }

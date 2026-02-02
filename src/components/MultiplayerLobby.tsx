@@ -3,13 +3,353 @@
  */
 
 import React, { useState, useEffect, useRef } from 'react'
+import styled from 'styled-components'
 import { Copy, Check, Users, Crown, Wifi, WifiOff, RefreshCw, Link } from 'lucide-react'
-import { COLORS, SHADOWS, GRADIENTS, getFactionColors } from '../constants/theme'
+import { COLORS, SHADOWS, getFactionColors } from '../constants/theme'
 import { useMultiplayer, type LobbyInfo, type LobbyPlayer } from '../systems/multiplayer'
 import { trackMultiplayerAction } from '../utils/analytics'
 import GameConfiguration from './GameConfiguration'
 import type { GameConfig } from '../types'
 import type { Subfaction } from '../constants/balancingConfig'
+import {
+    PageContainer,
+    Container,
+    Title,
+    Heading,
+    Card,
+    Button,
+    Input,
+    Label,
+    Flex,
+    Grid,
+    Text,
+    Caption,
+    Alert,
+    SelectableCard,
+    Strong,
+} from '../styles'
+
+// ============================================================================
+// STYLED COMPONENTS (component-specific only)
+// ============================================================================
+
+const HeaderBanner = styled.div`
+    padding: ${({ theme }) => theme.spacing.md} ${({ theme }) => theme.spacing.xl};
+    margin: 0 auto;
+    max-width: 400px;
+    border-top: 1px solid rgba(100, 116, 139, 0.3);
+    border-bottom: 1px solid rgba(100, 116, 139, 0.3);
+`
+
+const HeaderBannerText = styled.p`
+    font-size: ${({ theme }) => theme.fontSizes.lg};
+    font-weight: ${({ theme }) => theme.fontWeights.bold};
+    color: ${({ theme }) => theme.colors.textPrimary};
+    text-transform: uppercase;
+    letter-spacing: 0.3em;
+    margin: 0;
+`
+
+const ModeCard = styled(SelectableCard)<{ $accentColor?: string }>`
+    padding: 48px 32px;
+    text-align: center;
+
+    &:hover {
+        border-color: ${({ $accentColor, theme }) => $accentColor || theme.colors.primary};
+        transform: translateY(-4px);
+        box-shadow: ${({ $accentColor }) =>
+            $accentColor ? `0 0 20px ${$accentColor}40` : SHADOWS.GLOW_PRIMARY};
+    }
+`
+
+const ModeIcon = styled.div<{ $color?: string }>`
+    color: ${({ $color, theme }) => $color || theme.colors.primary};
+    margin-bottom: ${({ theme }) => theme.spacing.xl};
+`
+
+const ModeTitle = styled.h2<{ $color?: string }>`
+    font-size: 28px;
+    font-weight: ${({ theme }) => theme.fontWeights.black};
+    color: ${({ $color, theme }) => $color || theme.colors.primary};
+    margin-bottom: ${({ theme }) => theme.spacing.md};
+    text-transform: uppercase;
+`
+
+const LobbyCodeBox = styled.div`
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: ${({ theme }) => theme.spacing.lg};
+    background-color: ${({ theme }) => theme.colors.bgMain};
+    padding: ${({ theme }) => theme.spacing.lg} ${({ theme }) => theme.spacing.xl};
+    border-radius: ${({ theme }) => theme.radii.md};
+    border: 1px solid ${({ theme }) => theme.colors.cardBorder};
+    cursor: pointer;
+    transition: ${({ theme }) => theme.transitions.normal};
+    flex-wrap: wrap;
+`
+
+const LobbyCode = styled.code<{ $visible?: boolean; $factionPrimary?: string }>`
+    font-size: 18px;
+    font-family: monospace;
+    color: ${({ $visible, $factionPrimary, theme }) =>
+        $visible ? $factionPrimary || theme.colors.primary : theme.colors.textDisabled};
+    letter-spacing: 0.05em;
+    filter: ${({ $visible }) => ($visible ? 'none' : 'blur(8px)')};
+    transition: ${({ theme }) => theme.transitions.normal};
+    user-select: ${({ $visible }) => ($visible ? 'text' : 'none')};
+`
+
+const PlayerSlotCard = styled.div<{
+    $active?: boolean
+    $isCurrentPlayer?: boolean
+    $factionPrimary?: string
+}>`
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: ${({ theme }) => theme.spacing.lg} 20px;
+    background-color: ${({ theme }) => theme.colors.bgMain};
+    border-radius: ${({ theme }) => theme.radii.md};
+    border: 2px solid
+        ${({ $active, $isCurrentPlayer, $factionPrimary, theme }) =>
+            $active
+                ? $isCurrentPlayer
+                    ? $factionPrimary || theme.colors.primary
+                    : theme.colors.cardBorder
+                : 'rgba(100, 116, 139, 0.3)'};
+    opacity: ${({ $active }) => ($active ? 1 : 0.5)};
+`
+
+const SlotButton = styled.button<{
+    $selected?: boolean
+    $factionColor?: string
+    $hasDisconnected?: boolean
+}>`
+    padding: ${({ theme }) => theme.spacing.lg} ${({ theme }) => theme.spacing.xl};
+    background-color: ${({ $selected, $factionColor, theme }) =>
+        $selected ? $factionColor || theme.colors.primary : theme.colors.bgMain};
+    color: ${({ $selected }) => ($selected ? 'black' : 'white')};
+    border: 2px solid
+        ${({ $selected, $factionColor, $hasDisconnected, theme }) =>
+            $selected
+                ? $factionColor || theme.colors.primary
+                : $hasDisconnected
+                  ? '#f59e0b'
+                  : theme.colors.cardBorder};
+    border-radius: ${({ theme }) => theme.radii.md};
+    font-weight: ${({ theme }) => theme.fontWeights.bold};
+    cursor: pointer;
+    transition: ${({ theme }) => theme.transitions.normal};
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 4px;
+
+    &:hover {
+        border-color: ${({ $factionColor }) => $factionColor || COLORS.ACCENT_BLUE};
+    }
+`
+
+const SlotButtonLabel = styled.span<{ $selected?: boolean }>`
+    font-size: 10px;
+    color: ${({ $selected }) => ($selected ? 'rgba(0,0,0,0.6)' : '#f59e0b')};
+    font-weight: normal;
+`
+
+const SlotLabel = styled.span`
+    font-size: ${({ theme }) => theme.fontSizes.md};
+    font-weight: ${({ theme }) => theme.fontWeights.bold};
+    color: ${({ theme }) => theme.colors.textMuted};
+    min-width: 60px;
+`
+
+const PlayerBadge = styled.div<{ $isHost?: boolean; $factionColor?: string }>`
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 12px;
+    background-color: ${({ theme }) => theme.colors.bgMain};
+    border-radius: ${({ theme }) => theme.radii.md};
+    border: 1px solid
+        ${({ $isHost, $factionColor, theme }) =>
+            $isHost ? $factionColor || theme.colors.primary : theme.colors.cardBorder};
+`
+
+const PlayerBadgeLabel = styled.span<{ $factionPrimary?: string }>`
+    font-size: 10px;
+    padding: 2px 8px;
+    background-color: ${({ $factionPrimary }) => `${$factionPrimary}30`};
+    color: ${({ $factionPrimary, theme }) => $factionPrimary || theme.colors.primary};
+    border-radius: ${({ theme }) => theme.radii.md};
+`
+
+const StatusBar = styled.div<{ $accentColor?: string }>`
+    background-color: rgba(15, 23, 42, 0.95);
+    border-bottom: 2px solid ${({ $accentColor, theme }) => $accentColor || theme.colors.primary};
+    padding: 8px 16px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: ${({ theme }) => theme.spacing.lg};
+    position: sticky;
+    top: 0;
+    z-index: ${({ theme }) => theme.zIndex.sticky};
+`
+
+const StatusLabel = styled.span<{ $color?: string }>`
+    font-size: 11px;
+    font-weight: ${({ theme }) => theme.fontWeights.black};
+    color: ${({ $color, theme }) => $color || theme.colors.primary};
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+`
+
+const PlayerTag = styled.div<{
+    $variant?: 'host' | 'player' | 'disconnected'
+    $factionPrimary?: string
+}>`
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    font-size: 11px;
+    padding: 2px 8px;
+    border-radius: ${({ theme }) => theme.radii.md};
+    background-color: ${({ $variant, $factionPrimary }) =>
+        $variant === 'disconnected'
+            ? 'rgba(239, 68, 68, 0.2)'
+            : $variant === 'host'
+              ? `${$factionPrimary}20`
+              : 'rgba(59, 130, 246, 0.2)'};
+    color: ${({ $variant, $factionPrimary, theme }) =>
+        $variant === 'disconnected'
+            ? theme.colors.accentRed
+            : $variant === 'host'
+              ? $factionPrimary || theme.colors.primary
+              : theme.colors.accentBlue};
+    opacity: ${({ $variant }) => ($variant === 'disconnected' ? 0.7 : 1)};
+`
+
+const CopyButton = styled.button<{ $copied?: boolean; $primary?: boolean; $factionColor?: string }>`
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 16px;
+    background-color: ${({ $copied, $primary, $factionColor }) =>
+        $copied ? '#22c55e' : $primary ? $factionColor || COLORS.ACCENT_BLUE : 'transparent'};
+    color: ${({ $copied, $primary }) => ($copied || $primary ? 'white' : COLORS.TEXT_MUTED)};
+    border: 1px solid
+        ${({ $copied, $primary, $factionColor }) =>
+            $copied
+                ? '#22c55e'
+                : $primary
+                  ? $factionColor || COLORS.ACCENT_BLUE
+                  : COLORS.CARD_BORDER};
+    border-radius: ${({ theme }) => theme.radii.md};
+    cursor: pointer;
+    transition: ${({ theme }) => theme.transitions.fast};
+    font-weight: ${({ $primary }) => ($primary ? 'bold' : 'normal')};
+
+    &:hover {
+        background-color: ${({ $copied, $primary, $factionColor }) =>
+            $copied
+                ? '#22c55e'
+                : $primary
+                  ? $factionColor || COLORS.ACCENT_BLUE
+                  : 'rgba(100, 116, 139, 0.1)'};
+    }
+`
+
+const SmallButton = styled.button<{ $variant?: 'danger' | 'primary' | 'ghost' }>`
+    padding: 4px 12px;
+    background-color: transparent;
+    color: ${({ $variant }) =>
+        $variant === 'danger'
+            ? '#ef4444'
+            : $variant === 'primary'
+              ? COLORS.ACCENT_BLUE
+              : COLORS.TEXT_MUTED};
+    border: 1px solid
+        ${({ $variant }) =>
+            $variant === 'danger'
+                ? '#7f1d1d'
+                : $variant === 'primary'
+                  ? COLORS.ACCENT_BLUE
+                  : COLORS.CARD_BORDER};
+    border-radius: ${({ theme }) => theme.radii.md};
+    font-size: 12px;
+    cursor: pointer;
+    transition: ${({ theme }) => theme.transitions.fast};
+
+    &:hover {
+        background-color: ${({ $variant }) =>
+            $variant === 'danger' ? 'rgba(239, 68, 68, 0.1)' : 'rgba(59, 130, 246, 0.1)'};
+        border-color: ${({ $variant }) => ($variant === 'danger' ? '#ef4444' : COLORS.ACCENT_BLUE)};
+    }
+`
+
+const DisconnectButton = styled.button`
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    padding: 4px 12px;
+    background-color: rgba(239, 68, 68, 0.1);
+    border: 1px solid rgba(239, 68, 68, 0.3);
+    border-radius: ${({ theme }) => theme.radii.md};
+    color: #ef4444;
+    font-size: 10px;
+    font-weight: ${({ theme }) => theme.fontWeights.black};
+    text-transform: uppercase;
+    cursor: pointer;
+    transition: ${({ theme }) => theme.transitions.fast};
+
+    &:hover {
+        background-color: rgba(239, 68, 68, 0.2);
+        border-color: #ef4444;
+    }
+`
+
+const KickButton = styled.button`
+    margin-left: 4px;
+    padding: 0 4px;
+    background-color: transparent;
+    color: #ef4444;
+    border: none;
+    border-radius: 2px;
+    font-size: 10px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    opacity: 0.6;
+    transition: ${({ theme }) => theme.transitions.fast};
+
+    &:hover {
+        opacity: 1;
+    }
+`
+
+const LobbyCodeButton = styled.button`
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    padding: 4px 8px;
+    background-color: rgba(100, 116, 139, 0.2);
+    border: 1px solid rgba(100, 116, 139, 0.3);
+    border-radius: ${({ theme }) => theme.radii.md};
+    cursor: pointer;
+    transition: ${({ theme }) => theme.transitions.fast};
+`
+
+const LobbyCodeSmall = styled.code<{ $visible?: boolean }>`
+    font-size: 11px;
+    color: ${({ $visible, theme }) =>
+        $visible ? theme.colors.textSecondary : theme.colors.textDisabled};
+    font-family: monospace;
+    filter: ${({ $visible }) => ($visible ? 'none' : 'blur(4px)')};
+    transition: filter 0.2s;
+    user-select: ${({ $visible }) => ($visible ? 'text' : 'none')};
+`
 
 /**
  * Generate a shareable join link for a lobby
@@ -42,267 +382,99 @@ export function MultiplayerModeSelect({
 
     if (!firebaseReady) {
         return (
-            <div
-                style={{
-                    minHeight: '100vh',
-                    background: GRADIENTS.BACKGROUND,
-                    color: 'white',
-                    padding: '80px 24px',
-                }}
-            >
-                <div style={{ maxWidth: '600px', margin: '0 auto', textAlign: 'center' }}>
-                    <h1
-                        style={{
-                            fontSize: '48px',
-                            fontWeight: '900',
-                            color: '#ef4444',
-                            marginBottom: '24px',
-                        }}
-                    >
+            <PageContainer>
+                <Container $maxWidth="sm" style={{ textAlign: 'center' }}>
+                    <Heading $factionColor="#ef4444" style={{ fontSize: '48px' }}>
                         MULTIPLAYER UNAVAILABLE
-                    </h1>
-                    <p style={{ fontSize: '16px', color: COLORS.TEXT_MUTED, marginBottom: '32px' }}>
+                    </Heading>
+                    <Text $color="muted" style={{ marginBottom: '32px' }}>
                         Firebase is not configured. Please add your Firebase configuration to enable
                         multiplayer features.
-                    </p>
-                    <p
-                        style={{
-                            fontSize: '14px',
-                            color: COLORS.TEXT_DISABLED,
-                            marginBottom: '48px',
-                        }}
-                    >
+                    </Text>
+                    <Caption style={{ marginBottom: '48px' }}>
                         See src/systems/multiplayer/firebaseConfig.js for setup instructions.
-                    </p>
-                    <button
-                        onClick={onBack}
-                        style={{
-                            padding: '16px 32px',
-                            backgroundColor: 'transparent',
-                            color: COLORS.TEXT_MUTED,
-                            border: `2px solid ${COLORS.CARD_BORDER}`,
-                            borderRadius: '4px',
-                            fontWeight: '900',
-                            fontSize: '14px',
-                            textTransform: 'uppercase',
-                            cursor: 'pointer',
-                        }}
-                    >
+                    </Caption>
+                    <Button $variant="secondary" onClick={onBack}>
                         ← BACK TO MENU
-                    </button>
-                </div>
-            </div>
+                    </Button>
+                </Container>
+            </PageContainer>
         )
     }
 
     return (
-        <div
-            style={{
-                minHeight: '100vh',
-                background: GRADIENTS.BACKGROUND,
-                color: 'white',
-                padding: '80px 24px',
-            }}
-        >
-            <div style={{ maxWidth: '800px', margin: '0 auto' }}>
+        <PageContainer>
+            <Container $maxWidth="md">
                 {/* Header */}
                 <div style={{ textAlign: 'center', marginBottom: '64px' }}>
-                    <h1
-                        style={{
-                            fontSize: '72px',
-                            fontWeight: '900',
-                            color: factionColors.PRIMARY,
-                            margin: '0 0 8px 0',
-                            letterSpacing: '0.05em',
-                            textTransform: 'uppercase',
-                            textShadow: factionColors.GLOW,
-                        }}
-                    >
+                    <Title $factionColor={factionColors.PRIMARY} $factionGlow={factionColors.GLOW}>
                         MULTIPLAYER
-                    </h1>
-                    <div
-                        style={{
-                            background: GRADIENTS.HEADER_BAR,
-                            padding: '12px',
-                            margin: '0 auto',
-                            maxWidth: '400px',
-                        }}
-                    >
-                        <p
-                            style={{
-                                fontSize: '16px',
-                                fontWeight: 'bold',
-                                color: 'white',
-                                textTransform: 'uppercase',
-                                letterSpacing: '0.3em',
-                                margin: 0,
-                            }}
-                        >
-                            Squad Up
-                        </p>
-                    </div>
+                    </Title>
+                    <HeaderBanner>
+                        <HeaderBannerText>Squad Up</HeaderBannerText>
+                    </HeaderBanner>
                 </div>
 
                 {error && (
-                    <div
-                        style={{
-                            backgroundColor: 'rgba(239, 68, 68, 0.1)',
-                            border: '1px solid #ef4444',
-                            borderRadius: '4px',
-                            padding: '16px',
-                            marginBottom: '32px',
-                            display: 'flex',
-                            justifyContent: 'space-between',
-                            alignItems: 'center',
-                        }}
-                    >
-                        <span style={{ color: '#ef4444' }}>{error}</span>
-                        <button
-                            onClick={clearError}
-                            style={{
-                                color: '#ef4444',
-                                background: 'none',
-                                border: 'none',
-                                cursor: 'pointer',
-                            }}
-                        >
-                            ✕
-                        </button>
-                    </div>
+                    <Alert $variant="error" style={{ marginBottom: '32px' }}>
+                        <Flex $justify="between" $align="center">
+                            <span>{error}</span>
+                            <button
+                                onClick={clearError}
+                                style={{
+                                    color: '#ef4444',
+                                    background: 'none',
+                                    border: 'none',
+                                    cursor: 'pointer',
+                                }}
+                            >
+                                ✕
+                            </button>
+                        </Flex>
+                    </Alert>
                 )}
 
                 {/* Options */}
-                <div
-                    style={{
-                        display: 'grid',
-                        gridTemplateColumns: '1fr 1fr',
-                        gap: '32px',
-                        marginBottom: '48px',
-                    }}
-                >
+                <Grid $columns={2} $gap="xl" style={{ marginBottom: '48px' }}>
                     {/* Host Game */}
-                    <button
+                    <ModeCard
+                        $accentColor={factionColors.PRIMARY}
                         onClick={() => {
                             trackMultiplayerAction('select_host')
                             onHost()
                         }}
-                        style={{
-                            backgroundColor: COLORS.CARD_BG,
-                            border: `2px solid ${COLORS.CARD_BORDER}`,
-                            borderRadius: '8px',
-                            padding: '48px 32px',
-                            cursor: 'pointer',
-                            transition: 'all 0.2s',
-                            textAlign: 'center',
-                        }}
-                        onMouseEnter={(e) => {
-                            e.currentTarget.style.borderColor = factionColors.PRIMARY
-                            e.currentTarget.style.transform = 'translateY(-4px)'
-                            e.currentTarget.style.boxShadow = factionColors.SHADOW
-                        }}
-                        onMouseLeave={(e) => {
-                            e.currentTarget.style.borderColor = COLORS.CARD_BORDER
-                            e.currentTarget.style.transform = 'translateY(0)'
-                            e.currentTarget.style.boxShadow = 'none'
-                        }}
                     >
-                        <Crown
-                            size={64}
-                            style={{ color: factionColors.PRIMARY, marginBottom: '24px' }}
-                        />
-                        <h2
-                            style={{
-                                fontSize: '28px',
-                                fontWeight: '900',
-                                color: factionColors.PRIMARY,
-                                marginBottom: '12px',
-                                textTransform: 'uppercase',
-                            }}
-                        >
-                            HOST GAME
-                        </h2>
-                        <p style={{ fontSize: '14px', color: COLORS.TEXT_MUTED, margin: 0 }}>
-                            Create a new lobby and invite your squad
-                        </p>
-                    </button>
+                        <ModeIcon $color={factionColors.PRIMARY}>
+                            <Crown size={64} />
+                        </ModeIcon>
+                        <ModeTitle $color={factionColors.PRIMARY}>HOST GAME</ModeTitle>
+                        <Text $color="muted">Create a new lobby and invite your squad</Text>
+                    </ModeCard>
 
                     {/* Join Game */}
-                    <button
+                    <ModeCard
+                        $accentColor={COLORS.ACCENT_BLUE}
                         onClick={() => {
                             trackMultiplayerAction('select_join')
                             onJoin()
                         }}
-                        style={{
-                            backgroundColor: COLORS.CARD_BG,
-                            border: `2px solid ${COLORS.CARD_BORDER}`,
-                            borderRadius: '8px',
-                            padding: '48px 32px',
-                            cursor: 'pointer',
-                            transition: 'all 0.2s',
-                            textAlign: 'center',
-                        }}
-                        onMouseEnter={(e) => {
-                            e.currentTarget.style.borderColor = COLORS.ACCENT_BLUE
-                            e.currentTarget.style.transform = 'translateY(-4px)'
-                            e.currentTarget.style.boxShadow = SHADOWS.GLOW_BLUE
-                        }}
-                        onMouseLeave={(e) => {
-                            e.currentTarget.style.borderColor = COLORS.CARD_BORDER
-                            e.currentTarget.style.transform = 'translateY(0)'
-                            e.currentTarget.style.boxShadow = 'none'
-                        }}
                     >
-                        <Users
-                            size={64}
-                            style={{ color: COLORS.ACCENT_BLUE, marginBottom: '24px' }}
-                        />
-                        <h2
-                            style={{
-                                fontSize: '28px',
-                                fontWeight: '900',
-                                color: COLORS.ACCENT_BLUE,
-                                marginBottom: '12px',
-                                textTransform: 'uppercase',
-                            }}
-                        >
-                            JOIN GAME
-                        </h2>
-                        <p style={{ fontSize: '14px', color: COLORS.TEXT_MUTED, margin: 0 }}>
-                            Enter a lobby code to join your squad
-                        </p>
-                    </button>
-                </div>
+                        <ModeIcon $color={COLORS.ACCENT_BLUE}>
+                            <Users size={64} />
+                        </ModeIcon>
+                        <ModeTitle $color={COLORS.ACCENT_BLUE}>JOIN GAME</ModeTitle>
+                        <Text $color="muted">Enter a lobby code to join your squad</Text>
+                    </ModeCard>
+                </Grid>
 
                 {/* Back button */}
                 <div style={{ textAlign: 'center' }}>
-                    <button
-                        onClick={onBack}
-                        style={{
-                            padding: '16px 32px',
-                            backgroundColor: 'transparent',
-                            color: COLORS.TEXT_MUTED,
-                            border: `2px solid ${COLORS.CARD_BORDER}`,
-                            borderRadius: '4px',
-                            fontWeight: '900',
-                            fontSize: '14px',
-                            textTransform: 'uppercase',
-                            cursor: 'pointer',
-                            transition: 'all 0.2s',
-                        }}
-                        onMouseEnter={(e) => {
-                            e.currentTarget.style.borderColor = COLORS.TEXT_DISABLED
-                            e.currentTarget.style.color = COLORS.TEXT_SECONDARY
-                        }}
-                        onMouseLeave={(e) => {
-                            e.currentTarget.style.borderColor = COLORS.CARD_BORDER
-                            e.currentTarget.style.color = COLORS.TEXT_MUTED
-                        }}
-                    >
+                    <Button $variant="secondary" onClick={onBack}>
                         ← BACK TO MENU
-                    </button>
+                    </Button>
                 </div>
-            </div>
-        </div>
+            </Container>
+        </PageContainer>
     )
 }
 
@@ -457,63 +629,25 @@ export function JoinGameScreen({
     const availableSlots = getAvailableSlots()
 
     return (
-        <div
-            style={{
-                minHeight: '100vh',
-                background: GRADIENTS.BACKGROUND,
-                color: 'white',
-                padding: '80px 24px',
-            }}
-        >
-            <div style={{ maxWidth: '600px', margin: '0 auto' }}>
+        <PageContainer>
+            <Container $maxWidth="sm">
                 {/* Header */}
-                <div style={{ textAlign: 'center', marginBottom: '48px' }}>
-                    <h1
-                        style={{
-                            fontSize: '48px',
-                            fontWeight: '900',
-                            color: COLORS.ACCENT_BLUE,
-                            marginBottom: '8px',
-                            textTransform: 'uppercase',
-                        }}
-                    >
-                        JOIN GAME
-                    </h1>
-                    <p style={{ fontSize: '16px', color: COLORS.TEXT_MUTED }}>
-                        Enter the lobby code shared by your host
-                    </p>
-                </div>
+                <Flex $direction="column" $align="center" style={{ marginBottom: '48px' }}>
+                    <Heading $factionColor={COLORS.ACCENT_BLUE}>JOIN GAME</Heading>
+                    <Text $color="muted">Enter the lobby code shared by your host</Text>
+                </Flex>
 
                 {error && (
-                    <div
-                        style={{
-                            backgroundColor: 'rgba(239, 68, 68, 0.1)',
-                            border: '1px solid #ef4444',
-                            borderRadius: '4px',
-                            padding: '16px',
-                            marginBottom: '24px',
-                        }}
-                    >
-                        <span style={{ color: '#ef4444' }}>{error}</span>
-                    </div>
+                    <Alert $variant="error" style={{ marginBottom: '24px' }}>
+                        {error}
+                    </Alert>
                 )}
 
                 {/* Lobby Code Input */}
                 <div style={{ marginBottom: '32px' }}>
-                    <label
-                        style={{
-                            display: 'block',
-                            fontSize: '12px',
-                            fontWeight: 'bold',
-                            color: COLORS.TEXT_MUTED,
-                            textTransform: 'uppercase',
-                            marginBottom: '8px',
-                        }}
-                    >
-                        LOBBY CODE
-                    </label>
-                    <div style={{ display: 'flex', gap: '12px' }}>
-                        <input
+                    <Label>LOBBY CODE</Label>
+                    <Flex $gap="md">
+                        <Input
                             type="text"
                             value={lobbyCode}
                             onChange={(e) => {
@@ -522,81 +656,34 @@ export function JoinGameScreen({
                                 setSelectedSlot(null)
                             }}
                             placeholder="Enter lobby code (UUID)"
-                            style={{
-                                flex: 1,
-                                padding: '16px',
-                                backgroundColor: COLORS.BG_MAIN,
-                                border: `2px solid ${COLORS.CARD_BORDER}`,
-                                borderRadius: '4px',
-                                fontSize: '16px',
-                                color: 'white',
-                                outline: 'none',
-                            }}
+                            style={{ flex: 1 }}
                         />
-                        <button
-                            onClick={handleCheckLobby}
-                            disabled={!lobbyCode.trim() || checking}
-                            style={{
-                                padding: '16px 24px',
-                                backgroundColor: COLORS.ACCENT_BLUE,
-                                color: 'white',
-                                border: 'none',
-                                borderRadius: '4px',
-                                fontWeight: 'bold',
-                                cursor: lobbyCode.trim() && !checking ? 'pointer' : 'not-allowed',
-                                opacity: lobbyCode.trim() && !checking ? 1 : 0.5,
-                            }}
-                        >
+                        <Button onClick={handleCheckLobby} disabled={!lobbyCode.trim() || checking}>
                             {checking ? <RefreshCw size={20} className="spin" /> : 'CHECK'}
-                        </button>
-                    </div>
+                        </Button>
+                    </Flex>
                 </div>
 
                 {/* Lobby Info */}
                 {lobbyInfo && (
-                    <div
-                        style={{
-                            backgroundColor: COLORS.CARD_BG,
-                            borderRadius: '8px',
-                            padding: '24px',
-                            marginBottom: '32px',
-                            border: `1px solid ${COLORS.CARD_BORDER}`,
-                        }}
-                    >
-                        <h3
-                            style={{
-                                color: factionColors.PRIMARY,
-                                marginBottom: '16px',
-                                textTransform: 'uppercase',
-                            }}
+                    <Card style={{ marginBottom: '32px', padding: '24px' }}>
+                        <Heading
+                            as="h3"
+                            $factionColor={factionColors.PRIMARY}
+                            style={{ marginBottom: '16px' }}
                         >
                             LOBBY FOUND
-                        </h3>
+                        </Heading>
 
                         {/* Current Players */}
                         <div style={{ marginBottom: '24px' }}>
-                            <div
-                                style={{
-                                    fontSize: '12px',
-                                    color: COLORS.TEXT_MUTED,
-                                    marginBottom: '8px',
-                                }}
-                            >
-                                PLAYERS IN LOBBY
-                            </div>
-                            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
+                            <Caption>PLAYERS IN LOBBY</Caption>
+                            <Flex $wrap $gap="sm" style={{ marginTop: '8px' }}>
                                 {Object.values(lobbyInfo.players || {}).map((p) => (
-                                    <div
+                                    <PlayerBadge
                                         key={p.id}
-                                        style={{
-                                            display: 'flex',
-                                            alignItems: 'center',
-                                            gap: '8px',
-                                            padding: '8px 12px',
-                                            backgroundColor: COLORS.BG_MAIN,
-                                            borderRadius: '4px',
-                                            border: `1px solid ${p.isHost ? factionColors.PRIMARY : COLORS.CARD_BORDER}`,
-                                        }}
+                                        $isHost={p.isHost}
+                                        $factionColor={factionColors.PRIMARY}
                                     >
                                         {p.isHost && (
                                             <Crown
@@ -611,219 +698,105 @@ export function JoinGameScreen({
                                         >
                                             {p.name}
                                         </span>
-                                        <span
-                                            style={{ fontSize: '10px', color: COLORS.TEXT_MUTED }}
-                                        >
-                                            (Slot {p.slot + 1})
-                                        </span>
-                                    </div>
+                                        <Caption>(Slot {p.slot + 1})</Caption>
+                                    </PlayerBadge>
                                 ))}
-                            </div>
+                            </Flex>
                         </div>
 
                         {/* Player Name */}
                         <div style={{ marginBottom: '24px' }}>
-                            <label
-                                style={{
-                                    display: 'block',
-                                    fontSize: '12px',
-                                    fontWeight: 'bold',
-                                    color: COLORS.TEXT_MUTED,
-                                    textTransform: 'uppercase',
-                                    marginBottom: '8px',
-                                }}
-                            >
-                                YOUR NAME
-                            </label>
-                            <input
+                            <Label>YOUR NAME</Label>
+                            <Input
                                 type="text"
                                 value={playerName}
                                 onChange={(e) => setPlayerName(e.target.value)}
                                 placeholder="Enter your helldiver name"
                                 maxLength={30}
-                                style={{
-                                    width: '100%',
-                                    padding: '16px',
-                                    backgroundColor: COLORS.BG_MAIN,
-                                    border: `2px solid ${COLORS.CARD_BORDER}`,
-                                    borderRadius: '4px',
-                                    fontSize: '16px',
-                                    color: 'white',
-                                    outline: 'none',
-                                }}
                             />
                         </div>
 
                         {/* Slot Selection - only show for loaded/saved games */}
                         {showSlotSelection && (
                             <div style={{ marginBottom: '24px' }}>
-                                <label
-                                    style={{
-                                        display: 'block',
-                                        fontSize: '12px',
-                                        fontWeight: 'bold',
-                                        color: COLORS.TEXT_MUTED,
-                                        textTransform: 'uppercase',
-                                        marginBottom: '8px',
-                                    }}
-                                >
-                                    SELECT YOUR SLOT
-                                </label>
-                                <p
-                                    style={{
-                                        fontSize: '12px',
-                                        color: COLORS.TEXT_SECONDARY,
-                                        marginBottom: '12px',
-                                    }}
+                                <Label>SELECT YOUR SLOT</Label>
+                                <Text
+                                    $size="sm"
+                                    $color="secondary"
+                                    style={{ marginBottom: '12px' }}
                                 >
                                     This is a saved game. Select which helldiver slot you want to
                                     play as.
-                                </p>
+                                </Text>
                                 {availableSlots.length === 0 ? (
-                                    <p style={{ color: '#ef4444' }}>
-                                        No slots available - lobby is full
-                                    </p>
+                                    <Text $color="error">No slots available - lobby is full</Text>
                                 ) : (
-                                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: '12px' }}>
+                                    <Flex $wrap $gap="md">
                                         {availableSlots.map((slot) => {
                                             const disconnectedPlayer =
                                                 getDisconnectedPlayerInSlot(slot)
                                             return (
-                                                <button
+                                                <SlotButton
                                                     key={slot}
                                                     onClick={() => setSelectedSlot(slot)}
-                                                    style={{
-                                                        padding: '16px 24px',
-                                                        backgroundColor:
-                                                            selectedSlot === slot
-                                                                ? factionColors.PRIMARY
-                                                                : COLORS.BG_MAIN,
-                                                        color:
-                                                            selectedSlot === slot
-                                                                ? 'black'
-                                                                : 'white',
-                                                        border: `2px solid ${selectedSlot === slot ? factionColors.PRIMARY : disconnectedPlayer ? '#f59e0b' : COLORS.CARD_BORDER}`,
-                                                        borderRadius: '4px',
-                                                        fontWeight: 'bold',
-                                                        cursor: 'pointer',
-                                                        transition: 'all 0.2s',
-                                                        display: 'flex',
-                                                        flexDirection: 'column',
-                                                        alignItems: 'center',
-                                                        gap: '4px',
-                                                    }}
+                                                    $selected={selectedSlot === slot}
+                                                    $factionColor={factionColors.PRIMARY}
+                                                    $hasDisconnected={!!disconnectedPlayer}
                                                 >
                                                     <span>Slot {slot + 1}</span>
                                                     {disconnectedPlayer && (
-                                                        <span
-                                                            style={{
-                                                                fontSize: '10px',
-                                                                color:
-                                                                    selectedSlot === slot
-                                                                        ? 'rgba(0,0,0,0.6)'
-                                                                        : '#f59e0b',
-                                                                fontWeight: 'normal',
-                                                            }}
+                                                        <SlotButtonLabel
+                                                            $selected={selectedSlot === slot}
                                                         >
                                                             (Rejoin as {disconnectedPlayer.name})
-                                                        </span>
+                                                        </SlotButtonLabel>
                                                     )}
-                                                </button>
+                                                </SlotButton>
                                             )
                                         })}
-                                    </div>
+                                    </Flex>
                                 )}
                             </div>
                         )}
 
                         {/* Auto-assigned slot message for new games */}
                         {!showSlotSelection && selectedSlot !== null && (
-                            <div style={{ marginBottom: '24px' }}>
-                                <div
-                                    style={{
-                                        padding: '12px 16px',
-                                        backgroundColor: `${factionColors.PRIMARY}20`,
-                                        border: `1px solid ${factionColors.PRIMARY}40`,
-                                        borderRadius: '4px',
-                                    }}
-                                >
-                                    <span
-                                        style={{ color: factionColors.PRIMARY, fontWeight: 'bold' }}
-                                    >
-                                        You will join as Helldiver {selectedSlot + 1}
-                                    </span>
-                                </div>
-                            </div>
+                            <Alert $variant="info" style={{ marginBottom: '24px' }}>
+                                <Strong style={{ color: factionColors.PRIMARY }}>
+                                    You will join as Helldiver {selectedSlot + 1}
+                                </Strong>
+                            </Alert>
                         )}
 
                         {/* Join Button */}
-                        <button
+                        <Button
                             onClick={handleJoin}
                             disabled={!playerName.trim() || selectedSlot === null}
-                            style={{
-                                width: '100%',
-                                padding: '16px',
-                                backgroundColor:
-                                    playerName.trim() && selectedSlot !== null
-                                        ? COLORS.ACCENT_BLUE
-                                        : COLORS.BG_MAIN,
-                                color: 'white',
-                                border: 'none',
-                                borderRadius: '4px',
-                                fontWeight: '900',
-                                fontSize: '16px',
-                                textTransform: 'uppercase',
-                                cursor:
-                                    playerName.trim() && selectedSlot !== null
-                                        ? 'pointer'
-                                        : 'not-allowed',
-                                opacity: playerName.trim() && selectedSlot !== null ? 1 : 0.5,
-                            }}
+                            $fullWidth
                         >
                             JOIN LOBBY
-                        </button>
-                    </div>
+                        </Button>
+                    </Card>
                 )}
 
                 {/* No lobby found message */}
                 {lobbyCode && !checking && !lobbyInfo && !error && (
-                    <div
-                        style={{
-                            backgroundColor: 'rgba(239, 68, 68, 0.1)',
-                            border: '1px solid #ef4444',
-                            borderRadius: '4px',
-                            padding: '24px',
-                            marginBottom: '32px',
-                            textAlign: 'center',
-                        }}
+                    <Alert
+                        $variant="error"
+                        style={{ marginBottom: '32px', textAlign: 'center', padding: '24px' }}
                     >
-                        <p style={{ color: '#ef4444', margin: 0 }}>
-                            Lobby not found. Check the code and try again.
-                        </p>
-                    </div>
+                        <Text $color="error">Lobby not found. Check the code and try again.</Text>
+                    </Alert>
                 )}
 
                 {/* Back button */}
-                <div style={{ textAlign: 'center' }}>
-                    <button
-                        onClick={onBack}
-                        style={{
-                            padding: '16px 32px',
-                            backgroundColor: 'transparent',
-                            color: COLORS.TEXT_MUTED,
-                            border: `2px solid ${COLORS.CARD_BORDER}`,
-                            borderRadius: '4px',
-                            fontWeight: '900',
-                            fontSize: '14px',
-                            textTransform: 'uppercase',
-                            cursor: 'pointer',
-                        }}
-                    >
+                <Flex $justify="center">
+                    <Button $variant="ghost" onClick={onBack}>
                         ← BACK
-                    </button>
-                </div>
-            </div>
-        </div>
+                    </Button>
+                </Flex>
+            </Container>
+        </PageContainer>
     )
 }
 
@@ -923,203 +896,83 @@ export function MultiplayerWaitingRoom({
     }
 
     return (
-        <div
-            style={{
-                minHeight: '100vh',
-                background: GRADIENTS.BACKGROUND,
-                color: 'white',
-                padding: '80px 24px',
-            }}
-        >
-            <div style={{ maxWidth: '800px', margin: '0 auto' }}>
+        <PageContainer>
+            <Container $maxWidth="md">
                 {/* Header */}
-                <div style={{ textAlign: 'center', marginBottom: '48px' }}>
-                    <h1
-                        style={{
-                            fontSize: '48px',
-                            fontWeight: '900',
-                            color: factionColors.PRIMARY,
-                            marginBottom: '8px',
-                            textTransform: 'uppercase',
-                        }}
-                    >
+                <Flex $direction="column" $align="center" style={{ marginBottom: '48px' }}>
+                    <Title $factionColor={factionColors.PRIMARY}>
                         {isHost ? 'HOSTING GAME' : 'WAITING FOR HOST'}
-                    </h1>
-                    <p style={{ fontSize: '16px', color: COLORS.TEXT_MUTED }}>
+                    </Title>
+                    <Text $color="muted">
                         {isHost
                             ? 'Share the lobby code with your squad'
                             : 'Waiting for host to start the game...'}
-                    </p>
-                </div>
+                    </Text>
+                </Flex>
 
                 {/* Lobby Code - Hidden until hover for streaming mode */}
-                <div
-                    style={{
-                        backgroundColor: COLORS.CARD_BG,
-                        borderRadius: '8px',
-                        padding: '32px',
-                        marginBottom: '32px',
-                        textAlign: 'center',
-                        border: `1px solid ${COLORS.CARD_BORDER}`,
-                    }}
-                >
-                    <div
-                        style={{
-                            fontSize: '12px',
-                            color: COLORS.TEXT_MUTED,
-                            marginBottom: '8px',
-                            textTransform: 'uppercase',
-                        }}
-                    >
+                <Card style={{ marginBottom: '32px', padding: '32px', textAlign: 'center' }}>
+                    <Caption style={{ marginBottom: '8px' }}>
                         LOBBY CODE {!lobbyCodeVisible && '(hover to reveal)'}
-                    </div>
-                    <div
-                        style={{
-                            display: 'flex',
-                            alignItems: 'center',
-                            justifyContent: 'center',
-                            gap: '16px',
-                            backgroundColor: COLORS.BG_MAIN,
-                            padding: '16px 24px',
-                            borderRadius: '4px',
-                            border: `1px solid ${COLORS.CARD_BORDER}`,
-                            cursor: 'pointer',
-                            transition: 'all 0.2s',
-                            flexWrap: 'wrap',
-                        }}
+                    </Caption>
+                    <LobbyCodeBox
                         onMouseEnter={() => setLobbyCodeVisible(true)}
                         onMouseLeave={() => setLobbyCodeVisible(false)}
                     >
-                        <code
-                            style={{
-                                fontSize: '18px',
-                                fontFamily: 'monospace',
-                                color: lobbyCodeVisible
-                                    ? factionColors.PRIMARY
-                                    : COLORS.TEXT_DISABLED,
-                                letterSpacing: '0.05em',
-                                filter: lobbyCodeVisible ? 'none' : 'blur(8px)',
-                                transition: 'all 0.2s',
-                                userSelect: lobbyCodeVisible ? 'text' : 'none',
-                            }}
+                        <LobbyCode
+                            $visible={lobbyCodeVisible}
+                            $factionPrimary={factionColors.PRIMARY}
                         >
                             {lobbyId}
-                        </code>
-                        <div style={{ display: 'flex', gap: '8px' }}>
-                            <button
-                                onClick={copyLobbyCode}
-                                style={{
-                                    display: 'flex',
-                                    alignItems: 'center',
-                                    gap: '8px',
-                                    padding: '8px 16px',
-                                    backgroundColor: copied ? '#22c55e' : 'transparent',
-                                    color: copied ? 'white' : COLORS.TEXT_MUTED,
-                                    border: `1px solid ${copied ? '#22c55e' : COLORS.CARD_BORDER}`,
-                                    borderRadius: '4px',
-                                    cursor: 'pointer',
-                                    transition: 'all 0.2s',
-                                }}
-                            >
+                        </LobbyCode>
+                        <Flex $gap="sm">
+                            <CopyButton onClick={copyLobbyCode} $copied={copied}>
                                 {copied ? <Check size={16} /> : <Copy size={16} />}
                                 {copied ? 'Copied!' : 'Copy Code'}
-                            </button>
-                            <button
+                            </CopyButton>
+                            <CopyButton
                                 onClick={copyJoinLink}
-                                style={{
-                                    display: 'flex',
-                                    alignItems: 'center',
-                                    gap: '8px',
-                                    padding: '8px 16px',
-                                    backgroundColor: copiedLink ? '#22c55e' : factionColors.PRIMARY,
-                                    color: copiedLink ? 'white' : 'black',
-                                    border: `1px solid ${copiedLink ? '#22c55e' : factionColors.PRIMARY}`,
-                                    borderRadius: '4px',
-                                    cursor: 'pointer',
-                                    transition: 'all 0.2s',
-                                    fontWeight: 'bold',
-                                }}
+                                $copied={copiedLink}
+                                $primary={!copiedLink}
+                                $factionColor={factionColors.PRIMARY}
                             >
                                 {copiedLink ? <Check size={16} /> : <Link size={16} />}
                                 {copiedLink ? 'Copied!' : 'Copy Link'}
-                            </button>
-                        </div>
-                    </div>
-                    <p
-                        style={{
-                            fontSize: '11px',
-                            color: COLORS.TEXT_DISABLED,
-                            marginTop: '8px',
-                            margin: '8px 0 0 0',
-                        }}
-                    >
+                            </CopyButton>
+                        </Flex>
+                    </LobbyCodeBox>
+                    <Caption style={{ marginTop: '8px', color: COLORS.TEXT_DISABLED }}>
                         Hidden for streaming - hover to reveal. Share the link for easy joining!
-                    </p>
-                </div>
+                    </Caption>
+                </Card>
 
                 {/* Players List */}
-                <div
-                    style={{
-                        backgroundColor: COLORS.CARD_BG,
-                        borderRadius: '8px',
-                        padding: '32px',
-                        marginBottom: '32px',
-                        border: `1px solid ${COLORS.CARD_BORDER}`,
-                    }}
-                >
-                    <h3
-                        style={{
-                            color: factionColors.PRIMARY,
-                            marginBottom: '24px',
-                            textTransform: 'uppercase',
-                        }}
+                <Card style={{ marginBottom: '32px', padding: '32px' }}>
+                    <Heading
+                        as="h3"
+                        $factionColor={factionColors.PRIMARY}
+                        style={{ marginBottom: '24px' }}
                     >
                         SQUAD ({players.length}/{maxPlayers})
-                    </h3>
+                    </Heading>
 
-                    <div style={{ display: 'grid', gap: '12px' }}>
+                    <Grid $gap="md">
                         {Array.from({ length: maxPlayers }, (_, i) => {
                             const player = players.find((p) => p.slot === i)
                             const isCurrentPlayer = player && player.slot === playerSlot
 
                             return (
-                                <div
+                                <PlayerSlotCard
                                     key={i}
-                                    style={{
-                                        display: 'flex',
-                                        alignItems: 'center',
-                                        justifyContent: 'space-between',
-                                        padding: '16px 20px',
-                                        backgroundColor: COLORS.BG_MAIN,
-                                        borderRadius: '4px',
-                                        border: `2px solid ${player ? (isCurrentPlayer ? factionColors.PRIMARY : COLORS.CARD_BORDER) : 'rgba(100, 116, 139, 0.3)'}`,
-                                        opacity: player ? 1 : 0.5,
-                                    }}
+                                    $active={!!player}
+                                    $isCurrentPlayer={isCurrentPlayer}
+                                    $factionPrimary={factionColors.PRIMARY}
                                 >
-                                    <div
-                                        style={{
-                                            display: 'flex',
-                                            alignItems: 'center',
-                                            gap: '12px',
-                                        }}
-                                    >
-                                        <span
-                                            style={{
-                                                fontSize: '12px',
-                                                fontWeight: 'bold',
-                                                color: COLORS.TEXT_MUTED,
-                                                minWidth: '60px',
-                                            }}
-                                        >
-                                            SLOT {i + 1}
-                                        </span>
+                                    <Flex $align="center" $gap="md">
+                                        <SlotLabel>SLOT {i + 1}</SlotLabel>
                                         {player ? (
                                             <>
-                                                <span
-                                                    style={{ fontWeight: 'bold', color: 'white' }}
-                                                >
-                                                    {player.name}
-                                                </span>
+                                                <Strong>{player.name}</Strong>
                                                 {player.isHost && (
                                                     <Crown
                                                         size={16}
@@ -1127,38 +980,21 @@ export function MultiplayerWaitingRoom({
                                                     />
                                                 )}
                                                 {isCurrentPlayer && (
-                                                    <span
-                                                        style={{
-                                                            fontSize: '10px',
-                                                            padding: '2px 8px',
-                                                            backgroundColor: `${factionColors.PRIMARY}30`,
-                                                            color: factionColors.PRIMARY,
-                                                            borderRadius: '4px',
-                                                        }}
+                                                    <PlayerBadgeLabel
+                                                        $factionPrimary={factionColors.PRIMARY}
                                                     >
                                                         YOU
-                                                    </span>
+                                                    </PlayerBadgeLabel>
                                                 )}
                                             </>
                                         ) : (
-                                            <span
-                                                style={{
-                                                    color: COLORS.TEXT_DISABLED,
-                                                    fontStyle: 'italic',
-                                                }}
-                                            >
+                                            <Text $color="disabled" style={{ fontStyle: 'italic' }}>
                                                 Waiting for player...
-                                            </span>
+                                            </Text>
                                         )}
-                                    </div>
+                                    </Flex>
 
-                                    <div
-                                        style={{
-                                            display: 'flex',
-                                            alignItems: 'center',
-                                            gap: '8px',
-                                        }}
-                                    >
+                                    <Flex $align="center" $gap="sm">
                                         {player &&
                                             (player.connected ? (
                                                 <Wifi size={16} style={{ color: '#22c55e' }} />
@@ -1170,79 +1006,40 @@ export function MultiplayerWaitingRoom({
                                             player &&
                                             !player.isHost &&
                                             !player.connected && (
-                                                <button
+                                                <SmallButton
+                                                    $variant="danger"
                                                     onClick={() => handleKickPlayer(player.id)}
-                                                    style={{
-                                                        padding: '4px 12px',
-                                                        backgroundColor: 'transparent',
-                                                        color: '#ef4444',
-                                                        border: `1px solid #7f1d1d`,
-                                                        borderRadius: '4px',
-                                                        fontSize: '12px',
-                                                        cursor: 'pointer',
-                                                        transition: 'all 0.2s',
-                                                    }}
-                                                    onMouseEnter={(e) => {
-                                                        e.currentTarget.style.backgroundColor =
-                                                            'rgba(239, 68, 68, 0.1)'
-                                                        e.currentTarget.style.borderColor =
-                                                            '#ef4444'
-                                                    }}
-                                                    onMouseLeave={(e) => {
-                                                        e.currentTarget.style.backgroundColor =
-                                                            'transparent'
-                                                        e.currentTarget.style.borderColor =
-                                                            '#7f1d1d'
-                                                    }}
                                                     title="Kick this player to free up their slot for rejoining"
                                                 >
                                                     Kick
-                                                </button>
+                                                </SmallButton>
                                             )}
                                         {!player && !isHost && (
-                                            <button
+                                            <SmallButton
+                                                $variant="primary"
                                                 onClick={() => handleChangeSlot(i)}
                                                 disabled={changingSlot}
-                                                style={{
-                                                    padding: '4px 12px',
-                                                    backgroundColor: 'transparent',
-                                                    color: COLORS.ACCENT_BLUE,
-                                                    border: `1px solid ${COLORS.ACCENT_BLUE}`,
-                                                    borderRadius: '4px',
-                                                    fontSize: '12px',
-                                                    cursor: 'pointer',
-                                                }}
                                             >
                                                 Switch Here
-                                            </button>
+                                            </SmallButton>
                                         )}
-                                    </div>
-                                </div>
+                                    </Flex>
+                                </PlayerSlotCard>
                             )
                         })}
-                    </div>
-                </div>
+                    </Grid>
+                </Card>
 
                 {/* Game Configuration - Host Only */}
                 {isHost && (
-                    <div
-                        style={{
-                            backgroundColor: COLORS.CARD_BG,
-                            borderRadius: '8px',
-                            padding: '32px',
-                            marginBottom: '32px',
-                            border: `1px solid ${COLORS.CARD_BORDER}`,
-                        }}
-                    >
-                        <h3
-                            style={{
-                                color: factionColors.PRIMARY,
-                                marginBottom: '24px',
-                                textTransform: 'uppercase',
-                            }}
+                    <Card style={{ marginBottom: '32px', padding: '32px' }}>
+                        <Heading
+                            as="h3"
+                            $factionColor={factionColors.PRIMARY}
+                            style={{ marginBottom: '24px' }}
                         >
                             GAME CONFIGURATION
-                        </h3>
+                        </Heading>
                         <GameConfiguration
                             gameConfig={gameConfig}
                             eventsEnabled={eventsEnabled}
@@ -1251,53 +1048,29 @@ export function MultiplayerWaitingRoom({
                             onSetEventsEnabled={onSetEventsEnabled}
                             factionColors={factionColors}
                         />
-                    </div>
+                    </Card>
                 )}
 
                 {/* Action Buttons */}
-                <div style={{ display: 'flex', justifyContent: 'space-between', gap: '16px' }}>
-                    <button
-                        onClick={handleLeave}
-                        style={{
-                            padding: '16px 32px',
-                            backgroundColor: 'transparent',
-                            color: '#ef4444',
-                            border: '2px solid #7f1d1d',
-                            borderRadius: '4px',
-                            fontWeight: '900',
-                            fontSize: '14px',
-                            textTransform: 'uppercase',
-                            cursor: 'pointer',
-                        }}
-                    >
+                <Flex $justify="between" $gap="lg">
+                    <Button $variant="danger" onClick={handleLeave}>
                         {isHost ? 'CLOSE LOBBY' : 'LEAVE LOBBY'}
-                    </button>
+                    </Button>
 
                     {isHost && (
-                        <button
+                        <Button
                             onClick={handleStartGame}
                             disabled={!canStart}
-                            style={{
-                                padding: '16px 32px',
-                                backgroundColor: canStart ? factionColors.PRIMARY : COLORS.BG_MAIN,
-                                color: canStart ? 'black' : COLORS.TEXT_DISABLED,
-                                border: 'none',
-                                borderRadius: '4px',
-                                fontWeight: '900',
-                                fontSize: '14px',
-                                textTransform: 'uppercase',
-                                cursor: canStart ? 'pointer' : 'not-allowed',
-                                opacity: canStart ? 1 : 0.5,
-                            }}
+                            $factionPrimary={factionColors.PRIMARY}
                         >
                             {canStart
                                 ? `START WITH ${players.length} PLAYER${players.length > 1 ? 'S' : ''} →`
                                 : 'WAITING FOR HOST...'}
-                        </button>
+                        </Button>
                     )}
-                </div>
-            </div>
-        </div>
+                </Flex>
+            </Container>
+        </PageContainer>
     )
 }
 
@@ -1336,132 +1109,69 @@ export function MultiplayerStatusBar({
     const expectedPlayers = gameConfig?.playerCount || 4
 
     return (
-        <div
-            style={{
-                backgroundColor: 'rgba(15, 23, 42, 0.95)',
-                borderBottom: `2px solid ${isHost ? factionColors.PRIMARY : COLORS.ACCENT_BLUE}`,
-                padding: '8px 16px',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'space-between',
-                gap: '16px',
-                position: 'sticky',
-                top: 0,
-                zIndex: 1000,
-            }}
-        >
+        <StatusBar $accentColor={isHost ? factionColors.PRIMARY : COLORS.ACCENT_BLUE}>
             {/* Left: Multiplayer Status */}
-            <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
+            <Flex $align="center" $gap="lg">
                 {/* Connection Status */}
-                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <Flex $align="center" $gap="sm">
                     <Wifi size={16} style={{ color: '#22c55e' }} />
-                    <span
-                        style={{
-                            fontSize: '11px',
-                            fontWeight: '900',
-                            color: isHost ? factionColors.PRIMARY : COLORS.ACCENT_BLUE,
-                            textTransform: 'uppercase',
-                            letterSpacing: '0.1em',
-                        }}
-                    >
+                    <StatusLabel $color={isHost ? factionColors.PRIMARY : COLORS.ACCENT_BLUE}>
                         {isHost ? '👑 HOST' : `PLAYER ${(playerSlot ?? 0) + 1}`}
-                    </span>
-                </div>
+                    </StatusLabel>
+                </Flex>
 
                 {/* Lobby Code - Hidden until hover for streaming mode */}
-                <div
-                    style={{ display: 'flex', alignItems: 'center', gap: '8px' }}
+                <Flex
+                    $align="center"
+                    $gap="sm"
                     onMouseEnter={() => setLobbyCodeVisible(true)}
                     onMouseLeave={() => setLobbyCodeVisible(false)}
                 >
-                    <span
-                        style={{
-                            fontSize: '11px',
-                            color: COLORS.TEXT_DISABLED,
-                            textTransform: 'uppercase',
-                        }}
-                    >
-                        Lobby:
-                    </span>
-                    <button
+                    <Caption>Lobby:</Caption>
+                    <LobbyCodeButton
                         onClick={copyJoinLink}
-                        style={{
-                            display: 'flex',
-                            alignItems: 'center',
-                            gap: '4px',
-                            padding: '4px 8px',
-                            backgroundColor: 'rgba(100, 116, 139, 0.2)',
-                            border: '1px solid rgba(100, 116, 139, 0.3)',
-                            borderRadius: '4px',
-                            cursor: 'pointer',
-                            transition: 'all 0.2s',
-                        }}
                         title={
                             lobbyCodeVisible
                                 ? `Copy join link for lobby: ${lobbyId}`
                                 : 'Hover to reveal, click to copy join link'
                         }
                     >
-                        <code
-                            style={{
-                                fontSize: '11px',
-                                color: lobbyCodeVisible
-                                    ? COLORS.TEXT_SECONDARY
-                                    : COLORS.TEXT_DISABLED,
-                                fontFamily: 'monospace',
-                                filter: lobbyCodeVisible ? 'none' : 'blur(4px)',
-                                transition: 'filter 0.2s',
-                                userSelect: lobbyCodeVisible ? 'text' : 'none',
-                            }}
-                        >
+                        <LobbyCodeSmall $visible={lobbyCodeVisible}>
                             {displayLobbyId}
-                        </code>
+                        </LobbyCodeSmall>
                         {copied ? (
                             <Check size={12} style={{ color: '#22c55e' }} />
                         ) : (
                             <Link size={12} style={{ color: COLORS.TEXT_DISABLED }} />
                         )}
-                    </button>
-                </div>
+                    </LobbyCodeButton>
+                </Flex>
 
                 {/* Player Count */}
-                <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                <Flex $align="center" $gap="xs">
                     <Users size={14} style={{ color: COLORS.TEXT_MUTED }} />
-                    <span style={{ fontSize: '12px', color: COLORS.TEXT_SECONDARY }}>
+                    <Text $size="sm" $color="secondary">
                         {playerCount}/{expectedPlayers}
-                    </span>
-                </div>
-            </div>
+                    </Text>
+                </Flex>
+            </Flex>
 
             {/* Right: Player Names & Disconnect */}
-            <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
+            <Flex $align="center" $gap="lg">
                 {/* Connected Player Names */}
-                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <Flex $align="center" $gap="sm">
                     {Object.values(connectedPlayers || {}).map((player, idx) => (
-                        <div
+                        <PlayerTag
                             key={player.id || idx}
-                            style={{
-                                display: 'flex',
-                                alignItems: 'center',
-                                gap: '4px',
-                                fontSize: '11px',
-                                padding: '2px 8px',
-                                backgroundColor:
-                                    player.connected === false
-                                        ? 'rgba(239, 68, 68, 0.2)'
-                                        : player.isHost
-                                          ? `${factionColors.PRIMARY}20`
-                                          : 'rgba(59, 130, 246, 0.2)',
-                                color:
-                                    player.connected === false
-                                        ? '#ef4444'
-                                        : player.isHost
-                                          ? factionColors.PRIMARY
-                                          : COLORS.ACCENT_BLUE,
-                                borderRadius: '4px',
-                                fontWeight: player.id === playerId ? '900' : '600',
-                                opacity: player.connected === false ? 0.7 : 1,
-                            }}
+                            $variant={
+                                player.connected === false
+                                    ? 'disconnected'
+                                    : player.isHost
+                                      ? 'host'
+                                      : 'player'
+                            }
+                            $factionPrimary={factionColors.PRIMARY}
+                            style={{ fontWeight: player.id === playerId ? '900' : '600' }}
                         >
                             {player.isHost && (
                                 <Crown
@@ -1478,7 +1188,7 @@ export function MultiplayerStatusBar({
                             <span>{player.name || `Player ${(player.slot ?? 0) + 1}`}</span>
                             {/* Kick button for host (only shows for non-host players) */}
                             {isHost && !player.isHost && (
-                                <button
+                                <KickButton
                                     onClick={(e) => {
                                         e.stopPropagation()
                                         if (
@@ -1489,64 +1199,22 @@ export function MultiplayerStatusBar({
                                             kickPlayerFromLobby(player.id)
                                         }
                                     }}
-                                    style={{
-                                        marginLeft: '4px',
-                                        padding: '0 4px',
-                                        backgroundColor: 'transparent',
-                                        color: '#ef4444',
-                                        border: 'none',
-                                        borderRadius: '2px',
-                                        fontSize: '10px',
-                                        cursor: 'pointer',
-                                        display: 'flex',
-                                        alignItems: 'center',
-                                        justifyContent: 'center',
-                                        opacity: 0.6,
-                                        transition: 'opacity 0.2s',
-                                    }}
-                                    onMouseEnter={(e) => (e.currentTarget.style.opacity = '1')}
-                                    onMouseLeave={(e) => (e.currentTarget.style.opacity = '0.6')}
                                     title={`Kick ${player.name || 'player'}`}
                                 >
                                     ✕
-                                </button>
+                                </KickButton>
                             )}
-                        </div>
+                        </PlayerTag>
                     ))}
-                </div>
+                </Flex>
 
                 {/* Disconnect Button */}
-                <button
-                    onClick={onDisconnect}
-                    style={{
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: '4px',
-                        padding: '4px 12px',
-                        backgroundColor: 'rgba(239, 68, 68, 0.1)',
-                        border: '1px solid rgba(239, 68, 68, 0.3)',
-                        borderRadius: '4px',
-                        color: '#ef4444',
-                        fontSize: '10px',
-                        fontWeight: '900',
-                        textTransform: 'uppercase',
-                        cursor: 'pointer',
-                        transition: 'all 0.2s',
-                    }}
-                    onMouseEnter={(e) => {
-                        e.currentTarget.style.backgroundColor = 'rgba(239, 68, 68, 0.2)'
-                        e.currentTarget.style.borderColor = '#ef4444'
-                    }}
-                    onMouseLeave={(e) => {
-                        e.currentTarget.style.backgroundColor = 'rgba(239, 68, 68, 0.1)'
-                        e.currentTarget.style.borderColor = 'rgba(239, 68, 68, 0.3)'
-                    }}
-                >
+                <DisconnectButton onClick={onDisconnect}>
                     <WifiOff size={12} />
                     {isHost ? 'END SESSION' : 'DISCONNECT'}
-                </button>
-            </div>
-        </div>
+                </DisconnectButton>
+            </Flex>
+        </StatusBar>
     )
 }
 

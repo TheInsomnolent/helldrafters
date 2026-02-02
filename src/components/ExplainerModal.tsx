@@ -1,7 +1,66 @@
 import React from 'react'
 import { X, Target, Zap, Shield, Star } from 'lucide-react'
+import styled from 'styled-components'
 import { getFactionColors } from '../constants/theme'
+import {
+    ModalBackdrop,
+    ModalContainer,
+    ModalHeader,
+    ModalContent,
+    ModalTitle,
+    Text,
+    Caption,
+    IconButton,
+    Alert,
+    Card,
+} from '../styles'
 import type { Faction } from '../types'
+
+// ============================================================================
+// CUSTOM STYLED COMPONENTS
+// ============================================================================
+
+const SectionWrapper = styled.div`
+    margin-bottom: 32px;
+`
+
+const SectionHeader = styled.div<{ $color: string }>`
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 16px;
+    padding-bottom: 12px;
+    border-bottom: 2px solid ${({ $color }) => `${$color}40`};
+`
+
+const SectionTitle = styled.h3<{ $color: string }>`
+    font-size: 20px;
+    font-weight: bold;
+    color: ${({ $color }) => $color};
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    margin: 0;
+`
+
+const ContentText = styled.p`
+    color: ${({ theme }) => theme.colors.textSecondary};
+    line-height: 1.8;
+    margin-bottom: 12px;
+`
+
+const ContentList = styled.ul`
+    color: ${({ theme }) => theme.colors.textSecondary};
+    line-height: 1.8;
+    padding-left: 20px;
+    margin-bottom: 12px;
+`
+
+const SubsectionTitle = styled.h4<{ $color: string }>`
+    color: ${({ $color }) => $color};
+    font-size: 16px;
+    margin-top: 16px;
+    margin-bottom: 8px;
+`
 
 interface ExplainerModalProps {
     isOpen: boolean
@@ -39,134 +98,52 @@ export default function ExplainerModal({
     if (!isOpen) return null
 
     return (
-        <div
-            style={{
-                position: 'fixed',
-                top: 0,
-                left: 0,
-                right: 0,
-                bottom: 0,
-                backgroundColor: 'rgba(0, 0, 0, 0.85)',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                zIndex: 9999,
-                padding: '24px',
-                overflowY: 'auto',
-            }}
+        <ModalBackdrop
             onClick={onClose}
             role="dialog"
             aria-modal="true"
             aria-labelledby="explainer-modal-title"
         >
-            <div
-                style={{
-                    backgroundColor: '#1a2332',
-                    borderRadius: '12px',
-                    border: `2px solid ${factionColors.PRIMARY}`,
-                    maxWidth: '900px',
-                    width: '100%',
-                    maxHeight: '90vh',
-                    overflowY: 'auto',
-                    boxShadow: `0 0 40px ${factionColors.PRIMARY}40`,
-                }}
+            <ModalContainer
+                $size="lg"
+                $factionPrimary={factionColors.PRIMARY}
                 onClick={(e) => e.stopPropagation()}
             >
                 {/* Header */}
-                <div
-                    style={{
-                        padding: '24px',
-                        borderBottom: `2px solid ${factionColors.PRIMARY}4D`,
-                        display: 'flex',
-                        justifyContent: 'space-between',
-                        alignItems: 'center',
-                        position: 'sticky',
-                        top: 0,
-                        backgroundColor: '#1a2332',
-                        zIndex: 1,
-                    }}
-                >
-                    <h2
-                        style={{
-                            fontSize: '28px',
-                            fontWeight: '900',
-                            color: factionColors.PRIMARY,
-                            textTransform: 'uppercase',
-                            letterSpacing: '0.05em',
-                            margin: 0,
-                        }}
-                        id="explainer-modal-title"
-                    >
+                <ModalHeader $factionPrimary={factionColors.PRIMARY} $sticky>
+                    <ModalTitle $factionColor={factionColors.PRIMARY} id="explainer-modal-title">
                         Mission Briefing
-                    </h2>
-                    <button
-                        onClick={onClose}
-                        style={{
-                            width: '36px',
-                            height: '36px',
-                            borderRadius: '4px',
-                            backgroundColor: 'rgba(100, 116, 139, 0.3)',
-                            color: '#94a3b8',
-                            border: '1px solid rgba(100, 116, 139, 0.5)',
-                            cursor: 'pointer',
-                            display: 'flex',
-                            alignItems: 'center',
-                            justifyContent: 'center',
-                            transition: 'all 0.2s',
-                        }}
-                        onMouseEnter={(e) => {
-                            e.currentTarget.style.backgroundColor = 'rgba(239, 68, 68, 0.3)'
-                            e.currentTarget.style.color = '#ef4444'
-                        }}
-                        onMouseLeave={(e) => {
-                            e.currentTarget.style.backgroundColor = 'rgba(100, 116, 139, 0.3)'
-                            e.currentTarget.style.color = '#94a3b8'
-                        }}
-                    >
+                    </ModalTitle>
+                    <IconButton onClick={onClose} title="Close">
                         <X size={20} />
-                    </button>
-                </div>
+                    </IconButton>
+                </ModalHeader>
 
                 {/* Content */}
-                <div style={{ padding: '32px' }}>
+                <ModalContent $padding="xxl">
                     {/* How to Win */}
                     <Section
                         icon={<Target size={24} />}
                         title="How to Win"
                         color={factionColors.PRIMARY}
                     >
-                        <p style={{ color: '#cbd5e1', lineHeight: '1.8', marginBottom: '12px' }}>
+                        <ContentText>
                             Your mission is to <strong>complete all 10 difficulty tiers</strong> (D1
                             through D10). Start at Difficulty 1 with basic equipment and work your
                             way up to Super Helldive difficulty.
-                        </p>
-                        <ul
-                            style={{
-                                color: '#cbd5e1',
-                                lineHeight: '1.8',
-                                paddingLeft: '20px',
-                                marginBottom: '12px',
-                            }}
-                        >
+                        </ContentText>
+                        <ContentList>
                             <li>Complete a mission at your current difficulty</li>
                             <li>Successfully extract (at least one player must extract)</li>
                             <li>Advance to the next difficulty tier</li>
                             <li>Reach and complete Difficulty 10 to achieve victory</li>
-                        </ul>
-                        <div
-                            style={{
-                                backgroundColor: 'rgba(239, 68, 68, 0.1)',
-                                border: '1px solid rgba(239, 68, 68, 0.3)',
-                                borderRadius: '4px',
-                                padding: '12px',
-                                marginTop: '12px',
-                            }}
-                        >
-                            <p style={{ color: '#ef4444', fontSize: '14px', margin: 0 }}>
+                        </ContentList>
+                        <Alert $variant="error" style={{ marginTop: '12px' }}>
+                            <Text $color="error" $size="sm" style={{ margin: 0 }}>
                                 <strong>⚠️ Failure Condition:</strong> If you report a mission as
                                 failed, your run ends immediately with a Game Over.
-                            </p>
-                        </div>
+                            </Text>
+                        </Alert>
                     </Section>
 
                     {/* How Drafting Works */}
@@ -175,34 +152,20 @@ export default function ExplainerModal({
                         title="How Drafting Works"
                         color={factionColors.PRIMARY}
                     >
-                        <p style={{ color: '#cbd5e1', lineHeight: '1.8', marginBottom: '12px' }}>
+                        <ContentText>
                             After each successful mission, players take turns drafting new equipment
                             from a random selection of cards. The draft is your opportunity to build
                             and improve your loadout.
-                        </p>
+                        </ContentText>
 
-                        <h4
-                            style={{
-                                color: factionColors.PRIMARY,
-                                fontSize: '16px',
-                                marginTop: '16px',
-                                marginBottom: '8px',
-                            }}
-                        >
+                        <SubsectionTitle $color={factionColors.PRIMARY}>
                             Draft Hand Size
-                        </h4>
-                        <p style={{ color: '#cbd5e1', lineHeight: '1.8', marginBottom: '8px' }}>
+                        </SubsectionTitle>
+                        <ContentText>
                             The number of cards offered depends on your mission performance rating
                             (star rating):
-                        </p>
-                        <ul
-                            style={{
-                                color: '#cbd5e1',
-                                lineHeight: '1.8',
-                                paddingLeft: '20px',
-                                marginBottom: '12px',
-                            }}
-                        >
+                        </ContentText>
+                        <ContentList>
                             <li>
                                 <strong>1-2 Stars:</strong> 2 cards to choose from
                             </li>
@@ -212,26 +175,12 @@ export default function ExplainerModal({
                             <li>
                                 <strong>5 Stars:</strong> 4 cards to choose from
                             </li>
-                        </ul>
+                        </ContentList>
 
-                        <h4
-                            style={{
-                                color: factionColors.PRIMARY,
-                                fontSize: '16px',
-                                marginTop: '16px',
-                                marginBottom: '8px',
-                            }}
-                        >
+                        <SubsectionTitle $color={factionColors.PRIMARY}>
                             Draft Actions
-                        </h4>
-                        <ul
-                            style={{
-                                color: '#cbd5e1',
-                                lineHeight: '1.8',
-                                paddingLeft: '20px',
-                                marginBottom: '12px',
-                            }}
-                        >
+                        </SubsectionTitle>
+                        <ContentList>
                             <li>
                                 <strong>Pick a Card:</strong> Click on a card to add it to your
                                 inventory and auto-equip it
@@ -253,23 +202,16 @@ export default function ExplainerModal({
                                 <strong>Slot Locking:</strong> Spend Requisition to prevent certain
                                 item types from appearing
                             </li>
-                        </ul>
+                        </ContentList>
 
-                        <h4
-                            style={{
-                                color: factionColors.PRIMARY,
-                                fontSize: '16px',
-                                marginTop: '16px',
-                                marginBottom: '8px',
-                            }}
-                        >
+                        <SubsectionTitle $color={factionColors.PRIMARY}>
                             Smart Drafting System
-                        </h4>
-                        <p style={{ color: '#cbd5e1', lineHeight: '1.8', marginBottom: '12px' }}>
+                        </SubsectionTitle>
+                        <ContentText>
                             Cards are weighted based on your current loadout needs. If you lack
                             anti-tank weapons, you're more likely to see them offered. The draft
                             adapts to help you build a balanced loadout.
-                        </p>
+                        </ContentText>
                     </Section>
 
                     {/* Starting Loadout */}
@@ -278,17 +220,10 @@ export default function ExplainerModal({
                         title="Starting Loadout"
                         color={factionColors.PRIMARY}
                     >
-                        <p style={{ color: '#cbd5e1', lineHeight: '1.8', marginBottom: '12px' }}>
+                        <ContentText>
                             Every Helldiver begins with minimal equipment at Difficulty 1:
-                        </p>
-                        <ul
-                            style={{
-                                color: '#cbd5e1',
-                                lineHeight: '1.8',
-                                paddingLeft: '20px',
-                                marginBottom: '12px',
-                            }}
-                        >
+                        </ContentText>
+                        <ContentList>
                             <li>
                                 <strong>Secondary:</strong> P-2 Peacemaker (basic pistol)
                             </li>
@@ -301,27 +236,18 @@ export default function ExplainerModal({
                             <li>
                                 <strong>Stratagems:</strong> 4 empty slots to fill through drafting
                             </li>
-                        </ul>
-                        <p style={{ color: '#cbd5e1', lineHeight: '1.8', marginBottom: '12px' }}>
+                        </ContentList>
+                        <ContentText>
                             You'll also earn <strong>1 Requisition</strong> per successful mission,
                             which you can spend on rerolling draft hands or locking slots to
                             customize your draft pool.
-                        </p>
-
-                        <div
-                            style={{
-                                backgroundColor: 'rgba(34, 197, 94, 0.1)',
-                                border: '1px solid rgba(34, 197, 94, 0.3)',
-                                borderRadius: '4px',
-                                padding: '12px',
-                                marginTop: '12px',
-                            }}
-                        >
-                            <p style={{ color: '#22c55e', fontSize: '14px', margin: 0 }}>
+                        </ContentText>
+                        <Alert $variant="success" style={{ marginTop: '12px' }}>
+                            <Text $color="success" $size="sm" style={{ margin: 0 }}>
                                 <strong>💡 Tip:</strong> The P-2 Peacemaker and B-01 Tactical cannot
                                 be sacrificed—they're your guaranteed minimum equipment.
-                            </p>
-                        </div>
+                            </Text>
+                        </Alert>
                     </Section>
 
                     {/* Samples & Events */}
@@ -330,30 +256,16 @@ export default function ExplainerModal({
                         title="How Samples & Events Work Together"
                         color={factionColors.PRIMARY}
                     >
-                        <p style={{ color: '#cbd5e1', lineHeight: '1.8', marginBottom: '12px' }}>
+                        <ContentText>
                             Samples collected during missions increase your chance of triggering
                             special events. Events offer high-risk, high-reward choices that can
                             significantly impact your run.
-                        </p>
+                        </ContentText>
 
-                        <h4
-                            style={{
-                                color: factionColors.PRIMARY,
-                                fontSize: '16px',
-                                marginTop: '16px',
-                                marginBottom: '8px',
-                            }}
-                        >
+                        <SubsectionTitle $color={factionColors.PRIMARY}>
                             Sample Types & Event Chances
-                        </h4>
-                        <ul
-                            style={{
-                                color: '#cbd5e1',
-                                lineHeight: '1.8',
-                                paddingLeft: '20px',
-                                marginBottom: '12px',
-                            }}
-                        >
+                        </SubsectionTitle>
+                        <ContentList>
                             <li>
                                 <strong style={{ color: '#22c55e' }}>Common Samples:</strong> +1%
                                 event chance each
@@ -366,33 +278,17 @@ export default function ExplainerModal({
                                 <strong style={{ color: '#a855f7' }}>Super Rare Samples:</strong>{' '}
                                 +3% event chance each
                             </li>
-                        </ul>
-                        <p style={{ color: '#cbd5e1', lineHeight: '1.8', marginBottom: '12px' }}>
+                        </ContentList>
+                        <ContentText>
                             The base event chance starts at 0%. When an event triggers, your
                             accumulated samples are consumed and the chance resets to 0%.
-                        </p>
+                        </ContentText>
 
-                        <h4
-                            style={{
-                                color: factionColors.PRIMARY,
-                                fontSize: '16px',
-                                marginTop: '16px',
-                                marginBottom: '8px',
-                            }}
-                        >
+                        <SubsectionTitle $color={factionColors.PRIMARY}>
                             Event Types
-                        </h4>
-                        <p style={{ color: '#cbd5e1', lineHeight: '1.8', marginBottom: '8px' }}>
-                            Events can offer various outcomes:
-                        </p>
-                        <ul
-                            style={{
-                                color: '#cbd5e1',
-                                lineHeight: '1.8',
-                                paddingLeft: '20px',
-                                marginBottom: '12px',
-                            }}
-                        >
+                        </SubsectionTitle>
+                        <ContentText>Events can offer various outcomes:</ContentText>
+                        <ContentList>
                             <li>
                                 <strong>Positive:</strong> Gain extra draft picks, requisition, or
                                 boosters
@@ -405,29 +301,14 @@ export default function ExplainerModal({
                                 <strong>Choice-Based:</strong> Pick between multiple options, each
                                 with different costs and rewards
                             </li>
-                        </ul>
-
-                        <div
-                            style={{
-                                backgroundColor: `${factionColors.PRIMARY}10`,
-                                border: `1px solid ${factionColors.PRIMARY}40`,
-                                borderRadius: '4px',
-                                padding: '12px',
-                                marginTop: '12px',
-                            }}
-                        >
-                            <p
-                                style={{
-                                    color: factionColors.PRIMARY,
-                                    fontSize: '14px',
-                                    margin: 0,
-                                }}
-                            >
+                        </ContentList>
+                        <Alert $variant="info" style={{ marginTop: '12px' }}>
+                            <Text $color="info" $size="sm" style={{ margin: 0 }}>
                                 <strong>💎 Strategy:</strong> Collect samples strategically to
                                 increase event frequency. Events can dramatically change your run's
                                 trajectory—use them wisely!
-                            </p>
-                        </div>
+                            </Text>
+                        </Alert>
                     </Section>
 
                     {/* Additional Mechanics */}
@@ -436,28 +317,14 @@ export default function ExplainerModal({
                         title="Additional Mechanics"
                         color={factionColors.PRIMARY}
                     >
-                        <h4
-                            style={{
-                                color: factionColors.PRIMARY,
-                                fontSize: '16px',
-                                marginTop: '16px',
-                                marginBottom: '8px',
-                            }}
-                        >
+                        <SubsectionTitle $color={factionColors.PRIMARY}>
                             Extraction & Sacrifice
-                        </h4>
-                        <p style={{ color: '#cbd5e1', lineHeight: '1.8', marginBottom: '12px' }}>
+                        </SubsectionTitle>
+                        <ContentText>
                             After each mission, mark which players successfully extracted.
                             Non-extracted players may need to sacrifice equipment:
-                        </p>
-                        <ul
-                            style={{
-                                color: '#cbd5e1',
-                                lineHeight: '1.8',
-                                paddingLeft: '20px',
-                                marginBottom: '12px',
-                            }}
-                        >
+                        </ContentText>
+                        <ContentList>
                             <li>
                                 <strong>Standard Mode:</strong> If <em>all</em> players fail to
                                 extract, everyone must sacrifice one item
@@ -466,42 +333,19 @@ export default function ExplainerModal({
                                 <strong>Brutality Mode:</strong> <em>Any</em> non-extracted player
                                 must sacrifice an item
                             </li>
-                        </ul>
+                        </ContentList>
 
-                        <h4
-                            style={{
-                                color: factionColors.PRIMARY,
-                                fontSize: '16px',
-                                marginTop: '16px',
-                                marginBottom: '8px',
-                            }}
-                        >
+                        <SubsectionTitle $color={factionColors.PRIMARY}>
                             Warbond Selection
-                        </h4>
-                        <p style={{ color: '#cbd5e1', lineHeight: '1.8', marginBottom: '12px' }}>
+                        </SubsectionTitle>
+                        <ContentText>
                             Before starting, select which warbonds you own. The draft pool only
                             includes equipment from your selected warbonds, ensuring you only see
                             items you can actually use in Helldivers 2.
-                        </p>
+                        </ContentText>
 
-                        <h4
-                            style={{
-                                color: factionColors.PRIMARY,
-                                fontSize: '16px',
-                                marginTop: '16px',
-                                marginBottom: '8px',
-                            }}
-                        >
-                            Game Modes
-                        </h4>
-                        <ul
-                            style={{
-                                color: '#cbd5e1',
-                                lineHeight: '1.8',
-                                paddingLeft: '20px',
-                                marginBottom: '12px',
-                            }}
-                        >
+                        <SubsectionTitle $color={factionColors.PRIMARY}>Game Modes</SubsectionTitle>
+                        <ContentList>
                             <li>
                                 <strong>Global Uniqueness:</strong> Players can't draft the same
                                 cards
@@ -516,37 +360,23 @@ export default function ExplainerModal({
                                 <strong>Custom Start:</strong> Configure starting difficulty and
                                 loadouts
                             </li>
-                        </ul>
+                        </ContentList>
                     </Section>
 
                     {/* Footer */}
-                    <div
-                        style={{
-                            marginTop: '32px',
-                            padding: '20px',
-                            backgroundColor: 'rgba(100, 116, 139, 0.1)',
-                            borderRadius: '8px',
-                            border: '1px solid rgba(100, 116, 139, 0.3)',
-                            textAlign: 'center',
-                        }}
+                    <Card
+                        $variant="base"
+                        $padding="lg"
+                        style={{ marginTop: '32px', textAlign: 'center' }}
                     >
-                        <p
-                            style={{
-                                color: '#94a3b8',
-                                fontSize: '16px',
-                                fontWeight: 'bold',
-                                margin: '0 0 8px 0',
-                            }}
-                        >
+                        <Text $color="muted" style={{ fontWeight: 'bold', marginBottom: '8px' }}>
                             FOR DEMOCRACY! FOR MANAGED MAYHEM!
-                        </p>
-                        <p style={{ color: '#64748b', fontSize: '12px', margin: 0 }}>
-                            Good luck, Helldiver. Super Earth is counting on you.
-                        </p>
-                    </div>
-                </div>
-            </div>
-        </div>
+                        </Text>
+                        <Caption>Good luck, Helldiver. Super Earth is counting on you.</Caption>
+                    </Card>
+                </ModalContent>
+            </ModalContainer>
+        </ModalBackdrop>
     )
 }
 
@@ -562,32 +392,12 @@ interface SectionProps {
  */
 function Section({ icon, title, color, children }: SectionProps) {
     return (
-        <div style={{ marginBottom: '32px' }}>
-            <div
-                style={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: '12px',
-                    marginBottom: '16px',
-                    paddingBottom: '12px',
-                    borderBottom: `2px solid ${color}40`,
-                }}
-            >
+        <SectionWrapper>
+            <SectionHeader $color={color}>
                 <div style={{ color }}>{icon}</div>
-                <h3
-                    style={{
-                        fontSize: '20px',
-                        fontWeight: 'bold',
-                        color,
-                        textTransform: 'uppercase',
-                        letterSpacing: '0.05em',
-                        margin: 0,
-                    }}
-                >
-                    {title}
-                </h3>
-            </div>
+                <SectionTitle $color={color}>{title}</SectionTitle>
+            </SectionHeader>
             <div>{children}</div>
-        </div>
+        </SectionWrapper>
     )
 }

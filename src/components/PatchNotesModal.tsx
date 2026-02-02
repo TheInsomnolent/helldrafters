@@ -1,8 +1,73 @@
 import React from 'react'
 import { X, FileText } from 'lucide-react'
+import styled from 'styled-components'
 import { getFactionColors } from '../constants/theme'
 import packageJson from '../../package.json'
+import {
+    ModalBackdrop,
+    ModalContainer,
+    ModalHeader,
+    ModalContent,
+    ModalTitle,
+    Text,
+    Caption,
+    Flex,
+    IconButton,
+    Alert,
+    Card,
+} from '../styles'
 import type { Faction } from '../types'
+
+// ============================================================================
+// CUSTOM STYLED COMPONENTS FOR MARKDOWN RENDERING
+// ============================================================================
+
+const MarkdownH1 = styled.h1<{ $color: string }>`
+    font-size: 32px;
+    font-weight: 900;
+    color: ${({ $color }) => $color};
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    margin-bottom: 24px;
+    margin-top: 0;
+`
+
+const MarkdownH2 = styled.h2<{ $color: string }>`
+    font-size: 24px;
+    font-weight: bold;
+    color: ${({ $color }) => $color};
+    margin-top: 32px;
+    margin-bottom: 16px;
+    padding-bottom: 8px;
+    border-bottom: 2px solid ${({ $color }) => `${$color}40`};
+`
+
+const MarkdownH3 = styled.h3`
+    font-size: 18px;
+    font-weight: bold;
+    color: ${({ theme }) => theme.colors.accentGreen};
+    margin-top: 20px;
+    margin-bottom: 12px;
+`
+
+const MarkdownList = styled.ul`
+    color: ${({ theme }) => theme.colors.textSecondary};
+    line-height: 1.8;
+    padding-left: 20px;
+    margin-bottom: 16px;
+    list-style-type: disc;
+`
+
+const MarkdownParagraph = styled.p`
+    color: ${({ theme }) => theme.colors.textSecondary};
+    line-height: 1.8;
+    margin-bottom: 12px;
+`
+
+const FactionLink = styled.a<{ $color: string }>`
+    color: ${({ $color }) => $color};
+    text-decoration: underline;
+`
 
 interface PatchNotesModalProps {
     isOpen: boolean
@@ -83,18 +148,7 @@ export default function PatchNotesModal({
         const flushListItems = () => {
             if (listItems.length > 0) {
                 elements.push(
-                    <ul
-                        key={`list-${elements.length}`}
-                        style={{
-                            color: '#cbd5e1',
-                            lineHeight: '1.8',
-                            paddingLeft: '20px',
-                            marginBottom: '16px',
-                            listStyleType: 'disc',
-                        }}
-                    >
-                        {listItems}
-                    </ul>,
+                    <MarkdownList key={`list-${elements.length}`}>{listItems}</MarkdownList>,
                 )
                 listItems = []
             }
@@ -111,60 +165,25 @@ export default function PatchNotesModal({
             if (line.startsWith('# ')) {
                 flushListItems()
                 elements.push(
-                    <h1
-                        key={`h1-${idx}`}
-                        style={{
-                            fontSize: '32px',
-                            fontWeight: '900',
-                            color: factionColors.PRIMARY,
-                            textTransform: 'uppercase',
-                            letterSpacing: '0.05em',
-                            marginBottom: '24px',
-                            marginTop: '0',
-                        }}
-                    >
+                    <MarkdownH1 key={`h1-${idx}`} $color={factionColors.PRIMARY}>
                         {line.substring(2)}
-                    </h1>,
+                    </MarkdownH1>,
                 )
             }
             // H2 headers (## Version)
             else if (line.startsWith('## ')) {
                 flushListItems()
-                const text = line.substring(3)
+                const textContent = line.substring(3)
                 elements.push(
-                    <h2
-                        key={`h2-${idx}`}
-                        style={{
-                            fontSize: '24px',
-                            fontWeight: 'bold',
-                            color: factionColors.PRIMARY,
-                            marginTop: '32px',
-                            marginBottom: '16px',
-                            paddingBottom: '8px',
-                            borderBottom: `2px solid ${factionColors.PRIMARY}40`,
-                        }}
-                    >
-                        {text}
-                    </h2>,
+                    <MarkdownH2 key={`h2-${idx}`} $color={factionColors.PRIMARY}>
+                        {textContent}
+                    </MarkdownH2>,
                 )
             }
             // H3 headers (### Category)
             else if (line.startsWith('### ')) {
                 flushListItems()
-                elements.push(
-                    <h3
-                        key={`h3-${idx}`}
-                        style={{
-                            fontSize: '18px',
-                            fontWeight: 'bold',
-                            color: '#22c55e',
-                            marginTop: '20px',
-                            marginBottom: '12px',
-                        }}
-                    >
-                        {line.substring(4)}
-                    </h3>,
-                )
+                elements.push(<MarkdownH3 key={`h3-${idx}`}>{line.substring(4)}</MarkdownH3>)
             }
             // List items (- Item)
             else if (line.startsWith('- ')) {
@@ -180,18 +199,7 @@ export default function PatchNotesModal({
                 // Skip markdown link reference lines (e.g., [Keep a Changelog]: https://keepachangelog.com...)
                 // This is for display filtering only, not URL validation/sanitization
                 if (!line.startsWith('[') && !line.includes('keepachangelog.com')) {
-                    elements.push(
-                        <p
-                            key={`p-${idx}`}
-                            style={{
-                                color: '#cbd5e1',
-                                lineHeight: '1.8',
-                                marginBottom: '12px',
-                            }}
-                        >
-                            {line}
-                        </p>,
-                    )
+                    elements.push(<MarkdownParagraph key={`p-${idx}`}>{line}</MarkdownParagraph>)
                 }
             }
         })
@@ -201,154 +209,76 @@ export default function PatchNotesModal({
     }
 
     return (
-        <div
-            style={{
-                position: 'fixed',
-                top: 0,
-                left: 0,
-                right: 0,
-                bottom: 0,
-                backgroundColor: 'rgba(0, 0, 0, 0.85)',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                zIndex: 9999,
-                padding: '24px',
-                overflowY: 'auto',
-            }}
+        <ModalBackdrop
             onClick={onClose}
             role="dialog"
             aria-modal="true"
             aria-labelledby="patchnotes-modal-title"
             aria-describedby="patchnotes-modal-content"
         >
-            <div
-                style={{
-                    backgroundColor: '#1a2332',
-                    borderRadius: '12px',
-                    border: `2px solid ${factionColors.PRIMARY}`,
-                    maxWidth: '900px',
-                    width: '100%',
-                    maxHeight: '90vh',
-                    overflowY: 'auto',
-                    boxShadow: `0 0 40px ${factionColors.PRIMARY}40`,
-                }}
+            <ModalContainer
+                $size="lg"
+                $factionPrimary={factionColors.PRIMARY}
                 onClick={(e) => e.stopPropagation()}
             >
                 {/* Header */}
-                <div
-                    style={{
-                        padding: '24px',
-                        borderBottom: `2px solid ${factionColors.PRIMARY}4D`,
-                        display: 'flex',
-                        justifyContent: 'space-between',
-                        alignItems: 'center',
-                        position: 'sticky',
-                        top: 0,
-                        backgroundColor: '#1a2332',
-                        zIndex: 1,
-                    }}
-                >
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                <ModalHeader $factionPrimary={factionColors.PRIMARY} $sticky>
+                    <Flex $align="center" $gap="md">
                         <FileText size={28} color={factionColors.PRIMARY} />
-                        <h2
-                            style={{
-                                fontSize: '28px',
-                                fontWeight: '900',
-                                color: factionColors.PRIMARY,
-                                textTransform: 'uppercase',
-                                letterSpacing: '0.05em',
-                                margin: 0,
-                            }}
+                        <ModalTitle
+                            $factionColor={factionColors.PRIMARY}
                             id="patchnotes-modal-title"
                         >
                             Patch Notes
-                        </h2>
-                    </div>
-                    <button
-                        onClick={onClose}
-                        style={{
-                            width: '36px',
-                            height: '36px',
-                            borderRadius: '4px',
-                            backgroundColor: 'rgba(100, 116, 139, 0.3)',
-                            color: '#94a3b8',
-                            border: '1px solid rgba(100, 116, 139, 0.5)',
-                            cursor: 'pointer',
-                            display: 'flex',
-                            alignItems: 'center',
-                            justifyContent: 'center',
-                            transition: 'all 0.2s',
-                        }}
-                        onMouseEnter={(e) => {
-                            e.currentTarget.style.backgroundColor = 'rgba(239, 68, 68, 0.3)'
-                            e.currentTarget.style.color = '#ef4444'
-                        }}
-                        onMouseLeave={(e) => {
-                            e.currentTarget.style.backgroundColor = 'rgba(100, 116, 139, 0.3)'
-                            e.currentTarget.style.color = '#94a3b8'
-                        }}
-                    >
+                        </ModalTitle>
+                    </Flex>
+                    <IconButton onClick={onClose} title="Close">
                         <X size={20} />
-                    </button>
-                </div>
+                    </IconButton>
+                </ModalHeader>
 
                 {/* Content */}
-                <div style={{ padding: '32px' }} id="patchnotes-modal-content">
+                <ModalContent $padding="xxl" id="patchnotes-modal-content">
                     {loading && (
-                        <div style={{ textAlign: 'center', padding: '40px', color: '#94a3b8' }}>
-                            <p>Loading patch notes...</p>
-                        </div>
+                        <Text $color="muted" style={{ textAlign: 'center', padding: '40px' }}>
+                            Loading patch notes...
+                        </Text>
                     )}
 
                     {error && (
-                        <div
-                            style={{
-                                backgroundColor: 'rgba(239, 68, 68, 0.1)',
-                                border: '1px solid rgba(239, 68, 68, 0.3)',
-                                borderRadius: '8px',
-                                padding: '20px',
-                                textAlign: 'center',
-                            }}
-                        >
-                            <p style={{ color: '#ef4444', margin: 0 }}>{error}</p>
-                        </div>
+                        <Alert $variant="error" style={{ textAlign: 'center' }}>
+                            <Text $color="error" style={{ margin: 0 }}>
+                                {error}
+                            </Text>
+                        </Alert>
                     )}
 
                     {!loading && !error && <div>{formatPatchNotes(patchNotes)}</div>}
 
                     {/* Footer */}
-                    <div
-                        style={{
-                            marginTop: '32px',
-                            padding: '20px',
-                            backgroundColor: 'rgba(100, 116, 139, 0.1)',
-                            borderRadius: '8px',
-                            border: '1px solid rgba(100, 116, 139, 0.3)',
-                            textAlign: 'center',
-                        }}
+                    <Card
+                        $variant="base"
+                        $padding="lg"
+                        style={{ marginTop: '32px', textAlign: 'center' }}
                     >
-                        <p style={{ color: '#94a3b8', fontSize: '14px', margin: '0 0 8px 0' }}>
+                        <Text $color="muted" style={{ marginBottom: '8px' }}>
                             For the full changelog and detailed information, visit the{' '}
-                            <a
+                            <FactionLink
                                 href="https://github.com/TheInsomnolent/helldrafters"
                                 target="_blank"
                                 rel="noopener noreferrer"
-                                style={{
-                                    color: factionColors.PRIMARY,
-                                    textDecoration: 'underline',
-                                }}
+                                $color={factionColors.PRIMARY}
                             >
                                 GitHub repository
-                            </a>
-                        </p>
-                        <p style={{ color: '#64748b', fontSize: '12px', margin: 0 }}>
+                            </FactionLink>
+                        </Text>
+                        <Caption>
                             Version: {packageJson.version} | Build:{' '}
                             {process.env.REACT_APP_COMMIT_SHA?.substring(0, 7) || 'dev'}
-                        </p>
-                    </div>
-                </div>
-            </div>
-        </div>
+                        </Caption>
+                    </Card>
+                </ModalContent>
+            </ModalContainer>
+        </ModalBackdrop>
     )
 }

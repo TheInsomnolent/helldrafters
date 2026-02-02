@@ -34,14 +34,6 @@ export const STRATAGEM_CODES: Record<string, StratagemCode> = {
     st_e_500: { name: 'Eagle 500kg Bomb', code: ['U', 'R', 'D', 'D', 'D'] },
     st_e_napalm: { name: 'Eagle Napalm Airstrike', code: ['U', 'R', 'D', 'U'] },
 
-    // SUPPLY
-    st_resupply: { name: 'Resupply', code: ['D', 'D', 'U', 'R'] },
-    st_sos_beacon: { name: 'SOS Beacon', code: ['U', 'D', 'R', 'U'] },
-    st_reinforce: { name: 'Reinforce', code: ['U', 'D', 'R', 'L', 'U'] },
-    st_upload: { name: 'Upload Data', code: ['D', 'D', 'L', 'U', 'U'] },
-    st_seaf: { name: 'SEAF Artillery', code: ['R', 'U', 'U', 'D'] },
-    st_sssd: { name: 'SSSD Delivery', code: ['D', 'D', 'D', 'U', 'U'] },
-
     // DEFENSIVE - BACKPACKS
     st_bp_jump: { name: 'Jump Pack', code: ['D', 'U', 'U', 'D', 'U'] },
     st_bp_supply: { name: 'Supply Pack', code: ['D', 'L', 'D', 'U', 'U', 'D'] },
@@ -77,11 +69,6 @@ export const STRATAGEM_CODES: Record<string, StratagemCode> = {
     st_commando: { name: 'Commando', code: ['D', 'L', 'U', 'D', 'R'] },
     st_grenade_launcher: { name: 'Grenade Launcher', code: ['D', 'L', 'U', 'L', 'D'] },
     st_las_guard: { name: 'LAS-98 Laser Cannon', code: ['D', 'L', 'D', 'U', 'L'] },
-
-    // MISSION STRATAGEMS
-    st_seismic: { name: 'Seismic Probe', code: ['U', 'U', 'L', 'R', 'D', 'D'] },
-    st_upload_data: { name: 'Upload Data', code: ['L', 'R', 'U', 'U', 'U'] },
-    st_eagle_rearm: { name: 'Eagle Rearm', code: ['U', 'U', 'L', 'U', 'R'] },
 }
 
 // Get array of all stratagem IDs that have codes defined

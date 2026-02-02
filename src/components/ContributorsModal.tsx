@@ -1,9 +1,96 @@
 import { onValue, ref } from 'firebase/database'
 import { Crown, Heart, X } from 'lucide-react'
 import React, { useEffect, useState } from 'react'
+import styled from 'styled-components'
 import { getFactionColors } from '../constants/theme'
 import { getFirebaseDatabase, isFirebaseConfigured } from '../systems/multiplayer/firebaseConfig'
+import {
+    ModalBackdrop,
+    ModalContainer,
+    ModalHeader,
+    ModalContent,
+    ModalFooter,
+    Heading,
+    Text,
+    Caption,
+    Flex,
+    IconButton,
+} from '../styles'
 import type { Faction } from '../types'
+
+// ============================================================================
+// CUSTOM STYLED COMPONENTS
+// ============================================================================
+
+const TierSection = styled.div`
+    margin-bottom: 40px;
+`
+
+const TierHeader = styled.div<{ $borderColor: string }>`
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    margin-bottom: 20px;
+    padding-bottom: 12px;
+    border-bottom: 2px solid ${({ $borderColor }) => `${$borderColor}40`};
+`
+
+const TierBadgeBox = styled.div<{ $borderColor: string }>`
+    width: 96px;
+    height: 96px;
+    border-radius: ${({ theme }) => theme.radii.xl};
+    border: 3px solid ${({ $borderColor }) => $borderColor};
+    background: rgba(0, 0, 0, 0.4);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    overflow: hidden;
+`
+
+const TierName = styled.h3<{ $color: string }>`
+    margin: 0;
+    font-size: 24px;
+    font-weight: bold;
+    color: ${({ $color }) => $color};
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+`
+
+const ContributorCard = styled.div<{ $borderColor: string }>`
+    background: rgba(15, 23, 42, 0.6);
+    border: 2px solid ${({ $borderColor }) => `${$borderColor}20`};
+    border-radius: ${({ theme }) => theme.radii.lg};
+    padding: 12px 16px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    transition: all 0.2s;
+
+    &:hover {
+        background: rgba(15, 23, 42, 0.8);
+        border-color: ${({ $borderColor }) => `${$borderColor}60`};
+    }
+`
+
+const KofiButton = styled.a`
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 10px 20px;
+    background: #ff5e5b;
+    color: white;
+    text-decoration: none;
+    border-radius: ${({ theme }) => theme.radii.md};
+    font-weight: bold;
+    font-size: 14px;
+    transition: all 0.2s;
+
+    &:hover {
+        background: #ff4542;
+        transform: scale(1.05);
+    }
+`
 
 interface Contributor {
     id: string
@@ -154,144 +241,55 @@ export default function ContributorsModal({
     }
 
     return (
-        <div
-            onClick={onClose}
-            style={{
-                position: 'fixed',
-                top: 0,
-                left: 0,
-                right: 0,
-                bottom: 0,
-                backgroundColor: 'rgba(0, 0, 0, 0.85)',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                zIndex: 1000,
-                padding: '20px',
-            }}
-        >
-            <div
+        <ModalBackdrop onClick={onClose}>
+            <ModalContainer
+                $size="lg"
+                $factionPrimary={factionColors.PRIMARY}
                 onClick={(e) => e.stopPropagation()}
-                style={{
-                    backgroundColor: '#1e293b',
-                    borderRadius: '12px',
-                    border: `2px solid ${factionColors.PRIMARY}`,
-                    maxWidth: '800px',
-                    width: '100%',
-                    maxHeight: '90vh',
-                    display: 'flex',
-                    flexDirection: 'column',
-                    boxShadow: `0 0 30px ${factionColors.PRIMARY}40`,
-                }}
+                style={{ display: 'flex', flexDirection: 'column' }}
             >
                 {/* Header */}
-                <div
-                    style={{
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'space-between',
-                        padding: '20px',
-                        borderBottom: `1px solid ${factionColors.PRIMARY}40`,
-                        background: `linear-gradient(135deg, ${factionColors.PRIMARY}20 0%, transparent 100%)`,
-                    }}
-                >
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                <ModalHeader $factionPrimary={factionColors.PRIMARY}>
+                    <Flex $align="center" $gap="md">
                         <Heart size={24} style={{ color: factionColors.PRIMARY }} />
-                        <h2
-                            style={{
-                                margin: 0,
-                                fontSize: '24px',
-                                fontWeight: 'bold',
-                                color: '#f1f5f9',
-                            }}
-                        >
+                        <Heading style={{ margin: 0, fontSize: '24px' }}>
                             Community Supporters
-                        </h2>
-                    </div>
-                    <button
-                        onClick={onClose}
-                        style={{
-                            background: 'rgba(255, 255, 255, 0.1)',
-                            border: '1px solid rgba(255, 255, 255, 0.2)',
-                            borderRadius: '6px',
-                            padding: '8px',
-                            cursor: 'pointer',
-                            display: 'flex',
-                            alignItems: 'center',
-                            justifyContent: 'center',
-                            transition: 'all 0.2s',
-                        }}
-                        onMouseEnter={(e) => {
-                            e.currentTarget.style.background = 'rgba(255, 255, 255, 0.2)'
-                        }}
-                        onMouseLeave={(e) => {
-                            e.currentTarget.style.background = 'rgba(255, 255, 255, 0.1)'
-                        }}
-                    >
-                        <X size={20} color="#f1f5f9" />
-                    </button>
-                </div>
+                        </Heading>
+                    </Flex>
+                    <IconButton onClick={onClose} title="Close">
+                        <X size={20} />
+                    </IconButton>
+                </ModalHeader>
 
                 {/* Content */}
-                <div
-                    style={{
-                        padding: '20px',
-                        overflowY: 'auto',
-                        flex: 1,
-                    }}
-                >
+                <ModalContent $padding="xl" style={{ flex: 1, overflowY: 'auto' }}>
                     {loading && (
-                        <div
-                            style={{
-                                textAlign: 'center',
-                                padding: '40px',
-                                color: '#94a3b8',
-                                fontSize: '16px',
-                            }}
-                        >
+                        <Text $color="muted" style={{ textAlign: 'center', padding: '40px' }}>
                             Loading supporters...
-                        </div>
+                        </Text>
                     )}
 
                     {error && (
-                        <div
-                            style={{
-                                textAlign: 'center',
-                                padding: '40px',
-                                color: '#f87171',
-                                fontSize: '16px',
-                            }}
-                        >
+                        <Text $color="error" style={{ textAlign: 'center', padding: '40px' }}>
                             {error}
-                        </div>
+                        </Text>
                     )}
 
                     {!loading && !error && contributors.length === 0 && (
-                        <div
-                            style={{
-                                textAlign: 'center',
-                                padding: '40px',
-                                color: '#94a3b8',
-                                fontSize: '16px',
-                            }}
-                        >
+                        <Text $color="muted" style={{ textAlign: 'center', padding: '40px' }}>
                             No supporters yet. Be the first to support on Ko-Fi!
-                        </div>
+                        </Text>
                     )}
 
                     {!loading && !error && contributors.length > 0 && (
                         <>
-                            <p
-                                style={{
-                                    color: '#cbd5e1',
-                                    fontSize: '14px',
-                                    marginBottom: '30px',
-                                    textAlign: 'center',
-                                }}
+                            <Text
+                                $color="secondary"
+                                style={{ marginBottom: '30px', textAlign: 'center' }}
                             >
                                 Thank you to all our wonderful supporters who help keep this project
                                 running!
-                            </p>
+                            </Text>
 
                             {/* Group contributors by tier */}
                             {['Skull Admiral', 'Space Cadet'].map((tierName) => {
@@ -303,34 +301,12 @@ export default function ContributorsModal({
                                 const badge = getTierBadge(tierName)
 
                                 return (
-                                    <div key={tierName} style={{ marginBottom: '40px' }}>
+                                    <TierSection key={tierName}>
                                         {/* Tier Header */}
-                                        <div
-                                            style={{
-                                                display: 'flex',
-                                                alignItems: 'center',
-                                                gap: '16px',
-                                                marginBottom: '20px',
-                                                paddingBottom: '12px',
-                                                borderBottom: `2px solid ${badge.borderColor}40`,
-                                            }}
-                                        >
+                                        <TierHeader $borderColor={badge.borderColor}>
                                             {/* Tier Image */}
-                                            {badge.image && !imageErrors[tierName] ? (
-                                                <div
-                                                    style={{
-                                                        width: '96px',
-                                                        height: '96px',
-                                                        borderRadius: '12px',
-                                                        border: `3px solid ${badge.borderColor}`,
-                                                        background: 'rgba(0, 0, 0, 0.4)',
-                                                        display: 'flex',
-                                                        alignItems: 'center',
-                                                        justifyContent: 'center',
-                                                        flexShrink: 0,
-                                                        overflow: 'hidden',
-                                                    }}
-                                                >
+                                            <TierBadgeBox $borderColor={badge.borderColor}>
+                                                {badge.image && !imageErrors[tierName] ? (
                                                     <img
                                                         src={`${process.env.PUBLIC_URL}/${badge.image}`}
                                                         alt={badge.name}
@@ -346,105 +322,46 @@ export default function ContributorsModal({
                                                             }))
                                                         }}
                                                     />
-                                                </div>
-                                            ) : (
-                                                <div
-                                                    style={{
-                                                        width: '96px',
-                                                        height: '96px',
-                                                        borderRadius: '12px',
-                                                        border: `3px solid ${badge.borderColor}`,
-                                                        background: 'rgba(0, 0, 0, 0.4)',
-                                                        display: 'flex',
-                                                        alignItems: 'center',
-                                                        justifyContent: 'center',
-                                                        flexShrink: 0,
-                                                    }}
-                                                >
-                                                    {React.cloneElement(
+                                                ) : (
+                                                    React.cloneElement(
                                                         badge.icon as React.ReactElement<{
                                                             size?: number
                                                         }>,
                                                         { size: 48 },
-                                                    )}
-                                                </div>
-                                            )}
+                                                    )
+                                                )}
+                                            </TierBadgeBox>
 
                                             {/* Tier Name */}
                                             <div>
-                                                <h3
-                                                    style={{
-                                                        margin: 0,
-                                                        fontSize: '24px',
-                                                        fontWeight: 'bold',
-                                                        color: badge.color,
-                                                        textTransform: 'uppercase',
-                                                        letterSpacing: '0.5px',
-                                                    }}
-                                                >
-                                                    {tierName}
-                                                </h3>
-                                                <div
-                                                    style={{
-                                                        fontSize: '13px',
-                                                        color: '#94a3b8',
-                                                        marginTop: '4px',
-                                                    }}
-                                                >
+                                                <TierName $color={badge.color}>{tierName}</TierName>
+                                                <Caption style={{ marginTop: '4px' }}>
                                                     {tierContributors.length}{' '}
                                                     {tierContributors.length === 1
                                                         ? 'supporter'
                                                         : 'supporters'}
-                                                </div>
+                                                </Caption>
                                             </div>
-                                        </div>
+                                        </TierHeader>
 
                                         {/* Supporters List */}
-                                        <div
-                                            style={{
-                                                display: 'flex',
-                                                flexDirection: 'column',
-                                                gap: '12px',
-                                            }}
-                                        >
+                                        <Flex $direction="column" $gap="md">
                                             {tierContributors.map((contributor) => (
-                                                <div
+                                                <ContributorCard
                                                     key={contributor.id}
-                                                    style={{
-                                                        background: 'rgba(15, 23, 42, 0.6)',
-                                                        border: `2px solid ${badge.borderColor}20`,
-                                                        borderRadius: '8px',
-                                                        padding: '12px 16px',
-                                                        display: 'flex',
-                                                        alignItems: 'center',
-                                                        justifyContent: 'space-between',
-                                                        transition: 'all 0.2s',
-                                                    }}
-                                                    onMouseEnter={(e) => {
-                                                        e.currentTarget.style.background =
-                                                            'rgba(15, 23, 42, 0.8)'
-                                                        e.currentTarget.style.borderColor = `${badge.borderColor}60`
-                                                    }}
-                                                    onMouseLeave={(e) => {
-                                                        e.currentTarget.style.background =
-                                                            'rgba(15, 23, 42, 0.6)'
-                                                        e.currentTarget.style.borderColor = `${badge.borderColor}20`
-                                                    }}
+                                                    $borderColor={badge.borderColor}
                                                 >
-                                                    <div
+                                                    <Text
                                                         style={{
-                                                            color: '#f1f5f9',
-                                                            fontSize: '16px',
                                                             fontWeight: 'bold',
                                                         }}
                                                     >
                                                         {contributor.displayName}
-                                                    </div>
+                                                    </Text>
 
-                                                    <div
+                                                    <Text
                                                         style={{
                                                             color: badge.color,
-                                                            fontSize: '14px',
                                                             fontWeight: 'bold',
                                                         }}
                                                     >
@@ -452,57 +369,29 @@ export default function ContributorsModal({
                                                         {contributor.monthsSubscribed === 1
                                                             ? 'month'
                                                             : 'months'}
-                                                    </div>
-                                                </div>
+                                                    </Text>
+                                                </ContributorCard>
                                             ))}
-                                        </div>
-                                    </div>
+                                        </Flex>
+                                    </TierSection>
                                 )
                             })}
                         </>
                     )}
-                </div>
+                </ModalContent>
 
                 {/* Footer */}
-                <div
-                    style={{
-                        padding: '16px 20px',
-                        borderTop: `1px solid ${factionColors.PRIMARY}40`,
-                        background: 'rgba(15, 23, 42, 0.4)',
-                        textAlign: 'center',
-                    }}
-                >
-                    <a
+                <ModalFooter style={{ justifyContent: 'center' }}>
+                    <KofiButton
                         href="https://ko-fi.com/theinsomnolent"
                         target="_blank"
                         rel="noopener noreferrer"
-                        style={{
-                            display: 'inline-flex',
-                            alignItems: 'center',
-                            gap: '8px',
-                            padding: '10px 20px',
-                            background: '#ff5e5b',
-                            color: 'white',
-                            textDecoration: 'none',
-                            borderRadius: '6px',
-                            fontWeight: 'bold',
-                            fontSize: '14px',
-                            transition: 'all 0.2s',
-                        }}
-                        onMouseEnter={(e) => {
-                            e.currentTarget.style.background = '#ff4542'
-                            e.currentTarget.style.transform = 'scale(1.05)'
-                        }}
-                        onMouseLeave={(e) => {
-                            e.currentTarget.style.background = '#ff5e5b'
-                            e.currentTarget.style.transform = 'scale(1)'
-                        }}
                     >
                         <Heart size={18} />
                         Support on Ko-Fi
-                    </a>
-                </div>
-            </div>
-        </div>
+                    </KofiButton>
+                </ModalFooter>
+            </ModalContainer>
+        </ModalBackdrop>
     )
 }

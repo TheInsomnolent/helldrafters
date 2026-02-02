@@ -14,8 +14,10 @@ import {
     ResponsiveContainer,
     Tooltip,
 } from 'recharts'
+import styled from 'styled-components'
 import { COLORS, getFactionColors } from '../../constants/theme'
 import { DIFFICULTY_CONFIG } from '../../constants/gameConfig'
+import { Card, Text, Caption, Flex } from '../../styles'
 import type { MissionResult } from '../../state/analyticsStore'
 import type { Faction } from '../../types'
 
@@ -27,6 +29,73 @@ interface DifficultyDataPoint {
     avgStars?: string
     displayName?: string
 }
+
+// ============================================================================
+// STYLED COMPONENTS
+// ============================================================================
+
+const ChartCard = styled(Card)`
+    background-color: ${({ theme }) => theme.colors.cardInner};
+    border-radius: ${({ theme }) => theme.radii.lg};
+    padding: ${({ theme }) => theme.spacing.lg};
+    border: 1px solid ${({ theme }) => theme.colors.cardBorder};
+`
+
+const ChartTitle = styled.h3`
+    color: ${({ theme }) => theme.colors.textPrimary};
+    margin: 0 0 8px 0;
+    font-size: 14px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+`
+
+const EmptyState = styled.div<{ $height: number }>`
+    height: ${({ $height }) => $height}px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: ${({ theme }) => theme.colors.textMuted};
+    background-color: ${({ theme }) => theme.colors.cardInner};
+    border-radius: ${({ theme }) => theme.radii.lg};
+`
+
+const ChartTooltip = styled.div`
+    background-color: ${({ theme }) => theme.colors.cardBg};
+    border: 1px solid ${({ theme }) => theme.colors.cardBorder};
+    border-radius: ${({ theme }) => theme.radii.lg};
+    padding: 12px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+`
+
+const CenterDisplay = styled.div`
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    text-align: center;
+    pointer-events: none;
+`
+
+const MissionSummary = styled.div`
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(80px, 1fr));
+    gap: 8px;
+    margin-top: 16px;
+    padding-top: 16px;
+    border-top: 1px solid ${({ theme }) => theme.colors.cardBorder};
+`
+
+const MissionCard = styled.div`
+    text-align: center;
+    padding: 8px;
+    background-color: ${({ theme }) => theme.colors.cardBg};
+    border-radius: 6px;
+    border: 1px solid ${({ theme }) => theme.colors.cardBorder};
+`
 
 interface CustomTooltipProps {
     active?: boolean
@@ -41,47 +110,19 @@ const CustomTooltip = ({ active, payload }: CustomTooltipProps): React.ReactElem
     if (!data) return null
 
     return (
-        <div
-            style={{
-                backgroundColor: COLORS.CARD_BG,
-                border: `1px solid ${COLORS.CARD_BORDER}`,
-                borderRadius: '8px',
-                padding: '12px',
-                boxShadow: '0 4px 12px rgba(0,0,0,0.3)',
-            }}
-        >
-            <p
-                style={{
-                    color: COLORS.PRIMARY,
-                    margin: '0 0 4px 0',
-                    fontSize: '14px',
-                    fontWeight: 'bold',
-                }}
-            >
+        <ChartTooltip>
+            <Text $color="primary" style={{ fontWeight: 'bold', marginBottom: '4px' }}>
                 {data?.difficultyName}
-            </p>
-            <p
-                style={{
-                    color: COLORS.TEXT_SECONDARY,
-                    margin: '0 0 4px 0',
-                    fontSize: '12px',
-                }}
-            >
+            </Text>
+            <Text $color="secondary" $size="sm" style={{ marginBottom: '4px' }}>
                 Star Rating: {'⭐'.repeat(data?.stars || 0)}
-            </p>
+            </Text>
             {data?.count > 1 && (
-                <p
-                    style={{
-                        color: COLORS.TEXT_MUTED,
-                        margin: '0',
-                        fontSize: '11px',
-                        fontStyle: 'italic',
-                    }}
-                >
+                <Caption style={{ fontStyle: 'italic' }}>
                     Played {data.count} times (avg: {data.avgStars}⭐)
-                </p>
+                </Caption>
             )}
-        </div>
+        </ChartTooltip>
     )
 }
 
@@ -99,21 +140,7 @@ const MissionRadar = ({
     const factionColors = getFactionColors(faction as string)
 
     if (!data || data.length === 0) {
-        return (
-            <div
-                style={{
-                    height,
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    color: COLORS.TEXT_MUTED,
-                    backgroundColor: COLORS.CARD_INNER,
-                    borderRadius: '8px',
-                }}
-            >
-                No mission data recorded
-            </div>
-        )
+        return <EmptyState $height={height}>No mission data recorded</EmptyState>
     }
 
     // Transform mission results into radar chart data
@@ -153,30 +180,11 @@ const MissionRadar = ({
     const avgStars = (totalStars / data.length).toFixed(1)
 
     return (
-        <div
-            style={{
-                backgroundColor: COLORS.CARD_INNER,
-                borderRadius: '8px',
-                padding: '16px',
-                border: `1px solid ${COLORS.CARD_BORDER}`,
-            }}
-        >
-            <h3
-                style={{
-                    color: COLORS.TEXT_PRIMARY,
-                    margin: '0 0 8px 0',
-                    fontSize: '14px',
-                    fontWeight: '600',
-                    textTransform: 'uppercase',
-                    letterSpacing: '0.1em',
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: '8px',
-                }}
-            >
+        <ChartCard>
+            <ChartTitle>
                 <span style={{ fontSize: '18px' }}>⭐</span>
                 Mission Performance
-            </h3>
+            </ChartTitle>
 
             <div style={{ position: 'relative' }}>
                 <ResponsiveContainer width="100%" height={height}>
@@ -239,100 +247,50 @@ const MissionRadar = ({
                 </ResponsiveContainer>
 
                 {/* Center average display */}
-                <div
-                    style={{
-                        position: 'absolute',
-                        top: '50%',
-                        left: '50%',
-                        transform: 'translate(-50%, -50%)',
-                        textAlign: 'center',
-                        pointerEvents: 'none',
-                    }}
-                >
-                    <p
+                <CenterDisplay>
+                    <Text
+                        $color="primary"
                         style={{
-                            color: COLORS.PRIMARY,
                             fontSize: '24px',
                             fontWeight: 'bold',
-                            margin: 0,
                             textShadow: `0 0 20px ${factionColors.PRIMARY}`,
                         }}
                     >
                         {avgStars}
-                    </p>
-                    <p
-                        style={{
-                            color: COLORS.TEXT_MUTED,
-                            fontSize: '10px',
-                            margin: 0,
-                            textTransform: 'uppercase',
-                            letterSpacing: '0.1em',
-                        }}
-                    >
+                    </Text>
+                    <Caption style={{ textTransform: 'uppercase', letterSpacing: '0.1em' }}>
                         Avg Stars
-                    </p>
-                </div>
+                    </Caption>
+                </CenterDisplay>
             </div>
 
             {/* Mission summary grid */}
-            <div
-                style={{
-                    display: 'grid',
-                    gridTemplateColumns: 'repeat(auto-fill, minmax(80px, 1fr))',
-                    gap: '8px',
-                    marginTop: '16px',
-                    paddingTop: '16px',
-                    borderTop: `1px solid ${COLORS.CARD_BORDER}`,
-                }}
-            >
+            <MissionSummary>
                 {chartData.map((d, index) => (
-                    <div
-                        key={index}
-                        style={{
-                            textAlign: 'center',
-                            padding: '8px',
-                            backgroundColor: COLORS.CARD_BG,
-                            borderRadius: '6px',
-                            border: `1px solid ${COLORS.CARD_BORDER}`,
-                        }}
-                    >
-                        <p
+                    <MissionCard key={index}>
+                        <Text
                             style={{
                                 color: factionColors.PRIMARY,
                                 fontSize: '12px',
                                 fontWeight: 'bold',
-                                margin: '0 0 4px 0',
+                                marginBottom: '4px',
                             }}
                         >
                             D{d.difficulty}
-                        </p>
-                        <p
-                            style={{
-                                color: COLORS.TEXT_SECONDARY,
-                                fontSize: '12px',
-                                margin: 0,
-                                display: 'flex',
-                                alignItems: 'center',
-                                justifyContent: 'center',
-                                gap: '2px',
-                            }}
-                        >
+                        </Text>
+                        <Flex $align="center" $justify="center" $gap="xs">
                             <span style={{ fontSize: '14px' }}>⭐</span>
-                            <span style={{ fontWeight: 'bold' }}>{d.stars}</span>
-                        </p>
-                        <p
-                            style={{
-                                color: COLORS.TEXT_MUTED,
-                                fontSize: '9px',
-                                margin: '4px 0 0 0',
-                            }}
-                        >
+                            <Text $color="secondary" $size="sm" style={{ fontWeight: 'bold' }}>
+                                {d.stars}
+                            </Text>
+                        </Flex>
+                        <Caption style={{ marginTop: '4px' }}>
                             {d.count} mission{d.count > 1 ? 's' : ''}
-                        </p>
-                    </div>
+                        </Caption>
+                    </MissionCard>
                 ))}
-            </div>
-        </div>
+            </MissionSummary>
+        </ChartCard>
     )
 }
 

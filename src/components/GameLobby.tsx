@@ -1,21 +1,249 @@
 import { CheckCircle, Crown, LogOut, Settings, Users, X } from 'lucide-react'
 import React, { useCallback, useEffect, useState } from 'react'
-import {
-    BUTTON_STYLES,
-    COLORS,
-    GRADIENTS,
-    SHADOWS,
-    getFactionColors,
-    type FactionColorSet,
-} from '../constants/theme'
+import styled from 'styled-components'
+import { COLORS, getFactionColors, type FactionColorSet } from '../constants/theme'
 import { TYPE } from '../constants/types'
 import { DEFAULT_WARBONDS, WARBONDS, WARBOND_TYPE, getWarbondById } from '../constants/warbonds'
 import { MASTER_DB, SUPERSTORE_ITEMS } from '../data/itemsByWarbond'
 import { useMultiplayer } from '../systems/multiplayer'
 import { getItemIconUrl } from '../utils/iconHelpers'
-import StratagemGame from './StratagemGame'
 import { isDraftFilteringDebugEnabled } from '../constants/gameConfig'
 import type { GameConfig, Item, Warbond } from '../types'
+import {
+    PageContainer,
+    Container,
+    Title,
+    Card,
+    Button,
+    Input,
+    Heading,
+    Subheading,
+    Label,
+    Checkbox,
+    Grid,
+    Flex,
+    SelectableCard,
+    ModalBackdrop,
+    ModalContainer,
+    ModalHeader,
+    ModalContent,
+    ModalFooter,
+    Caption,
+    Text,
+    WarbondTypeBadge,
+} from '../styles'
+
+// ============================================================================
+// STYLED COMPONENTS (component-specific only)
+// ============================================================================
+
+const HeaderBanner = styled.div`
+    background: linear-gradient(
+        to right,
+        rgba(100, 116, 139, 0.3),
+        rgba(100, 116, 139, 0.1),
+        rgba(100, 116, 139, 0.3)
+    );
+    padding: ${({ theme }) => theme.spacing.md};
+    margin: 0 auto ${({ theme }) => theme.spacing.xl} auto;
+    max-width: 500px;
+`
+
+const HeaderBannerText = styled.p`
+    font-size: ${({ theme }) => theme.fontSizes.lg};
+    font-weight: ${({ theme }) => theme.fontWeights.bold};
+    color: ${({ theme }) => theme.colors.textPrimary};
+    text-transform: uppercase;
+    letter-spacing: 0.3em;
+    margin: 0;
+`
+
+const PlayerStatusCard = styled.div<{
+    $ready: boolean
+    $isCurrent: boolean
+    $factionPrimary: string
+    $connected?: boolean
+}>`
+    padding: ${({ theme }) => `${theme.spacing.md} ${theme.spacing.lg}`};
+    background-color: ${({ $ready }) =>
+        $ready ? 'rgba(34, 197, 94, 0.2)' : ({ theme }) => theme.colors.bgMain};
+    border-radius: ${({ theme }) => theme.radii.md};
+    border: 2px solid
+        ${({ $ready, $isCurrent, $factionPrimary, theme }) =>
+            $ready ? '#22c55e' : $isCurrent ? $factionPrimary : theme.colors.cardBorder};
+    display: flex;
+    align-items: center;
+    gap: ${({ theme }) => theme.spacing.md};
+    opacity: ${({ $connected = true }) => ($connected ? 1 : 0.5)};
+`
+
+const PlayerName = styled.span<{ $isCurrent: boolean; $ready: boolean; $factionPrimary: string }>`
+    font-weight: ${({ theme }) => theme.fontWeights.bold};
+    color: ${({ $isCurrent, $ready, $factionPrimary }) =>
+        $isCurrent ? $factionPrimary : $ready ? '#22c55e' : 'white'};
+`
+
+const NameButton = styled.button<{ $factionPrimary: string; $disabled?: boolean }>`
+    width: 100%;
+    padding: ${({ theme }) => `${theme.spacing.lg} ${theme.spacing.xl}`};
+    background-color: ${({ theme }) => theme.colors.bgMain};
+    border: 2px solid ${({ theme }) => theme.colors.cardBorder};
+    border-radius: ${({ theme }) => theme.radii.md};
+    font-size: ${({ theme }) => theme.fontSizes['4xl']};
+    font-weight: ${({ theme }) => theme.fontWeights.black};
+    color: ${({ theme }) => theme.colors.textPrimary};
+    text-align: left;
+    text-transform: uppercase;
+    letter-spacing: ${({ theme }) => theme.typography.LETTER_SPACING_NORMAL};
+    cursor: ${({ $disabled }) => ($disabled ? 'not-allowed' : 'pointer')};
+    transition: ${({ theme }) => theme.transitions.normal};
+    opacity: ${({ $disabled }) => ($disabled ? 0.7 : 1)};
+
+    &:hover:not(:disabled) {
+        border-color: ${({ $factionPrimary }) => $factionPrimary};
+        color: ${({ $factionPrimary }) => $factionPrimary};
+    }
+`
+
+const DisabledOverlay = styled.div<{ $showEditButton?: boolean }>`
+    opacity: ${({ $showEditButton }) => ($showEditButton ? 0.7 : 1)};
+    pointer-events: ${({ $showEditButton }) => ($showEditButton ? 'none' : 'auto')};
+`
+
+const SuperstoreCard = styled(Card)`
+    padding: ${({ theme }) => theme.spacing.xl};
+`
+
+const SuperstoreHeader = styled.div`
+    font-size: ${({ theme }) => theme.fontSizes.lg};
+    font-weight: ${({ theme }) => theme.fontWeights.black};
+    color: ${({ theme }) => theme.colors.accentPurple};
+    text-transform: uppercase;
+    letter-spacing: ${({ theme }) => theme.typography.LETTER_SPACING_NORMAL};
+    margin-bottom: ${({ theme }) => theme.spacing.sm};
+`
+
+const WarbondImage = styled.div<{ $selected: boolean; $borderColor: string }>`
+    width: 100%;
+    aspect-ratio: 16 / 9;
+    border-radius: ${({ theme }) => theme.radii.md};
+    overflow: hidden;
+    border: 1px solid
+        ${({ $selected, $borderColor }) => ($selected ? $borderColor : 'rgba(100, 116, 139, 0.3)')};
+    background-color: rgba(0, 0, 0, 0.3);
+
+    img {
+        width: 100%;
+        height: 100%;
+        object-fit: contain;
+        background-color: #000;
+    }
+`
+
+const WarbondName = styled.div<{ $selected: boolean; $textColor: string }>`
+    font-weight: ${({ theme }) => theme.fontWeights.bold};
+    font-size: ${({ theme }) => theme.fontSizes.base};
+    color: ${({ $selected, $textColor, theme }) =>
+        $selected ? $textColor : theme.colors.textSecondary};
+    text-transform: uppercase;
+    letter-spacing: ${({ theme }) => theme.typography.LETTER_SPACING_NORMAL};
+    margin-bottom: ${({ theme }) => theme.spacing.xs};
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+`
+
+const RequiredOverlay = styled.div<{ $showEdit?: boolean }>`
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: ${({ $showEdit }) => ($showEdit ? '50px' : 0)};
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background-color: rgba(0, 0, 0, 0.7);
+    border-radius: ${({ theme }) => theme.radii.md};
+    pointer-events: none;
+`
+
+const RequiredText = styled.span<{ $factionPrimary: string }>`
+    font-size: ${({ theme }) => theme.fontSizes.sm};
+    font-weight: ${({ theme }) => theme.fontWeights.bold};
+    color: ${({ $factionPrimary }) => $factionPrimary};
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+`
+
+const ItemCheckboxLabel = styled.label<{ $selected: boolean; $isWide?: boolean }>`
+    display: flex;
+    flex-direction: ${({ $isWide }) => ($isWide ? 'column' : 'row')};
+    align-items: ${({ $isWide }) => ($isWide ? 'stretch' : 'center')};
+    gap: ${({ theme }) => theme.spacing.sm};
+    padding: ${({ theme }) => theme.spacing.sm} ${({ theme }) => theme.spacing.md};
+    background-color: ${({ $selected, theme }) =>
+        $selected ? 'rgba(34, 197, 94, 0.1)' : theme.colors.bgMain};
+    border-radius: ${({ theme }) => theme.radii.md};
+    border: 1px solid
+        ${({ $selected, theme }) =>
+            $selected ? 'rgba(34, 197, 94, 0.3)' : theme.colors.cardBorder};
+    cursor: pointer;
+    transition: ${({ theme }) => theme.transitions.normal};
+`
+
+const ItemIcon = styled.img<{ $isWide?: boolean; $selected?: boolean }>`
+    width: ${({ $isWide }) => ($isWide ? '100%' : '28px')};
+    height: ${({ $isWide }) => ($isWide ? '100%' : '28px')};
+    max-width: ${({ $isWide }) => ($isWide ? '100%' : undefined)};
+    max-height: ${({ $isWide }) => ($isWide ? '100%' : undefined)};
+    object-fit: contain;
+    flex-shrink: 0;
+    opacity: ${({ $selected }) => ($selected ? 1 : 0.5)};
+`
+
+const ItemIconContainer = styled.div`
+    width: 100%;
+    height: 40px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background-color: rgba(0, 0, 0, 0.3);
+    border-radius: ${({ theme }) => theme.radii.md};
+    overflow: hidden;
+`
+
+const ItemName = styled.div<{ $selected: boolean }>`
+    color: ${({ $selected, theme }) => ($selected ? 'white' : theme.colors.textMuted)};
+    font-size: ${({ theme }) => theme.fontSizes.md};
+    font-weight: ${({ theme }) => theme.fontWeights.medium};
+    line-height: 1.3;
+    word-break: break-word;
+`
+
+const ItemRarity = styled.div`
+    color: ${({ theme }) => theme.colors.textDisabled};
+    font-size: ${({ theme }) => theme.fontSizes.xs};
+    text-transform: uppercase;
+`
+
+const CloseButton = styled.button`
+    width: 36px;
+    height: 36px;
+    border-radius: ${({ theme }) => theme.radii.md};
+    background-color: rgba(239, 68, 68, 0.2);
+    color: ${({ theme }) => theme.colors.accentRed};
+    border: 1px solid #7f1d1d;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+`
+
+const SelectedCount = styled.span`
+    margin-left: auto;
+    color: ${({ theme }) => theme.colors.textMuted};
+    font-size: ${({ theme }) => theme.fontSizes.base};
+`
 
 interface PlayerConfig {
     name: string
@@ -386,119 +614,37 @@ export default function GameLobby({
             : []
 
     return (
-        <div
-            style={{
-                minHeight: '100vh',
-                background: GRADIENTS.BACKGROUND,
-                color: 'white',
-                padding: '80px 24px',
-            }}
-        >
-            <div style={{ maxWidth: '1200px', margin: '0 auto' }}>
+        <PageContainer>
+            <Container $maxWidth="xl">
                 {/* Header */}
                 <div style={{ textAlign: 'center', marginBottom: '32px' }}>
-                    <h1
-                        style={{
-                            fontSize: '72px',
-                            fontWeight: '900',
-                            color: factionColors.PRIMARY,
-                            margin: '0 0 8px 0',
-                            letterSpacing: '0.05em',
-                            textTransform: 'uppercase',
-                            textShadow: factionColors.GLOW,
-                        }}
-                    >
+                    <Title $factionColor={factionColors.PRIMARY} $factionGlow={factionColors.GLOW}>
                         {isMultiplayer ? 'SQUAD LOADOUT' : 'LOADOUT SETUP'}
-                    </h1>
-                    <div
-                        style={{
-                            background: GRADIENTS.HEADER_BAR,
-                            padding: '12px',
-                            margin: '0 auto 24px auto',
-                            maxWidth: '500px',
-                        }}
-                    >
-                        <p
-                            style={{
-                                fontSize: '18px',
-                                fontWeight: 'bold',
-                                color: 'white',
-                                textTransform: 'uppercase',
-                                letterSpacing: '0.3em',
-                                margin: 0,
-                            }}
-                        >
+                    </Title>
+                    <HeaderBanner>
+                        <HeaderBannerText>
                             {isMultiplayer ? 'Configure Your Warbonds' : 'Select Your Equipment'}
-                        </p>
-                    </div>
+                        </HeaderBannerText>
+                    </HeaderBanner>
                 </div>
 
                 {/* Action Buttons - Moved to top */}
-                <div
-                    style={{
-                        display: 'flex',
-                        justifyContent: 'space-between',
-                        gap: '16px',
-                        marginBottom: '32px',
-                    }}
-                >
+                <Flex $justify="between" $gap="lg" style={{ marginBottom: '32px' }}>
                     {/* Exit/Back Button */}
-                    <button
-                        onClick={handleExitLobby}
-                        style={{
-                            padding: '16px 32px',
-                            backgroundColor: 'rgba(239, 68, 68, 0.1)',
-                            color: '#ef4444',
-                            border: '2px solid #7f1d1d',
-                            borderRadius: '4px',
-                            fontWeight: '900',
-                            fontSize: '14px',
-                            textTransform: 'uppercase',
-                            letterSpacing: '0.1em',
-                            cursor: 'pointer',
-                            transition: 'all 0.2s',
-                            display: 'flex',
-                            alignItems: 'center',
-                            gap: '8px',
-                        }}
-                        onMouseEnter={(e) => {
-                            e.currentTarget.style.backgroundColor = 'rgba(239, 68, 68, 0.2)'
-                            e.currentTarget.style.borderColor = '#ef4444'
-                        }}
-                        onMouseLeave={(e) => {
-                            e.currentTarget.style.backgroundColor = 'rgba(239, 68, 68, 0.1)'
-                            e.currentTarget.style.borderColor = '#7f1d1d'
-                        }}
-                    >
+                    <Button $variant="danger" onClick={handleExitLobby}>
                         <LogOut size={18} />
                         {isMultiplayer ? 'EXIT LOBBY' : 'BACK TO MENU'}
-                    </button>
+                    </Button>
 
                     {/* Ready / Start Button */}
                     {isMultiplayer ? (
-                        <button
+                        <Button
+                            $variant={isReady ? 'success' : 'primary'}
+                            $size="lg"
+                            $factionPrimary={factionColors.PRIMARY}
+                            $factionHover={factionColors.PRIMARY_HOVER}
+                            $factionShadow={factionColors.SHADOW}
                             onClick={handleReadyToggle}
-                            style={{
-                                ...BUTTON_STYLES.PRIMARY,
-                                padding: '16px 48px',
-                                borderRadius: '4px',
-                                fontSize: '16px',
-                                display: 'flex',
-                                alignItems: 'center',
-                                gap: '12px',
-                                backgroundColor: isReady ? '#22c55e' : factionColors.PRIMARY,
-                                color: isReady ? 'white' : 'black',
-                            }}
-                            onMouseEnter={(e) => {
-                                e.currentTarget.style.transform = 'translateY(-2px)'
-                                e.currentTarget.style.boxShadow = isReady
-                                    ? SHADOWS.GLOW_GREEN
-                                    : factionColors.SHADOW_HOVER
-                            }}
-                            onMouseLeave={(e) => {
-                                e.currentTarget.style.transform = 'translateY(0)'
-                                e.currentTarget.style.boxShadow = 'none'
-                            }}
                         >
                             {isReady ? (
                                 <>
@@ -510,88 +656,43 @@ export default function GameLobby({
                                     READY UP <CheckCircle size={20} />
                                 </>
                             )}
-                        </button>
+                        </Button>
                     ) : (
-                        <button
+                        <Button
+                            $variant="primary"
+                            $size="lg"
+                            $factionPrimary={factionColors.PRIMARY}
+                            $factionHover={factionColors.PRIMARY_HOVER}
+                            $factionShadow={factionColors.SHADOW}
                             onClick={handleSoloStart}
-                            style={{
-                                ...BUTTON_STYLES.PRIMARY,
-                                padding: '16px 48px',
-                                borderRadius: '4px',
-                                fontSize: '16px',
-                                display: 'flex',
-                                alignItems: 'center',
-                                gap: '12px',
-                            }}
-                            onMouseEnter={(e) => {
-                                e.currentTarget.style.backgroundColor = factionColors.PRIMARY_HOVER
-                                e.currentTarget.style.transform = 'translateY(-2px)'
-                                e.currentTarget.style.boxShadow = factionColors.SHADOW_HOVER
-                            }}
-                            onMouseLeave={(e) => {
-                                e.currentTarget.style.backgroundColor = factionColors.PRIMARY
-                                e.currentTarget.style.transform = 'translateY(0)'
-                                e.currentTarget.style.boxShadow = factionColors.SHADOW
-                            }}
                         >
                             START RUN <CheckCircle size={20} />
-                        </button>
+                        </Button>
                     )}
-                </div>
-
-                {/* Stratagem Mini-Game - Show when player is ready and waiting */}
-                {isMultiplayer && isReady && !allPlayersReady() && (
-                    <StratagemGame factionColors={factionColors} />
-                )}
+                </Flex>
 
                 {/* Multiplayer: Show all players' status in slot order */}
                 {isMultiplayer && allPlayers.length > 0 && (
-                    <div
-                        style={{
-                            backgroundColor: COLORS.CARD_BG,
-                            borderRadius: '8px',
-                            padding: '24px',
-                            marginBottom: '32px',
-                            border: `1px solid ${COLORS.CARD_BORDER}`,
-                        }}
-                    >
-                        <h3
-                            style={{
-                                fontSize: '14px',
-                                fontWeight: 'bold',
-                                color: COLORS.TEXT_MUTED,
-                                marginBottom: '16px',
-                                textTransform: 'uppercase',
-                                letterSpacing: '0.15em',
-                            }}
-                        >
-                            <Users
-                                size={16}
-                                style={{ marginRight: '8px', verticalAlign: 'middle' }}
-                            />
-                            SQUAD STATUS
-                        </h3>
-                        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '12px' }}>
+                    <Card $variant="base" $padding="lg" style={{ marginBottom: '32px' }}>
+                        <Flex $align="center" $gap="sm" style={{ marginBottom: '16px' }}>
+                            <Users size={16} />
+                            <Label style={{ margin: 0 }}>SQUAD STATUS</Label>
+                        </Flex>
+                        <Flex $wrap $gap="md">
                             {allPlayers.map((player) => {
                                 const isCurrentPlayer = player.slot === playerSlot
-                                const playerReady = isCurrentPlayer ? isReady : player.ready
+                                const playerReady: boolean = isCurrentPlayer
+                                    ? isReady
+                                    : (player.ready ?? false)
                                 const playerName = isCurrentPlayer ? myConfig.name : player.name
 
                                 return (
-                                    <div
+                                    <PlayerStatusCard
                                         key={player.slot}
-                                        style={{
-                                            padding: '12px 20px',
-                                            backgroundColor: playerReady
-                                                ? 'rgba(34, 197, 94, 0.2)'
-                                                : COLORS.BG_MAIN,
-                                            borderRadius: '4px',
-                                            border: `2px solid ${playerReady ? '#22c55e' : isCurrentPlayer ? factionColors.PRIMARY : COLORS.CARD_BORDER}`,
-                                            display: 'flex',
-                                            alignItems: 'center',
-                                            gap: '12px',
-                                            opacity: player.connected ? 1 : 0.5,
-                                        }}
+                                        $ready={playerReady}
+                                        $isCurrent={isCurrentPlayer}
+                                        $factionPrimary={factionColors.PRIMARY}
+                                        $connected={player.connected}
                                     >
                                         {player.isHost && (
                                             <Crown
@@ -599,175 +700,72 @@ export default function GameLobby({
                                                 style={{ color: factionColors.PRIMARY }}
                                             />
                                         )}
-                                        <span
-                                            style={{
-                                                fontWeight: 'bold',
-                                                color: isCurrentPlayer
-                                                    ? factionColors.PRIMARY
-                                                    : playerReady
-                                                      ? '#22c55e'
-                                                      : 'white',
-                                            }}
+                                        <PlayerName
+                                            $isCurrent={isCurrentPlayer}
+                                            $ready={playerReady}
+                                            $factionPrimary={factionColors.PRIMARY}
                                         >
                                             {playerName}
-                                        </span>
-                                        {isCurrentPlayer && (
-                                            <span
-                                                style={{
-                                                    fontSize: '11px',
-                                                    color: COLORS.TEXT_MUTED,
-                                                }}
-                                            >
-                                                (YOU)
-                                            </span>
-                                        )}
+                                        </PlayerName>
+                                        {isCurrentPlayer && <Caption $color="muted">(YOU)</Caption>}
                                         {playerReady && (
                                             <CheckCircle size={16} style={{ color: '#22c55e' }} />
                                         )}
                                         {!player.connected && (
-                                            <span style={{ fontSize: '11px', color: '#ef4444' }}>
-                                                (DISCONNECTED)
-                                            </span>
+                                            <Caption $color="error">(DISCONNECTED)</Caption>
                                         )}
-                                    </div>
+                                    </PlayerStatusCard>
                                 )
                             })}
-                        </div>
-                    </div>
+                        </Flex>
+                    </Card>
                 )}
 
                 {/* Player Configuration */}
-                <div
-                    style={{
-                        backgroundColor: COLORS.CARD_BG,
-                        padding: '48px',
-                        borderRadius: '8px',
-                        border: '1px solid rgba(100, 116, 139, 0.5)',
-                        marginBottom: '32px',
-                        boxShadow: SHADOWS.CARD,
-                    }}
-                >
+                <Card $variant="elevated" $padding="xl" style={{ marginBottom: '32px' }}>
                     {/* Player Name */}
                     <div style={{ marginBottom: '48px' }}>
-                        <label
-                            style={{
-                                display: 'block',
-                                fontSize: '12px',
-                                fontWeight: 'bold',
-                                color: COLORS.TEXT_MUTED,
-                                textTransform: 'uppercase',
-                                letterSpacing: '0.2em',
-                                marginBottom: '12px',
-                            }}
-                        >
-                            ● HELLDIVER DESIGNATION
-                        </label>
+                        <Label>● HELLDIVER DESIGNATION</Label>
                         {editingName ? (
-                            <input
-                                type="text"
+                            <Input
+                                $size="lg"
+                                $factionPrimary={factionColors.PRIMARY}
+                                $factionShadow={factionColors.GLOW}
                                 value={myConfig.name}
                                 onChange={(e) => updateMyConfig({ name: e.target.value })}
                                 onBlur={() => setEditingName(false)}
                                 onKeyDown={(e) => e.key === 'Enter' && setEditingName(false)}
-                                style={{
-                                    width: '100%',
-                                    padding: '20px 24px',
-                                    backgroundColor: COLORS.BG_MAIN,
-                                    border: `3px solid ${factionColors.PRIMARY}`,
-                                    borderRadius: '4px',
-                                    fontSize: '28px',
-                                    fontWeight: '900',
-                                    color: factionColors.PRIMARY,
-                                    textTransform: 'uppercase',
-                                    letterSpacing: '0.05em',
-                                    outline: 'none',
-                                    boxShadow: factionColors.GLOW,
-                                }}
                                 autoFocus
                                 maxLength={30}
                             />
                         ) : (
-                            <button
+                            <NameButton
                                 onClick={() => setEditingName(true)}
                                 disabled={isReady}
-                                style={{
-                                    width: '100%',
-                                    padding: '20px 24px',
-                                    backgroundColor: COLORS.BG_MAIN,
-                                    border: `2px solid ${COLORS.CARD_BORDER}`,
-                                    borderRadius: '4px',
-                                    fontSize: '28px',
-                                    fontWeight: '900',
-                                    color: 'white',
-                                    textAlign: 'left',
-                                    textTransform: 'uppercase',
-                                    letterSpacing: '0.05em',
-                                    cursor: isReady ? 'not-allowed' : 'pointer',
-                                    transition: 'all 0.2s',
-                                    opacity: isReady ? 0.7 : 1,
-                                }}
-                                onMouseEnter={(e) => {
-                                    if (!isReady) {
-                                        e.currentTarget.style.borderColor = factionColors.PRIMARY
-                                        e.currentTarget.style.color = factionColors.PRIMARY
-                                    }
-                                }}
-                                onMouseLeave={(e) => {
-                                    if (!isReady) {
-                                        e.currentTarget.style.borderColor = COLORS.CARD_BORDER
-                                        e.currentTarget.style.color = 'white'
-                                    }
-                                }}
+                                $factionPrimary={factionColors.PRIMARY}
+                                $disabled={isReady}
                             >
                                 {myConfig.name}
-                            </button>
+                            </NameButton>
                         )}
                     </div>
 
                     {/* Warbond Selection */}
-                    <div
-                        style={{
-                            opacity: isReady ? 0.7 : 1,
-                            pointerEvents: isReady ? 'none' : 'auto',
-                        }}
-                    >
-                        <h2
-                            style={{
-                                fontSize: '32px',
-                                fontWeight: '900',
-                                color: factionColors.PRIMARY,
-                                marginBottom: '32px',
-                                textTransform: 'uppercase',
-                                letterSpacing: '0.1em',
-                                textShadow: factionColors.GLOW,
-                            }}
+                    <DisabledOverlay $showEditButton={isReady}>
+                        <Heading
+                            $factionColor={factionColors.PRIMARY}
+                            $factionGlow={factionColors.GLOW}
+                            style={{ fontSize: '32px' }}
                         >
                             ▸ SELECT WARBONDS
-                        </h2>
+                        </Heading>
 
                         {/* Standard Warbonds */}
                         <div style={{ marginBottom: '32px' }}>
-                            <h3
-                                style={{
-                                    fontSize: '14px',
-                                    fontWeight: 'bold',
-                                    color: COLORS.TEXT_SECONDARY,
-                                    marginBottom: '16px',
-                                    textTransform: 'uppercase',
-                                    letterSpacing: '0.15em',
-                                    borderLeft: `4px solid ${factionColors.PRIMARY}`,
-                                    paddingLeft: '12px',
-                                }}
-                            >
+                            <Subheading $withAccent $factionColor={factionColors.PRIMARY}>
                                 STANDARD (FREE)
-                            </h3>
-                            <div
-                                style={{
-                                    display: 'grid',
-                                    gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))',
-                                    gap: '12px',
-                                }}
-                            >
+                            </Subheading>
+                            <Grid $columns="auto-fill" $minWidth="280px" $gap="md">
                                 {standardWarbonds.map((wb) => (
                                     <WarbondCard
                                         key={wb.id}
@@ -779,32 +777,15 @@ export default function GameLobby({
                                         factionColors={factionColors}
                                     />
                                 ))}
-                            </div>
+                            </Grid>
                         </div>
 
                         {/* Premium Warbonds */}
                         <div style={{ marginBottom: '32px' }}>
-                            <h3
-                                style={{
-                                    fontSize: '14px',
-                                    fontWeight: 'bold',
-                                    color: COLORS.TEXT_SECONDARY,
-                                    marginBottom: '16px',
-                                    textTransform: 'uppercase',
-                                    letterSpacing: '0.15em',
-                                    borderLeft: `4px solid ${COLORS.ACCENT_BLUE}`,
-                                    paddingLeft: '12px',
-                                }}
-                            >
+                            <Subheading $withAccent $factionColor={COLORS.ACCENT_BLUE}>
                                 PREMIUM WARBONDS
-                            </h3>
-                            <div
-                                style={{
-                                    display: 'grid',
-                                    gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))',
-                                    gap: '12px',
-                                }}
-                            >
+                            </Subheading>
+                            <Grid $columns="auto-fill" $minWidth="280px" $gap="md">
                                 {premiumWarbonds.map((wb) => (
                                     <WarbondCard
                                         key={wb.id}
@@ -815,32 +796,15 @@ export default function GameLobby({
                                         factionColors={factionColors}
                                     />
                                 ))}
-                            </div>
+                            </Grid>
                         </div>
 
                         {/* Legendary Warbonds */}
                         <div style={{ marginBottom: '32px' }}>
-                            <h3
-                                style={{
-                                    fontSize: '14px',
-                                    fontWeight: 'bold',
-                                    color: COLORS.TEXT_SECONDARY,
-                                    marginBottom: '16px',
-                                    textTransform: 'uppercase',
-                                    letterSpacing: '0.15em',
-                                    borderLeft: `4px solid ${COLORS.ACCENT_PURPLE}`,
-                                    paddingLeft: '12px',
-                                }}
-                            >
+                            <Subheading $withAccent $factionColor={COLORS.ACCENT_PURPLE}>
                                 LEGENDARY WARBONDS
-                            </h3>
-                            <div
-                                style={{
-                                    display: 'grid',
-                                    gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))',
-                                    gap: '12px',
-                                }}
-                            >
+                            </Subheading>
+                            <Grid $columns="auto-fill" $minWidth="280px" $gap="md">
                                 {legendaryWarbonds.map((wb) => (
                                     <WarbondCard
                                         key={wb.id}
@@ -851,25 +815,12 @@ export default function GameLobby({
                                         factionColors={factionColors}
                                     />
                                 ))}
-                            </div>
+                            </Grid>
                         </div>
 
                         {/* Superstore Toggle */}
-                        <div
-                            style={{
-                                backgroundColor: COLORS.BG_MAIN,
-                                borderRadius: '4px',
-                                padding: '24px',
-                                border: `1px solid ${COLORS.CARD_BORDER}`,
-                            }}
-                        >
-                            <div
-                                style={{
-                                    display: 'flex',
-                                    alignItems: 'center',
-                                    justifyContent: 'space-between',
-                                }}
-                            >
+                        <SuperstoreCard $variant="inner" $padding="lg">
+                            <Flex $align="center" $justify="between">
                                 <label
                                     style={{
                                         display: 'flex',
@@ -879,149 +830,56 @@ export default function GameLobby({
                                     }}
                                 >
                                     <div style={{ flex: 1 }}>
-                                        <div
-                                            style={{
-                                                fontSize: '18px',
-                                                fontWeight: '900',
-                                                color: COLORS.ACCENT_PURPLE,
-                                                textTransform: 'uppercase',
-                                                letterSpacing: '0.05em',
-                                                marginBottom: '8px',
-                                            }}
-                                        >
+                                        <SuperstoreHeader>
                                             ▸ INCLUDE SUPERSTORE ITEMS
-                                        </div>
-                                        <div
-                                            style={{
-                                                fontSize: '13px',
-                                                color: COLORS.TEXT_MUTED,
-                                                lineHeight: '1.5',
-                                            }}
-                                        >
+                                        </SuperstoreHeader>
+                                        <Text $color="muted" $size="sm" style={{ margin: 0 }}>
                                             Allow items from the rotating Superstore in drafts
-                                        </div>
+                                        </Text>
                                     </div>
-                                    <input
-                                        type="checkbox"
+                                    <Checkbox
+                                        $size="lg"
+                                        $factionPrimary={COLORS.ACCENT_PURPLE}
                                         checked={myConfig.includeSuperstore}
                                         onChange={(e) =>
                                             updateMyConfig({ includeSuperstore: e.target.checked })
                                         }
-                                        style={{
-                                            width: '24px',
-                                            height: '24px',
-                                            cursor: 'pointer',
-                                            accentColor: COLORS.ACCENT_PURPLE,
-                                        }}
                                     />
                                 </label>
-                            </div>
+                            </Flex>
                             {myConfig.includeSuperstore && (
-                                <button
+                                <Button
+                                    $variant="ghost"
+                                    $size="sm"
+                                    $fullWidth
                                     onClick={handleEditSuperstoreItems}
-                                    style={{
-                                        marginTop: '16px',
-                                        width: '100%',
-                                        padding: '10px',
-                                        backgroundColor: 'rgba(100, 116, 139, 0.2)',
-                                        color: COLORS.TEXT_SECONDARY,
-                                        border: `1px solid ${COLORS.CARD_BORDER}`,
-                                        borderRadius: '4px',
-                                        fontSize: '12px',
-                                        fontWeight: 'bold',
-                                        textTransform: 'uppercase',
-                                        cursor: 'pointer',
-                                        display: 'flex',
-                                        alignItems: 'center',
-                                        justifyContent: 'center',
-                                        gap: '8px',
-                                        transition: 'all 0.2s',
-                                    }}
-                                    onMouseEnter={(e) => {
-                                        e.currentTarget.style.backgroundColor =
-                                            'rgba(100, 116, 139, 0.4)'
-                                        e.currentTarget.style.color = 'white'
-                                    }}
-                                    onMouseLeave={(e) => {
-                                        e.currentTarget.style.backgroundColor =
-                                            'rgba(100, 116, 139, 0.2)'
-                                        e.currentTarget.style.color = COLORS.TEXT_SECONDARY
-                                    }}
+                                    style={{ marginTop: '16px' }}
                                 >
                                     <Settings size={16} />
                                     Customize Superstore Items
-                                </button>
+                                </Button>
                             )}
-                        </div>
-                    </div>
-                </div>
+                        </SuperstoreCard>
+                    </DisabledOverlay>
+                </Card>
 
                 {/* Action Buttons - Bottom (duplicate of top buttons) */}
-                <div
-                    style={{
-                        display: 'flex',
-                        justifyContent: 'space-between',
-                        gap: '16px',
-                        marginTop: '32px',
-                    }}
-                >
+                <Flex $justify="between" $gap="lg" style={{ marginTop: '32px' }}>
                     {/* Exit/Back Button */}
-                    <button
-                        onClick={handleExitLobby}
-                        style={{
-                            padding: '16px 32px',
-                            backgroundColor: 'rgba(239, 68, 68, 0.1)',
-                            color: '#ef4444',
-                            border: '2px solid #7f1d1d',
-                            borderRadius: '4px',
-                            fontWeight: '900',
-                            fontSize: '14px',
-                            textTransform: 'uppercase',
-                            letterSpacing: '0.1em',
-                            cursor: 'pointer',
-                            transition: 'all 0.2s',
-                            display: 'flex',
-                            alignItems: 'center',
-                            gap: '8px',
-                        }}
-                        onMouseEnter={(e) => {
-                            e.currentTarget.style.backgroundColor = 'rgba(239, 68, 68, 0.2)'
-                            e.currentTarget.style.borderColor = '#ef4444'
-                        }}
-                        onMouseLeave={(e) => {
-                            e.currentTarget.style.backgroundColor = 'rgba(239, 68, 68, 0.1)'
-                            e.currentTarget.style.borderColor = '#7f1d1d'
-                        }}
-                    >
+                    <Button $variant="danger" onClick={handleExitLobby}>
                         <LogOut size={18} />
                         {isMultiplayer ? 'EXIT LOBBY' : 'BACK TO MENU'}
-                    </button>
+                    </Button>
 
                     {/* Ready / Start Button */}
                     {isMultiplayer ? (
-                        <button
+                        <Button
+                            $variant={isReady ? 'success' : 'primary'}
+                            $size="lg"
+                            $factionPrimary={factionColors.PRIMARY}
+                            $factionHover={factionColors.PRIMARY_HOVER}
+                            $factionShadow={factionColors.SHADOW}
                             onClick={handleReadyToggle}
-                            style={{
-                                ...BUTTON_STYLES.PRIMARY,
-                                padding: '16px 48px',
-                                borderRadius: '4px',
-                                fontSize: '16px',
-                                display: 'flex',
-                                alignItems: 'center',
-                                gap: '12px',
-                                backgroundColor: isReady ? '#22c55e' : factionColors.PRIMARY,
-                                color: isReady ? 'white' : 'black',
-                            }}
-                            onMouseEnter={(e) => {
-                                e.currentTarget.style.transform = 'translateY(-2px)'
-                                e.currentTarget.style.boxShadow = isReady
-                                    ? SHADOWS.GLOW_GREEN
-                                    : factionColors.SHADOW_HOVER
-                            }}
-                            onMouseLeave={(e) => {
-                                e.currentTarget.style.transform = 'translateY(0)'
-                                e.currentTarget.style.boxShadow = 'none'
-                            }}
                         >
                             {isReady ? (
                                 <>
@@ -1033,34 +891,20 @@ export default function GameLobby({
                                     READY UP <CheckCircle size={20} />
                                 </>
                             )}
-                        </button>
+                        </Button>
                     ) : (
-                        <button
+                        <Button
+                            $variant="primary"
+                            $size="lg"
+                            $factionPrimary={factionColors.PRIMARY}
+                            $factionHover={factionColors.PRIMARY_HOVER}
+                            $factionShadow={factionColors.SHADOW}
                             onClick={handleSoloStart}
-                            style={{
-                                ...BUTTON_STYLES.PRIMARY,
-                                padding: '16px 48px',
-                                borderRadius: '4px',
-                                fontSize: '16px',
-                                display: 'flex',
-                                alignItems: 'center',
-                                gap: '12px',
-                            }}
-                            onMouseEnter={(e) => {
-                                e.currentTarget.style.backgroundColor = factionColors.PRIMARY_HOVER
-                                e.currentTarget.style.transform = 'translateY(-2px)'
-                                e.currentTarget.style.boxShadow = factionColors.SHADOW_HOVER
-                            }}
-                            onMouseLeave={(e) => {
-                                e.currentTarget.style.backgroundColor = factionColors.PRIMARY
-                                e.currentTarget.style.transform = 'translateY(0)'
-                                e.currentTarget.style.boxShadow = factionColors.SHADOW
-                            }}
                         >
                             START RUN <CheckCircle size={20} />
-                        </button>
+                        </Button>
                     )}
-                </div>
+                </Flex>
 
                 {/* Item Selection Modal */}
                 {itemSelectionModal && (
@@ -1073,8 +917,8 @@ export default function GameLobby({
                         factionColors={factionColors}
                     />
                 )}
-            </div>
-        </div>
+            </Container>
+        </PageContainer>
     )
 }
 
@@ -1107,8 +951,8 @@ function WarbondCard({
     }
 
     const getGlowColor = (): string => {
-        if (warbond.type === WARBOND_TYPE.LEGENDARY) return SHADOWS.GLOW_PURPLE
-        if (warbond.type === WARBOND_TYPE.PREMIUM) return SHADOWS.GLOW_BLUE
+        if (warbond.type === WARBOND_TYPE.LEGENDARY) return `0 0 20px ${COLORS.ACCENT_PURPLE}40`
+        if (warbond.type === WARBOND_TYPE.PREMIUM) return `0 0 20px ${COLORS.ACCENT_BLUE}40`
         return factionColors.GLOW
     }
 
@@ -1118,7 +962,7 @@ function WarbondCard({
         return factionColors.PRIMARY
     }
 
-    const handleCardClick = (e: React.MouseEvent<HTMLDivElement>): void => {
+    const handleCardClick = (e: React.MouseEvent<HTMLButtonElement>): void => {
         // Don't toggle if clicking on the edit button
         if ((e.target as HTMLElement).closest('[data-edit-button]')) return
         if (!disabled) {
@@ -1127,103 +971,41 @@ function WarbondCard({
     }
 
     return (
-        <div
+        <SelectableCard
+            $selected={selected}
+            $factionPrimary={getBorderColor()}
+            $factionShadow={selected ? getGlowColor() : undefined}
+            $padding="md"
             onClick={handleCardClick}
             style={{
                 position: 'relative',
-                borderRadius: '4px',
-                padding: '16px 20px',
-                border: `2px solid ${getBorderColor()}`,
-                transition: 'all 0.2s',
-                backgroundColor: selected ? 'rgba(0, 0, 0, 0.4)' : COLORS.BG_MAIN,
-                cursor: disabled ? 'default' : 'pointer',
-                transform: selected ? 'scale(1.02)' : 'scale(1)',
-                boxShadow: selected ? getGlowColor() : 'none',
                 textAlign: 'left',
-            }}
-            onMouseEnter={(e) => {
-                if (!disabled && !selected) {
-                    e.currentTarget.style.borderColor = 'rgba(100, 116, 139, 0.6)'
-                    e.currentTarget.style.backgroundColor = 'rgba(0, 0, 0, 0.6)'
-                }
-            }}
-            onMouseLeave={(e) => {
-                if (!disabled && !selected) {
-                    e.currentTarget.style.borderColor = COLORS.CARD_BORDER
-                    e.currentTarget.style.backgroundColor = COLORS.BG_MAIN
-                }
+                cursor: disabled ? 'default' : 'pointer',
             }}
         >
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+            <Flex $direction="column" $gap="md">
                 {/* Warbond Info */}
-                <div
-                    style={{
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'space-between',
-                        gap: '12px',
-                    }}
-                >
+                <Flex $align="center" $justify="between" $gap="md">
                     <div style={{ flex: 1, minWidth: 0 }}>
-                        <div
-                            style={{
-                                fontWeight: 'bold',
-                                fontSize: '14px',
-                                color: selected ? getTextColor() : COLORS.TEXT_SECONDARY,
-                                textTransform: 'uppercase',
-                                letterSpacing: '0.05em',
-                                marginBottom: '4px',
-                                whiteSpace: 'nowrap',
-                                overflow: 'hidden',
-                                textOverflow: 'ellipsis',
-                            }}
-                        >
+                        <WarbondName $selected={selected} $textColor={getTextColor()}>
                             {warbond.name}
-                        </div>
-                        <div
-                            style={{
-                                fontSize: '10px',
-                                color: COLORS.TEXT_DISABLED,
-                                fontWeight: 'bold',
-                                textTransform: 'uppercase',
-                                letterSpacing: '0.1em',
-                            }}
-                        >
-                            {warbond.type === WARBOND_TYPE.STANDARD && '● FREE'}
-                            {warbond.type === WARBOND_TYPE.PREMIUM && '● PREMIUM'}
-                            {warbond.type === WARBOND_TYPE.LEGENDARY && '● LEGENDARY'}
-                        </div>
+                        </WarbondName>
+                        <WarbondTypeBadge $type={warbond.type} />
                     </div>
 
                     {/* Checkmark */}
                     {selected && (
                         <CheckCircle style={{ color: getTextColor(), flexShrink: 0 }} size={20} />
                     )}
-                </div>
+                </Flex>
 
                 {/* Warbond Image - 16:9 aspect ratio */}
                 {warbond.image && (
-                    <div
-                        style={{
-                            width: '100%',
-                            aspectRatio: '16 / 9',
-                            borderRadius: '4px',
-                            overflow: 'hidden',
-                            border: `1px solid ${selected ? getBorderColor() : 'rgba(100, 116, 139, 0.3)'}`,
-                            backgroundColor: 'rgba(0, 0, 0, 0.3)',
-                        }}
-                    >
+                    <WarbondImage $selected={selected} $borderColor={getBorderColor()}>
                         <img
                             src={warbond.image}
                             alt={warbond.name}
-                            style={{
-                                width: '100%',
-                                height: '100%',
-                                objectFit: 'contain',
-                                backgroundColor: '#000',
-                            }}
                             onError={(e) => {
-                                // Fallback if image fails to load
                                 const target = e.target as HTMLImageElement
                                 target.style.display = 'none'
                                 if (target.parentElement) {
@@ -1232,80 +1014,33 @@ function WarbondCard({
                                 }
                             }}
                         />
-                    </div>
+                    </WarbondImage>
                 )}
 
                 {/* Edit Items Button - only show when selected */}
                 {selected && onEditItems && (
-                    <button
+                    <Button
                         data-edit-button
+                        $variant="ghost"
+                        $size="sm"
+                        $fullWidth
                         onClick={(e) => {
                             e.stopPropagation()
                             onEditItems(warbond.id)
                         }}
-                        style={{
-                            width: '100%',
-                            padding: '8px',
-                            backgroundColor: 'rgba(100, 116, 139, 0.2)',
-                            color: COLORS.TEXT_SECONDARY,
-                            border: `1px solid ${COLORS.CARD_BORDER}`,
-                            borderRadius: '4px',
-                            fontSize: '11px',
-                            fontWeight: 'bold',
-                            textTransform: 'uppercase',
-                            cursor: 'pointer',
-                            display: 'flex',
-                            alignItems: 'center',
-                            justifyContent: 'center',
-                            gap: '6px',
-                            transition: 'all 0.2s',
-                            position: 'relative',
-                            zIndex: 10,
-                        }}
-                        onMouseEnter={(e) => {
-                            e.currentTarget.style.backgroundColor = 'rgba(100, 116, 139, 0.4)'
-                            e.currentTarget.style.color = 'white'
-                        }}
-                        onMouseLeave={(e) => {
-                            e.currentTarget.style.backgroundColor = 'rgba(100, 116, 139, 0.2)'
-                            e.currentTarget.style.color = COLORS.TEXT_SECONDARY
-                        }}
+                        style={{ position: 'relative', zIndex: 10 }}
                     >
                         <Settings size={14} />
                         Customize Items
-                    </button>
+                    </Button>
                 )}
-            </div>
+            </Flex>
             {disabled && (
-                <div
-                    style={{
-                        position: 'absolute',
-                        top: 0,
-                        left: 0,
-                        right: 0,
-                        bottom: selected ? '50px' : 0,
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        backgroundColor: 'rgba(0, 0, 0, 0.7)',
-                        borderRadius: '4px',
-                        pointerEvents: 'none',
-                    }}
-                >
-                    <span
-                        style={{
-                            fontSize: '11px',
-                            fontWeight: 'bold',
-                            color: factionColors.PRIMARY,
-                            textTransform: 'uppercase',
-                            letterSpacing: '0.1em',
-                        }}
-                    >
-                        ● REQUIRED
-                    </span>
-                </div>
+                <RequiredOverlay $showEdit={selected}>
+                    <RequiredText $factionPrimary={factionColors.PRIMARY}>● REQUIRED</RequiredText>
+                </RequiredOverlay>
             )}
-        </div>
+        </SelectableCard>
     )
 }
 
@@ -1375,170 +1110,54 @@ function ItemSelectionModal({
     const includedCount = items.length - localExcluded.size
 
     return (
-        <div
-            style={{
-                position: 'fixed',
-                top: 0,
-                left: 0,
-                right: 0,
-                bottom: 0,
-                backgroundColor: 'rgba(0, 0, 0, 0.85)',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                zIndex: 1000,
-                padding: '24px',
-            }}
-        >
-            <div
-                style={{
-                    backgroundColor: COLORS.CARD_BG,
-                    borderRadius: '12px',
-                    border: `2px solid ${factionColors.PRIMARY}`,
-                    maxWidth: '800px',
-                    width: '100%',
-                    maxHeight: '80vh',
-                    display: 'flex',
-                    flexDirection: 'column',
-                }}
-            >
+        <ModalBackdrop>
+            <ModalContainer $size="lg" $factionPrimary={factionColors.PRIMARY}>
                 {/* Header */}
-                <div
-                    style={{
-                        padding: '24px',
-                        borderBottom: `1px solid ${COLORS.CARD_BORDER}`,
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'space-between',
-                    }}
-                >
+                <ModalHeader $factionPrimary={factionColors.PRIMARY}>
                     <div>
-                        <h2
-                            style={{
-                                color: factionColors.PRIMARY,
-                                fontSize: '24px',
-                                fontWeight: 'bold',
-                                margin: 0,
-                                textTransform: 'uppercase',
-                            }}
+                        <Heading
+                            $factionColor={factionColors.PRIMARY}
+                            style={{ fontSize: '24px', margin: 0 }}
                         >
                             {title}
-                        </h2>
-                        <p
-                            style={{
-                                color: COLORS.TEXT_MUTED,
-                                fontSize: '14px',
-                                margin: '8px 0 0 0',
-                            }}
-                        >
+                        </Heading>
+                        <Text $color="muted" $size="sm" style={{ margin: '8px 0 0 0' }}>
                             Select items you own. Unchecked items won't appear in drafts.
-                        </p>
+                        </Text>
                     </div>
-                    <button
-                        onClick={onClose}
-                        style={{
-                            width: '36px',
-                            height: '36px',
-                            borderRadius: '4px',
-                            backgroundColor: 'rgba(239, 68, 68, 0.2)',
-                            color: '#ef4444',
-                            border: '1px solid #7f1d1d',
-                            cursor: 'pointer',
-                            display: 'flex',
-                            alignItems: 'center',
-                            justifyContent: 'center',
-                        }}
-                    >
+                    <CloseButton onClick={onClose}>
                         <X size={20} />
-                    </button>
-                </div>
+                    </CloseButton>
+                </ModalHeader>
 
                 {/* Quick actions */}
-                <div
+                <Flex
+                    $align="center"
+                    $gap="md"
                     style={{
                         padding: '16px 24px',
                         borderBottom: `1px solid ${COLORS.CARD_BORDER}`,
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: '12px',
                     }}
                 >
-                    <button
-                        onClick={selectAll}
-                        style={{
-                            padding: '8px 16px',
-                            backgroundColor: 'rgba(34, 197, 94, 0.2)',
-                            color: '#22c55e',
-                            border: '1px solid rgba(34, 197, 94, 0.5)',
-                            borderRadius: '4px',
-                            fontSize: '12px',
-                            fontWeight: 'bold',
-                            cursor: 'pointer',
-                            textTransform: 'uppercase',
-                            whiteSpace: 'nowrap',
-                            flexShrink: 0,
-                        }}
-                    >
+                    <Button $variant="success" $size="sm" onClick={selectAll}>
                         Select All
-                    </button>
-                    <button
-                        onClick={deselectAll}
-                        style={{
-                            padding: '8px 16px',
-                            backgroundColor: 'rgba(239, 68, 68, 0.2)',
-                            color: '#ef4444',
-                            border: '1px solid rgba(239, 68, 68, 0.5)',
-                            borderRadius: '4px',
-                            fontSize: '12px',
-                            fontWeight: 'bold',
-                            cursor: 'pointer',
-                            textTransform: 'uppercase',
-                            whiteSpace: 'nowrap',
-                            flexShrink: 0,
-                        }}
-                    >
+                    </Button>
+                    <Button $variant="danger" $size="sm" onClick={deselectAll}>
                         Deselect All
-                    </button>
-                    <span
-                        style={{ marginLeft: 'auto', color: COLORS.TEXT_MUTED, fontSize: '14px' }}
-                    >
+                    </Button>
+                    <SelectedCount>
                         {includedCount} / {items.length} items selected
-                    </span>
-                </div>
+                    </SelectedCount>
+                </Flex>
 
                 {/* Items list */}
-                <div
-                    style={{
-                        flex: 1,
-                        overflowY: 'auto',
-                        padding: '24px',
-                        scrollbarWidth: 'thin',
-                        scrollbarColor: 'rgba(100, 116, 139, 0.3) transparent',
-                    }}
-                >
+                <ModalContent style={{ padding: '24px' }}>
                     {Object.entries(itemsByType).map(([type, typeItems]) => (
                         <div key={type} style={{ marginBottom: '24px' }}>
-                            <h3
-                                style={{
-                                    color: factionColors.PRIMARY,
-                                    fontSize: '14px',
-                                    fontWeight: 'bold',
-                                    textTransform: 'uppercase',
-                                    letterSpacing: '0.1em',
-                                    marginBottom: '12px',
-                                    borderLeft: `3px solid ${factionColors.PRIMARY}`,
-                                    paddingLeft: '12px',
-                                }}
-                            >
+                            <Subheading $withAccent $factionColor={factionColors.PRIMARY}>
                                 {type}
-                            </h3>
-                            <div
-                                style={{
-                                    display: 'grid',
-                                    gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))',
-                                    gap: '8px',
-                                }}
-                            >
+                            </Subheading>
+                            <Grid $columns="auto-fill" $minWidth="200px" $gap="sm">
                                 {typeItems.map((item) => {
                                     const isIncluded = !localExcluded.has(item.id)
                                     const iconUrl = getItemIconUrl(item)
@@ -1546,56 +1165,29 @@ function ItemSelectionModal({
                                         item.type === TYPE.PRIMARY || item.type === TYPE.SECONDARY
 
                                     return (
-                                        <label
+                                        <ItemCheckboxLabel
                                             key={item.id}
-                                            style={{
-                                                display: 'flex',
-                                                flexDirection: isWideAspect ? 'column' : 'row',
-                                                alignItems: isWideAspect ? 'stretch' : 'center',
-                                                gap: '10px',
-                                                padding: '10px 12px',
-                                                backgroundColor: isIncluded
-                                                    ? 'rgba(34, 197, 94, 0.1)'
-                                                    : COLORS.BG_MAIN,
-                                                borderRadius: '4px',
-                                                border: `1px solid ${isIncluded ? 'rgba(34, 197, 94, 0.3)' : COLORS.CARD_BORDER}`,
-                                                cursor: 'pointer',
-                                                transition: 'all 0.2s',
-                                            }}
+                                            $selected={isIncluded}
+                                            $isWide={isWideAspect}
                                         >
                                             {/* Top row: checkbox and text */}
-                                            <div
-                                                style={{
-                                                    display: 'flex',
-                                                    alignItems: 'center',
-                                                    gap: '10px',
-                                                    flex: isWideAspect ? undefined : 1,
-                                                }}
+                                            <Flex
+                                                $align="center"
+                                                $gap="sm"
+                                                style={{ flex: isWideAspect ? undefined : 1 }}
                                             >
-                                                <input
-                                                    type="checkbox"
+                                                <Checkbox
+                                                    $size="md"
+                                                    $factionPrimary="#22c55e"
                                                     checked={isIncluded}
                                                     onChange={() => toggleItem(item.id)}
-                                                    style={{
-                                                        width: '18px',
-                                                        height: '18px',
-                                                        cursor: 'pointer',
-                                                        accentColor: '#22c55e',
-                                                        flexShrink: 0,
-                                                    }}
                                                 />
                                                 {/* Show square icons inline for non-weapons */}
                                                 {iconUrl && !isWideAspect && (
-                                                    <img
+                                                    <ItemIcon
                                                         src={iconUrl}
                                                         alt=""
-                                                        style={{
-                                                            width: '28px',
-                                                            height: '28px',
-                                                            objectFit: 'contain',
-                                                            flexShrink: 0,
-                                                            opacity: isIncluded ? 1 : 0.5,
-                                                        }}
+                                                        $selected={isIncluded}
                                                         onError={(e) => {
                                                             ;(
                                                                 e.target as HTMLImageElement
@@ -1604,53 +1196,20 @@ function ItemSelectionModal({
                                                     />
                                                 )}
                                                 <div style={{ flex: 1, minWidth: 0 }}>
-                                                    <div
-                                                        style={{
-                                                            color: isIncluded
-                                                                ? 'white'
-                                                                : COLORS.TEXT_MUTED,
-                                                            fontSize: '13px',
-                                                            fontWeight: '500',
-                                                            lineHeight: '1.3',
-                                                            wordBreak: 'break-word',
-                                                        }}
-                                                    >
+                                                    <ItemName $selected={isIncluded}>
                                                         {item.name}
-                                                    </div>
-                                                    <div
-                                                        style={{
-                                                            color: COLORS.TEXT_DISABLED,
-                                                            fontSize: '10px',
-                                                            textTransform: 'uppercase',
-                                                        }}
-                                                    >
-                                                        {item.rarity}
-                                                    </div>
+                                                    </ItemName>
+                                                    <ItemRarity>{item.rarity}</ItemRarity>
                                                 </div>
-                                            </div>
+                                            </Flex>
                                             {/* Weapon images below text for wide aspect ratio */}
                                             {iconUrl && isWideAspect && (
-                                                <div
-                                                    style={{
-                                                        width: '100%',
-                                                        height: '40px',
-                                                        display: 'flex',
-                                                        alignItems: 'center',
-                                                        justifyContent: 'center',
-                                                        backgroundColor: 'rgba(0, 0, 0, 0.3)',
-                                                        borderRadius: '4px',
-                                                        overflow: 'hidden',
-                                                    }}
-                                                >
-                                                    <img
+                                                <ItemIconContainer>
+                                                    <ItemIcon
                                                         src={iconUrl}
                                                         alt=""
-                                                        style={{
-                                                            maxWidth: '100%',
-                                                            maxHeight: '100%',
-                                                            objectFit: 'contain',
-                                                            opacity: isIncluded ? 1 : 0.5,
-                                                        }}
+                                                        $isWide
+                                                        $selected={isIncluded}
                                                         onError={(e) => {
                                                             const target =
                                                                 e.target as HTMLImageElement
@@ -1660,60 +1219,30 @@ function ItemSelectionModal({
                                                             }
                                                         }}
                                                     />
-                                                </div>
+                                                </ItemIconContainer>
                                             )}
-                                        </label>
+                                        </ItemCheckboxLabel>
                                     )
                                 })}
-                            </div>
+                            </Grid>
                         </div>
                     ))}
-                </div>
+                </ModalContent>
 
                 {/* Footer */}
-                <div
-                    style={{
-                        padding: '16px 24px',
-                        borderTop: `1px solid ${COLORS.CARD_BORDER}`,
-                        display: 'flex',
-                        justifyContent: 'flex-end',
-                        gap: '12px',
-                    }}
-                >
-                    <button
-                        onClick={onClose}
-                        style={{
-                            padding: '12px 24px',
-                            backgroundColor: 'transparent',
-                            color: COLORS.TEXT_MUTED,
-                            border: `1px solid ${COLORS.CARD_BORDER}`,
-                            borderRadius: '4px',
-                            fontWeight: 'bold',
-                            cursor: 'pointer',
-                            textTransform: 'uppercase',
-                            fontSize: '14px',
-                        }}
-                    >
+                <ModalFooter>
+                    <Button $variant="secondary" onClick={onClose}>
                         Cancel
-                    </button>
-                    <button
+                    </Button>
+                    <Button
+                        $variant="primary"
+                        $factionPrimary={factionColors.PRIMARY}
                         onClick={handleSave}
-                        style={{
-                            padding: '12px 24px',
-                            backgroundColor: factionColors.PRIMARY,
-                            color: 'black',
-                            border: 'none',
-                            borderRadius: '4px',
-                            fontWeight: 'bold',
-                            cursor: 'pointer',
-                            textTransform: 'uppercase',
-                            fontSize: '14px',
-                        }}
                     >
                         Save Selection
-                    </button>
-                </div>
-            </div>
-        </div>
+                    </Button>
+                </ModalFooter>
+            </ModalContainer>
+        </ModalBackdrop>
     )
 }

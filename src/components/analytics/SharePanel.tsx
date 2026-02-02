@@ -5,8 +5,10 @@
  */
 
 import React, { useState, useCallback } from 'react'
+import styled from 'styled-components'
 import html2canvas from 'html2canvas'
-import { COLORS, BUTTON_STYLES } from '../../constants/theme'
+import { COLORS } from '../../constants/theme'
+import { Card, Text, Flex, Button, Alert } from '../../styles'
 import type { AnalyticsStore } from '../../state/analyticsStore'
 
 type Outcome = 'victory' | 'defeat'
@@ -21,6 +23,50 @@ interface SharePanelProps {
     runData: AnalyticsStore | null
     outcome: Outcome
 }
+
+// ============================================================================
+// STYLED COMPONENTS
+// ============================================================================
+
+const ChartCard = styled(Card)`
+    background-color: ${({ theme }) => theme.colors.cardInner};
+    border-radius: ${({ theme }) => theme.radii.lg};
+    padding: ${({ theme }) => theme.spacing.lg};
+    border: 1px solid ${({ theme }) => theme.colors.cardBorder};
+`
+
+const ChartTitle = styled.h3`
+    color: ${({ theme }) => theme.colors.textPrimary};
+    margin: 0 0 16px 0;
+    font-size: 14px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+`
+
+const ShareButton = styled(Button)<{ $accentColor: string }>`
+    padding: 12px 16px;
+    border-radius: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    font-size: 12px;
+    background-color: ${({ $accentColor }) => `${$accentColor}15`};
+    border: 1px solid ${({ $accentColor }) => $accentColor};
+    color: ${({ $accentColor }) => $accentColor};
+
+    &:hover:not(:disabled) {
+        background-color: ${({ $accentColor }) => `${$accentColor}25`};
+    }
+
+    &:disabled {
+        opacity: 0.6;
+    }
+`
 
 const SharePanel = ({ targetRef, runData, outcome }: SharePanelProps): React.ReactElement => {
     const [isCapturing, setIsCapturing] = useState(false)
@@ -107,115 +153,40 @@ Spread Democracy! 🦅
     }, [shareMessage])
 
     return (
-        <div
-            style={{
-                backgroundColor: COLORS.CARD_INNER,
-                borderRadius: '8px',
-                padding: '16px',
-                border: `1px solid ${COLORS.CARD_BORDER}`,
-            }}
-        >
-            <h3
-                style={{
-                    color: COLORS.TEXT_PRIMARY,
-                    margin: '0 0 16px 0',
-                    fontSize: '14px',
-                    fontWeight: '600',
-                    textTransform: 'uppercase',
-                    letterSpacing: '0.1em',
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: '8px',
-                }}
-            >
+        <ChartCard>
+            <ChartTitle>
                 <span style={{ fontSize: '18px' }}>📤</span>
                 Share Your Run
-            </h3>
+            </ChartTitle>
 
-            <div
-                style={{
-                    display: 'grid',
-                    gridTemplateColumns: 'repeat(2, 1fr)',
-                    gap: '8px',
-                }}
-            >
+            <Flex $gap="sm" style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)' }}>
                 {/* Screenshot button */}
-                <button
+                <ShareButton
+                    $accentColor={COLORS.ACCENT_BLUE}
                     onClick={captureScreenshot}
                     disabled={isCapturing}
-                    style={{
-                        ...BUTTON_STYLES.SECONDARY,
-                        padding: '12px 16px',
-                        borderRadius: '8px',
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        gap: '8px',
-                        fontSize: '12px',
-                        opacity: isCapturing ? 0.6 : 1,
-                        backgroundColor: 'rgba(59, 130, 246, 0.1)',
-                        border: `1px solid ${COLORS.ACCENT_BLUE}`,
-                        color: COLORS.ACCENT_BLUE,
-                    }}
                 >
                     <span style={{ fontSize: '16px' }}>📸</span>
                     {isCapturing ? 'Capturing...' : 'Screenshot'}
-                </button>
+                </ShareButton>
 
                 {/* Twitter/X button */}
-                <button
-                    onClick={shareToTwitter}
-                    style={{
-                        ...BUTTON_STYLES.SECONDARY,
-                        padding: '12px 16px',
-                        borderRadius: '8px',
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        gap: '8px',
-                        fontSize: '12px',
-                        backgroundColor: 'rgba(29, 161, 242, 0.1)',
-                        border: '1px solid #1DA1F2',
-                        color: '#1DA1F2',
-                    }}
-                >
+                <ShareButton $accentColor="#1DA1F2" onClick={shareToTwitter}>
                     <span style={{ fontSize: '16px' }}>𝕏</span>
                     Twitter/X
-                </button>
-            </div>
+                </ShareButton>
+            </Flex>
 
             {/* Status message */}
             {shareMessage && (
-                <div
-                    style={{
-                        marginTop: '12px',
-                        padding: '10px 14px',
-                        borderRadius: '6px',
-                        backgroundColor:
-                            shareMessage.type === 'success'
-                                ? 'rgba(34, 197, 94, 0.1)'
-                                : 'rgba(239, 68, 68, 0.1)',
-                        border: `1px solid ${shareMessage.type === 'success' ? COLORS.ACCENT_GREEN : COLORS.ACCENT_RED}`,
-                        color:
-                            shareMessage.type === 'success'
-                                ? COLORS.ACCENT_GREEN
-                                : COLORS.ACCENT_RED,
-                        fontSize: '12px',
-                        textAlign: 'center',
-                        animation: 'fadeIn 0.2s ease',
-                    }}
+                <Alert
+                    $variant={shareMessage.type === 'success' ? 'success' : 'error'}
+                    style={{ marginTop: '12px', textAlign: 'center' }}
                 >
-                    {shareMessage.text}
-                </div>
+                    <Text $size="sm">{shareMessage.text}</Text>
+                </Alert>
             )}
-
-            <style>{`
-        @keyframes fadeIn {
-          from { opacity: 0; transform: translateY(-4px); }
-          to { opacity: 1; transform: translateY(0); }
-        }
-      `}</style>
-        </div>
+        </ChartCard>
     )
 }
 

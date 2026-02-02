@@ -3,6 +3,7 @@
  * Used in both solo config screen and multiplayer host screen
  */
 
+import styled from 'styled-components'
 import { getFactionColors, FactionColorSet } from '../constants/theme'
 import {
     getSubfactionsForFaction,
@@ -10,6 +11,46 @@ import {
     Subfaction,
 } from '../constants/balancingConfig'
 import type { GameConfig, Faction } from '../types'
+import {
+    Label,
+    Grid,
+    SelectableCard,
+    CheckboxLabel,
+    Checkbox,
+    Flex,
+    Caption,
+    Badge,
+} from '../styles'
+
+// ============================================================================
+// STYLED COMPONENTS (component-specific only)
+// ============================================================================
+
+const OptionTitle = styled.div<{ $factionPrimary?: string }>`
+    color: ${({ $factionPrimary, theme }) => $factionPrimary || theme.colors.primary};
+    font-weight: ${({ theme }) => theme.fontWeights.bold};
+    font-size: ${({ theme }) => theme.fontSizes.base};
+    margin: 0;
+`
+
+const OptionDescription = styled(Caption)`
+    margin-top: ${({ theme }) => theme.spacing.xs};
+`
+
+const SubfactionName = styled.div`
+    font-size: ${({ theme }) => theme.fontSizes.base};
+    margin-bottom: ${({ theme }) => theme.spacing.xs};
+`
+
+const SubfactionDescription = styled.div`
+    font-size: ${({ theme }) => theme.fontSizes.sm};
+    opacity: 0.8;
+    text-transform: none;
+`
+
+const ConfigSection = styled.div`
+    margin-bottom: ${({ theme }) => theme.spacing.xxxl};
+`
 
 interface GameConfigurationProps {
     gameConfig: GameConfig
@@ -33,34 +74,20 @@ export default function GameConfiguration({
     return (
         <div>
             {/* Theatre Selection */}
-            <div style={{ marginBottom: '40px' }}>
-                <label
-                    style={{
-                        display: 'block',
-                        fontSize: '12px',
-                        fontWeight: 'bold',
-                        color: '#94a3b8',
-                        textTransform: 'uppercase',
-                        letterSpacing: '0.15em',
-                        marginBottom: '16px',
-                    }}
-                >
-                    Theatre of War
-                </label>
-                <div
-                    style={{
-                        display: 'grid',
-                        gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))',
-                        gap: '12px',
-                    }}
-                >
+            <ConfigSection>
+                <Label>Theatre of War</Label>
+                <Grid $columns={3} $gap="md">
                     {(['terminid', 'automaton', 'illuminate'] as Faction[]).map((faction) => {
                         const isSelected = gameConfig.faction === faction
                         const colors = getFactionColors(faction)
 
                         return (
-                            <button
+                            <SelectableCard
                                 key={faction}
+                                $selected={isSelected}
+                                $factionPrimary={colors.PRIMARY}
+                                $factionShadow={colors.SHADOW}
+                                $padding="md"
                                 onClick={() => {
                                     onUpdateGameConfig({ faction })
                                     // Auto-select first subfaction for this faction
@@ -69,420 +96,194 @@ export default function GameConfiguration({
                                         onSetSubfaction(subfactions[0])
                                     }
                                 }}
-                                style={{
-                                    padding: '16px',
-                                    borderRadius: '4px',
-                                    fontWeight: 'bold',
-                                    textTransform: 'uppercase',
-                                    transition: 'all 0.2s',
-                                    backgroundColor: isSelected
-                                        ? `${colors.PRIMARY}20`
-                                        : 'transparent',
-                                    color: isSelected ? colors.PRIMARY : '#64748b',
-                                    border: isSelected
-                                        ? `2px solid ${colors.PRIMARY}`
-                                        : '1px solid rgba(100, 116, 139, 0.5)',
-                                    cursor: 'pointer',
-                                    fontSize: '13px',
-                                    letterSpacing: '0.5px',
-                                }}
-                                onMouseEnter={(e) => {
-                                    if (!isSelected) {
-                                        e.currentTarget.style.backgroundColor =
-                                            'rgba(100, 116, 139, 0.1)'
-                                        e.currentTarget.style.color = '#94a3b8'
-                                    }
-                                }}
-                                onMouseLeave={(e) => {
-                                    if (!isSelected) {
-                                        e.currentTarget.style.backgroundColor = 'transparent'
-                                        e.currentTarget.style.color = '#64748b'
-                                    }
-                                }}
                             >
                                 {faction === 'terminid'
                                     ? 'Terminids'
                                     : faction === 'automaton'
                                       ? 'Automatons'
                                       : 'Illuminate'}
-                            </button>
+                            </SelectableCard>
                         )
                     })}
-                </div>
-            </div>
+                </Grid>
+            </ConfigSection>
 
             {/* Subfaction */}
-            <div style={{ marginBottom: '40px' }}>
-                <label
-                    style={{
-                        display: 'block',
-                        fontSize: '12px',
-                        fontWeight: 'bold',
-                        color: '#94a3b8',
-                        textTransform: 'uppercase',
-                        letterSpacing: '0.15em',
-                        marginBottom: '16px',
-                    }}
-                >
-                    Enemy Variant
-                </label>
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: '12px' }}>
+            <ConfigSection>
+                <Label>Enemy Variant</Label>
+                <Grid $columns={1} $gap="md">
                     {getSubfactionsForFaction(gameConfig.faction).map((subfaction) => {
                         const isSelected = gameConfig.subfaction === subfaction
                         const config = SUBFACTION_CONFIG[subfaction]
 
                         return (
-                            <button
+                            <SelectableCard
                                 key={subfaction}
+                                $selected={isSelected}
+                                $factionPrimary={factionColors.PRIMARY}
+                                $factionShadow={factionColors.SHADOW}
+                                $padding="md"
                                 onClick={() => onSetSubfaction(subfaction)}
-                                style={{
-                                    padding: '16px',
-                                    borderRadius: '4px',
-                                    fontWeight: 'bold',
-                                    textTransform: 'uppercase',
-                                    transition: 'all 0.2s',
-                                    fontSize: '13px',
-                                    letterSpacing: '0.5px',
-                                    backgroundColor: isSelected
-                                        ? `${factionColors.PRIMARY}15`
-                                        : 'transparent',
-                                    color: isSelected ? factionColors.PRIMARY : '#64748b',
-                                    border: isSelected
-                                        ? `2px solid ${factionColors.PRIMARY}`
-                                        : '1px solid rgba(100, 116, 139, 0.5)',
-                                    cursor: 'pointer',
-                                    textAlign: 'left',
-                                }}
-                                onMouseEnter={(e) => {
-                                    if (!isSelected) {
-                                        e.currentTarget.style.backgroundColor =
-                                            'rgba(100, 116, 139, 0.1)'
-                                        e.currentTarget.style.color = '#94a3b8'
-                                    }
-                                }}
-                                onMouseLeave={(e) => {
-                                    if (!isSelected) {
-                                        e.currentTarget.style.backgroundColor = 'transparent'
-                                        e.currentTarget.style.color = '#64748b'
-                                    }
-                                }}
                             >
-                                <div style={{ fontSize: '14px', marginBottom: '4px' }}>
-                                    {config.name}
-                                </div>
-                                <div
-                                    style={{
-                                        fontSize: '11px',
-                                        color: isSelected ? factionColors.PRIMARY : '#64748b',
-                                        opacity: 0.8,
-                                    }}
-                                >
+                                <SubfactionName>{config.name}</SubfactionName>
+                                <SubfactionDescription>
                                     {config.description} • Req: {config.reqMultiplier}x • Rares:{' '}
                                     {config.rareWeightMultiplier}x
-                                </div>
-                            </button>
+                                </SubfactionDescription>
+                            </SelectableCard>
                         )
                     })}
-                </div>
-            </div>
+                </Grid>
+            </ConfigSection>
 
             {/* Game Mode Options */}
-            <div style={{ marginBottom: '40px' }}>
-                <label
-                    style={{
-                        display: 'block',
-                        fontSize: '12px',
-                        fontWeight: 'bold',
-                        color: '#94a3b8',
-                        textTransform: 'uppercase',
-                        letterSpacing: '0.15em',
-                        marginBottom: '16px',
-                    }}
-                >
-                    Game Mode Options
-                </label>
-                <div
-                    style={{
-                        display: 'flex',
-                        flexDirection: 'column',
-                        gap: '12px',
-                        textAlign: 'left',
-                    }}
-                >
-                    <label
-                        style={{
-                            display: 'flex',
-                            alignItems: 'center',
-                            gap: '12px',
-                            cursor: 'pointer',
-                            padding: '12px',
-                            backgroundColor: gameConfig.globalUniqueness
-                                ? `${factionColors.PRIMARY}1A`
-                                : 'transparent',
-                            borderRadius: '4px',
-                            border: '1px solid rgba(100, 116, 139, 0.5)',
-                        }}
+            <ConfigSection>
+                <Label>Game Mode Options</Label>
+                <Flex $direction="column" $gap="md">
+                    <CheckboxLabel
+                        $selected={gameConfig.globalUniqueness}
+                        $factionPrimary={factionColors.PRIMARY}
                     >
-                        <input
-                            type="checkbox"
+                        <Checkbox
                             checked={gameConfig.globalUniqueness}
                             onChange={(e) =>
                                 onUpdateGameConfig({ globalUniqueness: e.target.checked })
                             }
-                            style={{ width: '20px', height: '20px', cursor: 'pointer' }}
+                            $factionPrimary={factionColors.PRIMARY}
                         />
                         <div>
-                            <div
-                                style={{
-                                    color: factionColors.PRIMARY,
-                                    fontWeight: 'bold',
-                                    fontSize: '14px',
-                                }}
-                            >
+                            <OptionTitle $factionPrimary={factionColors.PRIMARY}>
                                 Global Card Uniqueness
-                            </div>
-                            <div style={{ color: '#94a3b8', fontSize: '11px', marginTop: '4px' }}>
+                            </OptionTitle>
+                            <OptionDescription>
                                 Cards drafted by one player cannot appear for other players
-                            </div>
+                            </OptionDescription>
                         </div>
-                    </label>
-                    <label
-                        style={{
-                            display: 'flex',
-                            alignItems: 'center',
-                            gap: '12px',
-                            cursor: 'pointer',
-                            padding: '12px',
-                            backgroundColor: gameConfig.burnCards
-                                ? `${factionColors.PRIMARY}1A`
-                                : 'transparent',
-                            borderRadius: '4px',
-                            border: '1px solid rgba(100, 116, 139, 0.5)',
-                        }}
+                    </CheckboxLabel>
+                    <CheckboxLabel
+                        $selected={gameConfig.burnCards}
+                        $factionPrimary={factionColors.PRIMARY}
                     >
-                        <input
-                            type="checkbox"
+                        <Checkbox
                             checked={gameConfig.burnCards}
                             onChange={(e) => onUpdateGameConfig({ burnCards: e.target.checked })}
-                            style={{ width: '20px', height: '20px', cursor: 'pointer' }}
+                            $factionPrimary={factionColors.PRIMARY}
                         />
                         <div>
-                            <div
-                                style={{
-                                    color: factionColors.PRIMARY,
-                                    fontWeight: 'bold',
-                                    fontSize: '14px',
-                                }}
-                            >
+                            <OptionTitle $factionPrimary={factionColors.PRIMARY}>
                                 Burn Cards After Viewing
-                            </div>
-                            <div style={{ color: '#94a3b8', fontSize: '11px', marginTop: '4px' }}>
+                            </OptionTitle>
+                            <OptionDescription>
                                 Once a card appears in a draft, it cannot appear again this run
-                            </div>
+                            </OptionDescription>
                         </div>
-                    </label>
-                    <label
-                        style={{
-                            display: 'flex',
-                            alignItems: 'center',
-                            gap: '12px',
-                            cursor: 'pointer',
-                            padding: '12px',
-                            backgroundColor: gameConfig.customStart
-                                ? `${factionColors.PRIMARY}1A`
-                                : 'transparent',
-                            borderRadius: '4px',
-                            border: '1px solid rgba(100, 116, 139, 0.5)',
-                        }}
+                    </CheckboxLabel>
+                    <CheckboxLabel
+                        $selected={gameConfig.customStart}
+                        $factionPrimary={factionColors.PRIMARY}
                     >
-                        <input
-                            type="checkbox"
+                        <Checkbox
                             checked={gameConfig.customStart}
                             onChange={(e) => onUpdateGameConfig({ customStart: e.target.checked })}
-                            style={{ width: '20px', height: '20px', cursor: 'pointer' }}
+                            $factionPrimary={factionColors.PRIMARY}
                         />
                         <div>
-                            <div
-                                style={{
-                                    color: factionColors.PRIMARY,
-                                    fontWeight: 'bold',
-                                    fontSize: '14px',
-                                }}
-                            >
+                            <OptionTitle $factionPrimary={factionColors.PRIMARY}>
                                 Custom Start Mode
-                            </div>
-                            <div style={{ color: '#94a3b8', fontSize: '11px', marginTop: '4px' }}>
+                            </OptionTitle>
+                            <OptionDescription>
                                 Choose starting difficulty and loadouts for each player
-                            </div>
+                            </OptionDescription>
                         </div>
-                    </label>
-                    <label
-                        style={{
-                            display: 'flex',
-                            alignItems: 'center',
-                            gap: '12px',
-                            cursor: 'pointer',
-                            padding: '12px',
-                            backgroundColor: eventsEnabled
-                                ? `${factionColors.PRIMARY}1A`
-                                : 'transparent',
-                            borderRadius: '4px',
-                            border: '1px solid rgba(100, 116, 139, 0.5)',
-                        }}
+                    </CheckboxLabel>
+                    <CheckboxLabel
+                        $selected={eventsEnabled}
+                        $factionPrimary={factionColors.PRIMARY}
                     >
-                        <input
-                            type="checkbox"
+                        <Checkbox
                             checked={eventsEnabled}
                             onChange={(e) => onSetEventsEnabled(e.target.checked)}
-                            style={{ width: '20px', height: '20px', cursor: 'pointer' }}
+                            $factionPrimary={factionColors.PRIMARY}
                         />
                         <div>
-                            <div
-                                style={{
-                                    color: factionColors.PRIMARY,
-                                    fontWeight: 'bold',
-                                    fontSize: '14px',
-                                    display: 'flex',
-                                    alignItems: 'center',
-                                    gap: '8px',
-                                }}
-                            >
-                                Enable Events
-                                <span
-                                    style={{
-                                        fontSize: '9px',
-                                        fontWeight: 'bold',
-                                        padding: '2px 6px',
-                                        backgroundColor: '#f59e0b',
-                                        color: '#000',
-                                        borderRadius: '3px',
-                                        letterSpacing: '0.5px',
-                                    }}
-                                >
+                            <Flex $align="center" $gap="sm">
+                                <OptionTitle $factionPrimary={factionColors.PRIMARY}>
+                                    Enable Events
+                                </OptionTitle>
+                                <Badge $variant="warning" $size="sm">
                                     BETA
-                                </span>
-                            </div>
-                            <div style={{ color: '#94a3b8', fontSize: '11px', marginTop: '4px' }}>
+                                </Badge>
+                            </Flex>
+                            <OptionDescription>
                                 Random high-risk, high-reward events between missions
-                            </div>
+                            </OptionDescription>
                         </div>
-                    </label>
-                    <label
-                        style={{
-                            display: 'flex',
-                            alignItems: 'center',
-                            gap: '12px',
-                            cursor: 'pointer',
-                            padding: '12px',
-                            backgroundColor: gameConfig.endlessMode
-                                ? `${factionColors.PRIMARY}1A`
-                                : 'transparent',
-                            borderRadius: '4px',
-                            border: '1px solid rgba(100, 116, 139, 0.5)',
-                        }}
+                    </CheckboxLabel>
+                    <CheckboxLabel
+                        $selected={gameConfig.endlessMode}
+                        $factionPrimary={factionColors.PRIMARY}
                     >
-                        <input
-                            type="checkbox"
+                        <Checkbox
                             checked={gameConfig.endlessMode}
                             onChange={(e) => onUpdateGameConfig({ endlessMode: e.target.checked })}
-                            style={{ width: '20px', height: '20px', cursor: 'pointer' }}
+                            $factionPrimary={factionColors.PRIMARY}
                         />
                         <div>
-                            <div
-                                style={{
-                                    color: factionColors.PRIMARY,
-                                    fontWeight: 'bold',
-                                    fontSize: '14px',
-                                }}
-                            >
+                            <OptionTitle $factionPrimary={factionColors.PRIMARY}>
                                 Endless Mode
-                            </div>
-                            <div style={{ color: '#94a3b8', fontSize: '11px', marginTop: '4px' }}>
+                            </OptionTitle>
+                            <OptionDescription>
                                 Continue running D10 missions indefinitely. Otherwise, win after
                                 completing D10
-                            </div>
+                            </OptionDescription>
                         </div>
-                    </label>
+                    </CheckboxLabel>
 
-                    <label
-                        style={{
-                            display: 'flex',
-                            alignItems: 'center',
-                            gap: '12px',
-                            cursor: 'pointer',
-                            padding: '12px',
-                            backgroundColor: gameConfig.enduranceMode
-                                ? `${factionColors.PRIMARY}1A`
-                                : 'transparent',
-                            borderRadius: '4px',
-                            border: '1px solid rgba(100, 116, 139, 0.5)',
-                        }}
+                    <CheckboxLabel
+                        $selected={gameConfig.enduranceMode}
+                        $factionPrimary={factionColors.PRIMARY}
                     >
-                        <input
-                            type="checkbox"
+                        <Checkbox
                             checked={gameConfig.enduranceMode}
                             onChange={(e) =>
                                 onUpdateGameConfig({ enduranceMode: e.target.checked })
                             }
-                            style={{ width: '20px', height: '20px', cursor: 'pointer' }}
+                            $factionPrimary={factionColors.PRIMARY}
                         />
                         <div>
-                            <div
-                                style={{
-                                    color: factionColors.PRIMARY,
-                                    fontWeight: 'bold',
-                                    fontSize: '14px',
-                                }}
-                            >
+                            <OptionTitle $factionPrimary={factionColors.PRIMARY}>
                                 Endurance Mode
-                            </div>
-                            <div style={{ color: '#94a3b8', fontSize: '11px', marginTop: '4px' }}>
+                            </OptionTitle>
+                            <OptionDescription>
                                 Complete full operations (1-3 missions) at each difficulty. Draft
                                 rewards only given at operation end
-                            </div>
+                            </OptionDescription>
                         </div>
-                    </label>
+                    </CheckboxLabel>
 
-                    <label
-                        style={{
-                            display: 'flex',
-                            alignItems: 'center',
-                            gap: '12px',
-                            cursor: 'pointer',
-                            padding: '12px',
-                            backgroundColor: gameConfig.brutalityMode
-                                ? `${factionColors.PRIMARY}1A`
-                                : 'transparent',
-                            borderRadius: '4px',
-                            border: '1px solid rgba(100, 116, 139, 0.5)',
-                        }}
+                    <CheckboxLabel
+                        $selected={gameConfig.brutalityMode}
+                        $factionPrimary={factionColors.PRIMARY}
                     >
-                        <input
-                            type="checkbox"
+                        <Checkbox
                             checked={gameConfig.brutalityMode}
                             onChange={(e) =>
                                 onUpdateGameConfig({ brutalityMode: e.target.checked })
                             }
-                            style={{ width: '20px', height: '20px', cursor: 'pointer' }}
+                            $factionPrimary={factionColors.PRIMARY}
                         />
                         <div>
-                            <div
-                                style={{
-                                    color: factionColors.PRIMARY,
-                                    fontWeight: 'bold',
-                                    fontSize: '14px',
-                                }}
-                            >
+                            <OptionTitle $factionPrimary={factionColors.PRIMARY}>
                                 Brutality Mode
-                            </div>
-                            <div style={{ color: '#94a3b8', fontSize: '11px', marginTop: '4px' }}>
+                            </OptionTitle>
+                            <OptionDescription>
                                 Non-extracted Helldivers sacrifice loadout items (down to Peacemaker
                                 & B-01). If disabled, only all-fail triggers sacrifice.
-                            </div>
+                            </OptionDescription>
                         </div>
-                    </label>
-                </div>
-            </div>
+                    </CheckboxLabel>
+                </Flex>
+            </ConfigSection>
         </div>
     )
 }

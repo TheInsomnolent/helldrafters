@@ -1,8 +1,14 @@
 import { render, screen } from '@testing-library/react'
 import '@testing-library/jest-dom'
+import { ThemeProvider } from 'styled-components'
 import LoadoutDisplay from './LoadoutDisplay'
 import { FACTION } from '../constants/types'
+import { theme } from '../styles'
 import type { Player, GetItemById, GetArmorComboDisplayName, Item, Loadout } from '../types'
+
+// Helper to render with ThemeProvider
+const renderWithTheme = (ui: React.ReactElement) =>
+    render(<ThemeProvider theme={theme}>{ui}</ThemeProvider>)
 
 describe('LoadoutDisplay', () => {
     const mockLoadout: Loadout = {
@@ -51,7 +57,7 @@ describe('LoadoutDisplay', () => {
         const mockOnLockSlot = jest.fn()
         const mockOnUnlockSlot = jest.fn()
 
-        render(
+        renderWithTheme(
             <LoadoutDisplay
                 player={mockPlayer}
                 getItemById={mockGetItemById}
@@ -74,7 +80,7 @@ describe('LoadoutDisplay', () => {
     })
 
     it('renders without lock/unlock buttons when handlers are not provided', () => {
-        render(
+        renderWithTheme(
             <LoadoutDisplay
                 player={mockPlayer}
                 getItemById={mockGetItemById}
@@ -95,7 +101,7 @@ describe('LoadoutDisplay', () => {
         const mockOnLockSlot = jest.fn()
         const mockOnUnlockSlot = jest.fn()
 
-        render(
+        renderWithTheme(
             <LoadoutDisplay
                 player={mockPlayer}
                 getItemById={mockGetItemById}
@@ -115,7 +121,7 @@ describe('LoadoutDisplay', () => {
     })
 
     it('shows "Loadout Active" for connected players in multiplayer', () => {
-        render(
+        renderWithTheme(
             <LoadoutDisplay
                 player={mockPlayer}
                 getItemById={mockGetItemById}
@@ -133,7 +139,7 @@ describe('LoadoutDisplay', () => {
     })
 
     it('shows "DISCONNECTED" for disconnected players in multiplayer', () => {
-        render(
+        renderWithTheme(
             <LoadoutDisplay
                 player={mockPlayer}
                 getItemById={mockGetItemById}
@@ -151,7 +157,7 @@ describe('LoadoutDisplay', () => {
     })
 
     it('shows "Loadout Active" in solo mode regardless of isConnected', () => {
-        render(
+        renderWithTheme(
             <LoadoutDisplay
                 player={mockPlayer}
                 getItemById={mockGetItemById}

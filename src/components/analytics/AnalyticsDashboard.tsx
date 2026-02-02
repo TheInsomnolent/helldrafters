@@ -5,9 +5,11 @@
  */
 
 import React, { useRef } from 'react'
-import { COLORS, getFactionColors, BUTTON_STYLES } from '../../constants/theme'
+import styled from 'styled-components'
+import { COLORS, getFactionColors } from '../../constants/theme'
 import { DIFFICULTY_CONFIG } from '../../constants/gameConfig'
 import { SUBFACTION_CONFIG, type Subfaction } from '../../constants/balancingConfig'
+import { Text, Caption, Flex, Grid, Button } from '../../styles'
 import SamplesChart from './SamplesChart'
 import RequisitionChart from './RequisitionChart'
 import LoadoutTimeline from './LoadoutTimeline'
@@ -69,6 +71,92 @@ const getFactionEmoji = (factionId: string): string => {
             return '❓'
     }
 }
+
+// ============================================================================
+// STYLED COMPONENTS
+// ============================================================================
+
+const DashboardWrapper = styled.div`
+    min-height: 100vh;
+    background-color: ${({ theme }) => theme.colors.bgMain};
+    background-image: linear-gradient(
+        to bottom,
+        ${({ theme }) => theme.colors.bgGradientStart},
+        ${({ theme }) => theme.colors.bgGradientEnd}
+    );
+    padding: 20px;
+    overflow: auto;
+`
+
+const DashboardCard = styled.div<{ $isVictory: boolean }>`
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 24px;
+    background-color: ${({ theme }) => theme.colors.cardBg};
+    border-radius: ${({ theme }) => theme.radii.xl};
+    border: 2px solid
+        ${({ $isVictory, theme }) =>
+            $isVictory ? theme.colors.accentGreen : theme.colors.accentRed};
+    box-shadow: ${({ $isVictory }) =>
+        $isVictory ? '0 0 40px rgba(34, 197, 94, 0.3)' : '0 0 40px rgba(239, 68, 68, 0.3)'};
+`
+
+const HeaderBanner = styled.div<{ $isVictory: boolean }>`
+    text-align: center;
+    margin-bottom: 32px;
+    padding: 24px;
+    background: ${({ $isVictory }) =>
+        $isVictory
+            ? 'linear-gradient(135deg, rgba(34, 197, 94, 0.1) 0%, rgba(34, 197, 94, 0.05) 100%)'
+            : 'linear-gradient(135deg, rgba(239, 68, 68, 0.1) 0%, rgba(239, 68, 68, 0.05) 100%)'};
+    border-radius: ${({ theme }) => theme.radii.xl};
+    border: 1px solid
+        ${({ $isVictory, theme }) =>
+            $isVictory ? theme.colors.accentGreen : theme.colors.accentRed};
+`
+
+const OutcomeTitle = styled.h1<{ $isVictory: boolean }>`
+    color: ${({ $isVictory, theme }) =>
+        $isVictory ? theme.colors.accentGreen : theme.colors.accentRed};
+    font-size: 32px;
+    font-weight: 900;
+    text-transform: uppercase;
+    letter-spacing: 0.2em;
+    margin: 0 0 8px 0;
+    text-shadow: ${({ $isVictory }) =>
+        $isVictory ? '0 0 20px rgba(34, 197, 94, 0.5)' : '0 0 20px rgba(239, 68, 68, 0.5)'};
+`
+
+const StatCard = styled.div<{ $accentColor?: string }>`
+    background-color: ${({ theme }) => theme.colors.cardInner};
+    border-radius: ${({ theme }) => theme.radii.xl};
+    padding: ${({ theme }) => theme.spacing.lg};
+    text-align: center;
+    border: 1px solid
+        ${({ $accentColor, theme }) =>
+            $accentColor ? `${$accentColor}40` : theme.colors.cardBorder};
+`
+
+const StatValue = styled.p<{ $color?: string }>`
+    color: ${({ $color }) => $color || COLORS.PRIMARY};
+    font-size: 28px;
+    font-weight: bold;
+    margin: 0;
+`
+
+const StatLabel = styled.p`
+    color: ${({ theme }) => theme.colors.textMuted};
+    font-size: 11px;
+    margin: 0 0 4px 0;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+`
+
+const StatSubtext = styled.p`
+    color: ${({ theme }) => theme.colors.textSecondary};
+    font-size: 11px;
+    margin: 4px 0 0 0;
+`
 
 interface AnalyticsDashboardProps {
     analyticsData: AnalyticsStore | null
@@ -132,409 +220,119 @@ const AnalyticsDashboard = ({
             : null
 
     return (
-        <div
-            style={{
-                minHeight: '100vh',
-                backgroundColor: COLORS.BG_MAIN,
-                backgroundImage: `linear-gradient(to bottom, ${COLORS.BG_GRADIENT_START}, ${COLORS.BG_GRADIENT_END})`,
-                padding: '20px',
-                overflow: 'auto',
-            }}
-        >
-            <div
-                ref={dashboardRef}
-                style={{
-                    maxWidth: '1200px',
-                    margin: '0 auto',
-                    padding: '24px',
-                    backgroundColor: COLORS.CARD_BG,
-                    borderRadius: '16px',
-                    border: `2px solid ${isVictory ? COLORS.ACCENT_GREEN : COLORS.ACCENT_RED}`,
-                    boxShadow: isVictory
-                        ? `0 0 40px rgba(34, 197, 94, 0.3)`
-                        : `0 0 40px rgba(239, 68, 68, 0.3)`,
-                }}
-            >
+        <DashboardWrapper>
+            <DashboardCard ref={dashboardRef} $isVictory={isVictory}>
                 {/* Header */}
-                <div
-                    style={{
-                        textAlign: 'center',
-                        marginBottom: '32px',
-                        padding: '24px',
-                        background: isVictory
-                            ? 'linear-gradient(135deg, rgba(34, 197, 94, 0.1) 0%, rgba(34, 197, 94, 0.05) 100%)'
-                            : 'linear-gradient(135deg, rgba(239, 68, 68, 0.1) 0%, rgba(239, 68, 68, 0.05) 100%)',
-                        borderRadius: '12px',
-                        border: `1px solid ${isVictory ? COLORS.ACCENT_GREEN : COLORS.ACCENT_RED}`,
-                    }}
-                >
+                <HeaderBanner $isVictory={isVictory}>
                     <div style={{ fontSize: '48px', marginBottom: '12px' }}>
                         {isVictory ? '🏆' : '💀'}
                     </div>
-                    <h1
-                        style={{
-                            color: isVictory ? COLORS.ACCENT_GREEN : COLORS.ACCENT_RED,
-                            fontSize: '32px',
-                            fontWeight: '900',
-                            textTransform: 'uppercase',
-                            letterSpacing: '0.2em',
-                            margin: '0 0 8px 0',
-                            textShadow: isVictory
-                                ? '0 0 20px rgba(34, 197, 94, 0.5)'
-                                : '0 0 20px rgba(239, 68, 68, 0.5)',
-                        }}
-                    >
+                    <OutcomeTitle $isVictory={isVictory}>
                         {isVictory ? 'DEMOCRACY MANIFESTED' : 'DISHONORABLE DISCHARGE'}
-                    </h1>
-                    <p
-                        style={{
-                            color: COLORS.TEXT_SECONDARY,
-                            fontSize: '14px',
-                            margin: 0,
-                            letterSpacing: '0.1em',
-                        }}
-                    >
+                    </OutcomeTitle>
+                    <Text $color="secondary" style={{ letterSpacing: '0.1em' }}>
                         {isVictory
                             ? 'Super Earth salutes your service, Helldiver!'
                             : 'Your sacrifice will not be forgotten.'}
-                    </p>
-                </div>
+                    </Text>
+                </HeaderBanner>
 
                 {/* Quick Stats Row */}
-                <div
-                    style={{
-                        display: 'grid',
-                        gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))',
-                        gap: '16px',
-                        marginBottom: '32px',
-                    }}
+                <Grid
+                    $columns="auto-fit"
+                    $minWidth="150px"
+                    $gap="md"
+                    style={{ marginBottom: '32px' }}
                 >
                     {/* Difficulty */}
-                    <div
-                        style={{
-                            backgroundColor: COLORS.CARD_INNER,
-                            borderRadius: '12px',
-                            padding: '16px',
-                            textAlign: 'center',
-                            border: `1px solid ${COLORS.CARD_BORDER}`,
-                        }}
-                    >
-                        <p
-                            style={{
-                                color: COLORS.TEXT_MUTED,
-                                fontSize: '11px',
-                                margin: '0 0 4px 0',
-                                textTransform: 'uppercase',
-                                letterSpacing: '0.1em',
-                            }}
-                        >
-                            Max Difficulty
-                        </p>
-                        <p
-                            style={{
-                                color: factionColors.PRIMARY,
-                                fontSize: '28px',
-                                fontWeight: 'bold',
-                                margin: 0,
-                            }}
-                        >
+                    <StatCard>
+                        <StatLabel>Max Difficulty</StatLabel>
+                        <StatValue $color={factionColors.PRIMARY}>
                             {analyticsData?.finalStats?.finalDifficulty || 1}
-                        </p>
-                        <p
-                            style={{
-                                color: COLORS.TEXT_SECONDARY,
-                                fontSize: '11px',
-                                margin: '4px 0 0 0',
-                            }}
-                        >
+                        </StatValue>
+                        <StatSubtext>
                             {getDifficultyName(analyticsData?.finalStats?.finalDifficulty || 1)}
-                        </p>
-                    </div>
+                        </StatSubtext>
+                    </StatCard>
 
                     {/* Duration */}
-                    <div
-                        style={{
-                            backgroundColor: COLORS.CARD_INNER,
-                            borderRadius: '12px',
-                            padding: '16px',
-                            textAlign: 'center',
-                            border: `1px solid ${COLORS.CARD_BORDER}`,
-                        }}
-                    >
-                        <p
-                            style={{
-                                color: COLORS.TEXT_MUTED,
-                                fontSize: '11px',
-                                margin: '0 0 4px 0',
-                                textTransform: 'uppercase',
-                                letterSpacing: '0.1em',
-                            }}
-                        >
-                            Duration
-                        </p>
-                        <p
-                            style={{
-                                color: COLORS.PRIMARY,
-                                fontSize: '28px',
-                                fontWeight: 'bold',
-                                margin: 0,
-                            }}
-                        >
-                            {formatDuration(duration)}
-                        </p>
-                        <p
-                            style={{
-                                color: COLORS.TEXT_SECONDARY,
-                                fontSize: '11px',
-                                margin: '4px 0 0 0',
-                            }}
-                        >
-                            Total Play Time
-                        </p>
-                    </div>
+                    <StatCard>
+                        <StatLabel>Duration</StatLabel>
+                        <StatValue>{formatDuration(duration)}</StatValue>
+                        <StatSubtext>Total Play Time</StatSubtext>
+                    </StatCard>
 
                     {/* Squad Size */}
-                    <div
-                        style={{
-                            backgroundColor: COLORS.CARD_INNER,
-                            borderRadius: '12px',
-                            padding: '16px',
-                            textAlign: 'center',
-                            border: `1px solid ${COLORS.CARD_BORDER}`,
-                        }}
-                    >
-                        <p
-                            style={{
-                                color: COLORS.TEXT_MUTED,
-                                fontSize: '11px',
-                                margin: '0 0 4px 0',
-                                textTransform: 'uppercase',
-                                letterSpacing: '0.1em',
-                            }}
-                        >
-                            Squad Size
-                        </p>
-                        <p
-                            style={{
-                                color: COLORS.ACCENT_BLUE,
-                                fontSize: '28px',
-                                fontWeight: 'bold',
-                                margin: 0,
-                            }}
-                        >
+                    <StatCard>
+                        <StatLabel>Squad Size</StatLabel>
+                        <StatValue $color={COLORS.ACCENT_BLUE}>
                             {analyticsData?.finalStats?.playerCount || players.length || 1}
-                        </p>
-                        <p
-                            style={{
-                                color: COLORS.TEXT_SECONDARY,
-                                fontSize: '11px',
-                                margin: '4px 0 0 0',
-                            }}
-                        >
-                            Helldivers
-                        </p>
-                    </div>
+                        </StatValue>
+                        <StatSubtext>Helldivers</StatSubtext>
+                    </StatCard>
 
                     {/* Total Events */}
-                    <div
-                        style={{
-                            backgroundColor: COLORS.CARD_INNER,
-                            borderRadius: '12px',
-                            padding: '16px',
-                            textAlign: 'center',
-                            border: `1px solid ${COLORS.CARD_BORDER}`,
-                        }}
-                    >
-                        <p
-                            style={{
-                                color: COLORS.TEXT_MUTED,
-                                fontSize: '11px',
-                                margin: '0 0 4px 0',
-                                textTransform: 'uppercase',
-                                letterSpacing: '0.1em',
-                            }}
-                        >
-                            Events
-                        </p>
-                        <p
-                            style={{
-                                color: COLORS.ACCENT_PURPLE,
-                                fontSize: '28px',
-                                fontWeight: 'bold',
-                                margin: 0,
-                            }}
-                        >
+                    <StatCard>
+                        <StatLabel>Events</StatLabel>
+                        <StatValue $color={COLORS.ACCENT_PURPLE}>
                             {analyticsData?.finalStats?.totalEvents ||
                                 analyticsData?.eventOccurrences?.length ||
                                 0}
-                        </p>
-                        <p
-                            style={{
-                                color: COLORS.TEXT_SECONDARY,
-                                fontSize: '11px',
-                                margin: '4px 0 0 0',
-                            }}
-                        >
-                            Encountered
-                        </p>
-                    </div>
+                        </StatValue>
+                        <StatSubtext>Encountered</StatSubtext>
+                    </StatCard>
 
                     {/* Final Requisition */}
-                    <div
-                        style={{
-                            backgroundColor: COLORS.CARD_INNER,
-                            borderRadius: '12px',
-                            padding: '16px',
-                            textAlign: 'center',
-                            border: `1px solid ${COLORS.CARD_BORDER}`,
-                        }}
-                    >
-                        <p
-                            style={{
-                                color: COLORS.TEXT_MUTED,
-                                fontSize: '11px',
-                                margin: '0 0 4px 0',
-                                textTransform: 'uppercase',
-                                letterSpacing: '0.1em',
-                            }}
-                        >
-                            Final Requisition
-                        </p>
-                        <p
-                            style={{
-                                color: COLORS.PRIMARY,
-                                fontSize: '28px',
-                                fontWeight: 'bold',
-                                margin: 0,
-                            }}
-                        >
+                    <StatCard>
+                        <StatLabel>Final Requisition</StatLabel>
+                        <StatValue>
                             {parseFloat(
                                 (analyticsData?.finalStats?.finalRequisition || 0).toFixed(2),
                             )}
-                        </p>
-                        <p
-                            style={{
-                                color: COLORS.TEXT_SECONDARY,
-                                fontSize: '11px',
-                                margin: '4px 0 0 0',
-                                display: 'flex',
-                                alignItems: 'center',
-                                justifyContent: 'center',
-                                gap: '4px',
-                            }}
-                        >
-                            <img
-                                src="https://helldivers.wiki.gg/images/Requisition_Slip.svg"
-                                alt=""
-                                style={{ width: 14, height: 14 }}
-                            />
-                            Remaining
-                        </p>
-                    </div>
+                        </StatValue>
+                        <StatSubtext>
+                            <Flex $align="center" $justify="center" $gap="xs">
+                                <img
+                                    src="https://helldivers.wiki.gg/images/Requisition_Slip.svg"
+                                    alt=""
+                                    style={{ width: 14, height: 14 }}
+                                />
+                                Remaining
+                            </Flex>
+                        </StatSubtext>
+                    </StatCard>
 
                     {/* Casualties */}
-                    <div
-                        style={{
-                            backgroundColor: COLORS.CARD_INNER,
-                            borderRadius: '12px',
-                            padding: '16px',
-                            textAlign: 'center',
-                            border: `1px solid ${COLORS.CARD_BORDER}`,
-                        }}
-                    >
-                        <p
-                            style={{
-                                color: COLORS.TEXT_MUTED,
-                                fontSize: '11px',
-                                margin: '0 0 4px 0',
-                                textTransform: 'uppercase',
-                                letterSpacing: '0.1em',
-                            }}
-                        >
-                            Casualties
-                        </p>
-                        <p
-                            style={{
-                                color: COLORS.ACCENT_RED,
-                                fontSize: '28px',
-                                fontWeight: 'bold',
-                                margin: 0,
-                            }}
-                        >
+                    <StatCard>
+                        <StatLabel>Casualties</StatLabel>
+                        <StatValue $color={COLORS.ACCENT_RED}>
                             {analyticsData?.finalStats?.totalDeaths ||
                                 analyticsData?.playerDeaths?.length ||
                                 0}
-                        </p>
-                        <p
-                            style={{
-                                color: COLORS.TEXT_SECONDARY,
-                                fontSize: '11px',
-                                margin: '4px 0 0 0',
-                            }}
-                        >
-                            💀 KIA
-                        </p>
-                    </div>
+                        </StatValue>
+                        <StatSubtext>💀 KIA</StatSubtext>
+                    </StatCard>
 
                     {/* Enemy Faction */}
-                    <div
-                        style={{
-                            backgroundColor: COLORS.CARD_INNER,
-                            borderRadius: '12px',
-                            padding: '16px',
-                            textAlign: 'center',
-                            border: `1px solid ${factionColors.PRIMARY}40`,
-                            gridColumn: 'span 2',
-                        }}
-                    >
-                        <p
-                            style={{
-                                color: COLORS.TEXT_MUTED,
-                                fontSize: '11px',
-                                margin: '0 0 4px 0',
-                                textTransform: 'uppercase',
-                                letterSpacing: '0.1em',
-                            }}
-                        >
-                            Enemy Forces
-                        </p>
-                        <p
-                            style={{
-                                color: factionColors.PRIMARY,
-                                fontSize: '24px',
-                                fontWeight: 'bold',
-                                margin: 0,
-                                display: 'flex',
-                                alignItems: 'center',
-                                justifyContent: 'center',
-                                gap: '8px',
-                            }}
-                        >
-                            <span>{getFactionEmoji(faction)}</span>
-                            <span>{getFactionDisplayName(faction)}</span>
-                        </p>
+                    <StatCard $accentColor={factionColors.PRIMARY} style={{ gridColumn: 'span 2' }}>
+                        <StatLabel>Enemy Forces</StatLabel>
+                        <Flex $align="center" $justify="center" $gap="sm">
+                            <span style={{ fontSize: '24px' }}>{getFactionEmoji(faction)}</span>
+                            <StatValue $color={factionColors.PRIMARY}>
+                                {getFactionDisplayName(faction)}
+                            </StatValue>
+                        </Flex>
                         {subfactionName && (
-                            <p
-                                style={{
-                                    color: COLORS.TEXT_SECONDARY,
-                                    fontSize: '13px',
-                                    margin: '4px 0 0 0',
-                                }}
-                            >
+                            <Text $color="secondary" $size="sm" style={{ marginTop: '4px' }}>
                                 {subfactionName}
-                            </p>
+                            </Text>
                         )}
                         {factionWasChanged && (
-                            <p
+                            <Caption
                                 style={{
                                     color: COLORS.ACCENT_PURPLE,
-                                    fontSize: '11px',
-                                    margin: '8px 0 0 0',
                                     fontStyle: 'italic',
-                                    display: 'flex',
-                                    alignItems: 'center',
-                                    justifyContent: 'center',
-                                    gap: '4px',
+                                    marginTop: '8px',
                                 }}
                             >
                                 ⚡ Changed from {getFactionEmoji(startingFaction)}{' '}
@@ -542,21 +340,14 @@ const AnalyticsDashboard = ({
                                 {startingSubfactionName &&
                                     startingSubfactionName !== 'Standard' &&
                                     ` (${startingSubfactionName})`}
-                            </p>
+                            </Caption>
                         )}
-                    </div>
-                </div>
+                    </StatCard>
+                </Grid>
 
                 {/* Charts Grid */}
                 {chartData && (
-                    <div
-                        style={{
-                            display: 'grid',
-                            gridTemplateColumns: 'repeat(2, 1fr)',
-                            gap: '20px',
-                            marginBottom: '32px',
-                        }}
-                    >
+                    <Grid $columns={2} $gap="lg" style={{ marginBottom: '32px' }}>
                         {/* Samples Chart - Full width */}
                         <div style={{ gridColumn: 'span 2' }}>
                             <SamplesChart
@@ -609,7 +400,7 @@ const AnalyticsDashboard = ({
                                 missionStars={chartData.missionStars}
                             />
                         </div>
-                    </div>
+                    </Grid>
                 )}
 
                 {/* Share Panel */}
@@ -622,45 +413,32 @@ const AnalyticsDashboard = ({
                 </div>
 
                 {/* Action Buttons */}
-                <div
-                    style={{
-                        display: 'flex',
-                        gap: '16px',
-                        justifyContent: 'center',
-                        flexWrap: 'wrap',
-                    }}
-                >
-                    <button
+                <Flex $gap="md" $justify="center" $wrap>
+                    <Button
+                        $variant="primary"
                         onClick={onClose}
                         style={{
-                            ...BUTTON_STYLES.PRIMARY,
                             padding: '14px 32px',
-                            borderRadius: '8px',
-                            fontSize: '14px',
                             backgroundColor: factionColors.PRIMARY,
-                            border: `2px solid ${factionColors.PRIMARY}`,
+                            borderColor: factionColors.PRIMARY,
                             boxShadow: factionColors.SHADOW,
                         }}
                     >
                         Return to Menu
-                    </button>
+                    </Button>
 
                     {onViewHistory && (
-                        <button
+                        <Button
+                            $variant="secondary"
                             onClick={onViewHistory}
-                            style={{
-                                ...BUTTON_STYLES.SECONDARY,
-                                padding: '14px 32px',
-                                borderRadius: '8px',
-                                fontSize: '14px',
-                            }}
+                            style={{ padding: '14px 32px' }}
                         >
                             View Past Runs
-                        </button>
+                        </Button>
                     )}
-                </div>
-            </div>
-        </div>
+                </Flex>
+            </DashboardCard>
+        </DashboardWrapper>
     )
 }
 
