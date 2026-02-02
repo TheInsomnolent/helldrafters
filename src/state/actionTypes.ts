@@ -97,7 +97,3 @@ export const RESET_GAME = 'RESET_GAME' as const
 
 // Analytics
 export const SET_RUN_ANALYTICS_DATA = 'SET_RUN_ANALYTICS_DATA' as const
-
-// Settings
-export const SET_SETTINGS_OPEN = 'SET_SETTINGS_OPEN' as const
-export const SET_DISABLED_WARBONDS = 'SET_DISABLED_WARBONDS' as const

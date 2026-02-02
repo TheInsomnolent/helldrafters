@@ -5,6 +5,14 @@
  * Types are organized by domain and exported for use in other modules.
  */
 
+import type { AnalyticsStore } from '../state/analyticsStore'
+
+/**
+ * Armor combo for drafting (combining armor pieces with passive/class)
+ * Imported from itemHelpers to avoid duplication
+ */
+import type { ArmorCombo } from '../utils/itemHelpers'
+
 // =============================================================================
 // ENUMS AND CONSTANT TYPES
 // =============================================================================
@@ -133,6 +141,11 @@ export type GamePhase =
     | 'LOBBY'
     | 'DRAFT'
     | 'DRAFT_SACRIFICE'
+    | 'DASHBOARD'
+    | 'SACRIFICE'
+    | 'SOLO_CONFIG'
+    | 'KICKED'
+    | 'GAMEOVER'
     | 'MISSION'
     | 'MISSION_DEBRIEF'
     | 'MISSION_COMPLETE'
@@ -147,28 +160,59 @@ export type GamePhase =
 /**
  * Slot types for loadout
  */
-export type SlotType = 'primary' | 'secondary' | 'grenade' | 'armor' | 'booster' | 'stratagem'
+export type SlotType =
+    | 'primary'
+    | 'secondary'
+    | 'grenade'
+    | 'armor'
+    | 'booster'
+    | 'stratagem'
+    | ItemType
 
 // =============================================================================
 // ITEM TYPES
 // =============================================================================
 
 /**
- * Base item definition
+ * Base item properties shared by all item types
  */
-export interface Item {
+export interface BaseItem {
     id: string
     name: string
-    type: ItemType
     rarity: Rarity
     tags: Tag[]
-    warbond: string
+    warbond?: string
+    superstore?: boolean
+    // Armor-specific properties (optional on base for array typing)
+    armorClass?: ArmorClass
+    passive?: ArmorPassive
+}
+
+/**
+ * Primary weapon item
+ */
+export interface PrimaryItem extends BaseItem {
+    type: 'Primary'
+}
+
+/**
+ * Secondary weapon item
+ */
+export interface SecondaryItem extends BaseItem {
+    type: 'Secondary'
+}
+
+/**
+ * Grenade item
+ */
+export interface GrenadeItem extends BaseItem {
+    type: 'Grenade'
 }
 
 /**
  * Armor item with additional properties
  */
-export interface ArmorItem extends Omit<Item, 'type'> {
+export interface ArmorItem extends BaseItem {
     type: 'Armor'
     armorClass: ArmorClass
     passive: ArmorPassive
@@ -177,7 +221,7 @@ export interface ArmorItem extends Omit<Item, 'type'> {
 /**
  * Stratagem item with additional properties
  */
-export interface StratagemItem extends Omit<Item, 'type'> {
+export interface StratagemItem extends BaseItem {
     type: 'Stratagem'
     code?: string
 }
@@ -185,14 +229,21 @@ export interface StratagemItem extends Omit<Item, 'type'> {
 /**
  * Booster item
  */
-export interface BoosterItem extends Omit<Item, 'type'> {
+export interface BoosterItem extends BaseItem {
     type: 'Booster'
 }
 
 /**
- * Union type for all item types
+ * Discriminated union of all item types.
+ * Use type guards like `item.type === 'Stratagem'` to narrow to specific types.
  */
-export type AnyItem = Item | ArmorItem | StratagemItem | BoosterItem
+export type Item =
+    | PrimaryItem
+    | SecondaryItem
+    | GrenadeItem
+    | ArmorItem
+    | StratagemItem
+    | BoosterItem
 
 // =============================================================================
 // LOADOUT TYPES
@@ -213,11 +264,7 @@ export interface Loadout {
 /**
  * Armor combo for display (helmet/body/cape combinations)
  */
-export interface ArmorCombo {
-    armorId: string
-    helmetId?: string
-    capeId?: string
-}
+export type { ArmorCombo }
 
 // =============================================================================
 // PLAYER TYPES
@@ -230,12 +277,23 @@ export interface Player {
     id: string
     name: string
     loadout: Loadout
-    lockedSlots: SlotType[]
+    lockedSlots: ItemType[]
     inventory: string[]
     disabledWarbonds: string[]
     superstoreItems: string[]
-    excludedItems: string[]
+    excludedItems?: string[]
     extracted: boolean
+    warbonds: string[]
+    includeSuperstore: boolean
+    // Event-related optional properties
+    extraDraftCards?: number
+    savedStratagems?: (string | null)[]
+    weaponRestricted?: boolean
+    redraftRounds?: number
+    // Retrospective draft properties
+    needsRetrospectiveDraft?: boolean
+    catchUpDraftsRemaining?: number
+    retrospectiveDraftsCompleted?: number
 }
 
 // =============================================================================
@@ -252,26 +310,32 @@ export interface GameConfig {
     starRating: number
     globalUniqueness: boolean
     burnCards: boolean
+    burnMode?: boolean // Alias for burnCards in some contexts
     customStart: boolean
     endlessMode: boolean
     enduranceMode: boolean
     debugEventsMode: boolean
-    debugRarityWeights: boolean
     brutalityMode: boolean
 }
+
+/**
+ * Draft hand item - can be either a regular item or an armor combo
+ */
+export type DraftHandItem = Item | ArmorCombo
 
 /**
  * Draft state during card selection
  */
 export interface DraftState {
     activePlayerIndex: number
-    roundCards: Item[]
+    roundCards: DraftHandItem[]
     isRerolling: boolean
     pendingStratagem: StratagemItem | null
     extraDraftRound: number
     draftOrder: number[]
     isRetrospective: boolean
     retrospectivePlayerIndex: number | null
+    isRedrafting?: boolean
 }
 
 /**
@@ -351,7 +415,7 @@ export interface GameState {
     seenEvents: string[]
     settingsOpen: boolean
     disabledWarbonds: string[]
-    runAnalyticsData: RunAnalyticsData | null
+    runAnalyticsData: AnalyticsStore | null
 }
 
 // =============================================================================
@@ -359,28 +423,78 @@ export interface GameState {
 // =============================================================================
 
 /**
- * Event choice option
+ * Target player specification for event outcomes (mirrors events.ts)
  */
-export interface EventChoice {
-    id: string
-    text: string
-    effect?: string
-    disabled?: boolean
-    disabledReason?: string
+export type TargetPlayer = 'current' | 'all' | 'choose' | 'single' | 'random'
+
+/**
+ * Outcome types for events (mirrors events.ts OUTCOME_TYPES)
+ */
+export type OutcomeType =
+    | 'add_requisition'
+    | 'spend_requisition'
+    | 'lose_requisition'
+    | 'change_faction'
+    | 'extra_draft'
+    | 'skip_difficulty'
+    | 'replay_difficulty'
+    | 'sacrifice_item'
+    | 'gain_booster'
+    | 'remove_item'
+    | 'gain_specific_item'
+    | 'duplicate_stratagem_to_another_helldiver'
+    | 'swap_stratagem_with_player'
+    | 'restrict_to_single_weapon'
+    | 'redraft'
+    | 'transform_loadout'
+    | 'gain_secondary'
+    | 'gain_throwable'
+    | 'random_outcome'
+    | 'gain_random_light_armor_and_draft_throwable'
+    | 'gain_random_heavy_armor_and_draft_secondary'
+    | 'duplicate_loadout_to_all'
+    | 'set_ceremonial_loadout'
+
+/**
+ * Event outcome type (mirrors events.ts)
+ */
+export interface EventOutcome {
+    type: OutcomeType
+    value?: number
+    targetPlayer?: TargetPlayer
+    possibleOutcomes?: EventOutcome[]
+    weight?: number
 }
 
 /**
- * Game event definition
+ * Event choice type (mirrors events.ts)
+ */
+export interface EventChoice {
+    text: string
+    requiresRequisition?: number
+    outcomes: EventOutcome[]
+}
+
+/**
+ * Event type (mirrors events.ts)
+ */
+export type EventType = 'choice' | 'random' | 'beneficial' | 'detrimental'
+
+/**
+ * Game event type (mirrors events.ts)
  */
 export interface GameEvent {
     id: string
-    title: string
+    name: string
     description: string
-    choices: EventChoice[]
-    type?: string
-    requiresPlayerSelection?: boolean
-    requiresStratagemSelection?: boolean
-    faction?: Faction
+    type: EventType
+    minDifficulty: number
+    maxDifficulty: number
+    weight: number
+    requiresMultiplayer?: boolean
+    targetPlayer: 'single' | 'all'
+    choices?: EventChoice[]
+    outcomes?: EventOutcome[]
 }
 
 // =============================================================================
@@ -389,11 +503,9 @@ export interface GameEvent {
 
 /**
  * Run analytics data for end-of-game stats
+ * Re-exported from analyticsStore for convenience
  */
-export interface RunAnalyticsData {
-    // Add specific analytics fields as needed
-    [key: string]: unknown
-}
+export type RunAnalyticsData = AnalyticsStore
 
 // =============================================================================
 // WARBOND TYPES
@@ -430,9 +542,13 @@ export interface DifficultyConfig {
 /**
  * Function type for getting item by ID
  */
-export type GetItemById = (id: string) => Item | undefined
+export type GetItemById = (id: string | null) => Item | undefined
 
 /**
  * Function type for getting armor combo display name
  */
-export type GetArmorComboDisplayName = (armorId: string) => string
+export type GetArmorComboDisplayName = (
+    passive: ArmorPassive | null | undefined,
+    armorClass: ArmorClass | null | undefined,
+    inventory: string[] | undefined,
+) => string

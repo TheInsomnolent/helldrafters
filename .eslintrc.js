@@ -100,5 +100,13 @@ module.exports = {
                 'react-hooks/exhaustive-deps': 'warn',
             },
         },
+        {
+            // Test files - relax non-null assertions since tests often verify
+            // existence before using values
+            files: ['**/*.test.ts', '**/*.test.tsx'],
+            rules: {
+                '@typescript-eslint/no-non-null-assertion': 'off',
+            },
+        },
     ],
 }

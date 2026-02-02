@@ -54,5 +54,8 @@
         "esbenp.prettier-vscode",
         "dbaeumer.vscode-eslint",
         "editorconfig.editorconfig"
-    ]
+    ],
+    "chat.tools.terminal.autoApprove": {
+        "yarn tsc": true
+    }
 }

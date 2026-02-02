@@ -1,0 +1,36 @@
+{
+    "$schema": "https://unpkg.com/knip@5/schema.json",
+    "entry": [
+        "src/index.tsx!",
+        "src/App.tsx!"
+    ],
+    "project": [
+        "src/**/*.{js,jsx,ts,tsx}!"
+    ],
+    "ignore": [
+        "functions/**",
+        "build/**",
+        "public/**",
+        "src/reportWebVitals.ts",
+        "src/setupTests.ts"
+    ],
+    "ignoreDependencies": [
+        "web-vitals",
+        "@testing-library/user-event",
+        "autoprefixer",
+        "postcss",
+        "@typescript-eslint/eslint-plugin",
+        "@typescript-eslint/parser",
+        "eslint-config-react-app"
+    ],
+    "ignoreExportsUsedInFile": true,
+    "jest": {
+        "entry": [
+            "src/**/*.test.{js,jsx,ts,tsx}",
+            "src/setupTests.ts"
+        ]
+    },
+    "tags": [
+        "-lintignore"
+    ]
+}
