@@ -76,9 +76,10 @@ By participating in this project, you agree to abide by our [Code of Conduct](CO
 
 4. **Run tests and linting before pushing:**
    ```bash
-   yarn lint    # Must pass with 0 warnings
-   yarn test    # All tests must pass
-   yarn build   # Must build successfully
+   yarn lint       # Must pass with 0 warnings
+   yarn typecheck  # Must pass with no errors
+   yarn test       # All tests must pass
+   yarn build      # Must build successfully
    ```
 
 5. **Push to your fork:**
@@ -90,31 +91,47 @@ By participating in this project, you agree to abide by our [Code of Conduct](CO
 
 ## Coding Standards
 
-### React & JavaScript
+### React & TypeScript
 
 - **React 19** with functional components and hooks
+- **TypeScript** for type safety (strict mode enabled)
 - **No class components** — use functional components exclusively
-- **PropTypes are not required** — TypeScript migration is a future consideration
 - Follow existing code style and structure
 
 ### Styling
 
 - **Tailwind CSS 4** for all styling
 - Avoid inline styles or external CSS files unless absolutely necessary
-- Use existing theme colors from `src/constants/theme.js`
+- Use existing theme colors from `src/constants/theme.ts`
 - Ensure responsive design (mobile-first approach)
 
-### Linting
+### Linting & Code Quality
 
-- **Zero warnings policy** — `npm run lint` must pass with no warnings
-- ESLint configuration is based on `react-app` preset
+This project uses **automatic code formatting and linting** via Husky and lint-staged. When you commit:
+
+1. **Prettier** auto-formats your code
+2. **ESLint** checks for code quality issues
+3. **TypeScript** validates type safety
+4. **Knip** detects unused exports, dependencies, and files
+
+You don't need to run these manually — they run automatically on commit. However, you can run them manually:
+
+```bash
+yarn style       # Check formatting and linting
+yarn style:fix   # Auto-fix formatting and linting issues
+yarn typecheck   # Check TypeScript types
+yarn knip        # Check for unused code
+```
+
+- **Zero warnings policy** — `yarn lint` must pass with no warnings
+- ESLint configuration is based on `react-app` preset with Prettier integration
 - Fix all linting errors before submitting a PR
 
 ### Testing
 
 - Add tests for new features and bug fixes
-- Test files use `.test.js` or `.test.jsx` extension
-- Run `npm test` to ensure all tests pass
+- Test files use `.test.ts` or `.test.tsx` extension
+- Run `yarn test` to ensure all tests pass
 - Aim for meaningful test coverage (not just 100% for the sake of it)
 
 ### File Organization
@@ -131,9 +148,11 @@ By participating in this project, you agree to abide by our [Code of Conduct](CO
 ### Before Submitting
 
 - [ ] Your branch is up to date with `develop`
-- [ ] All tests pass (`npm test`)
-- [ ] Linting passes with zero warnings (`npm run lint`)
-- [ ] Build succeeds (`npm run build`)
+- [ ] All tests pass (`yarn test`)
+- [ ] TypeScript compiles without errors (`yarn typecheck`)
+- [ ] Linting passes with zero warnings (`yarn lint`)
+- [ ] Build succeeds (`yarn build`)
+- [ ] No unused code detected (`yarn knip`)
 - [ ] You've tested your changes manually in the browser
 - [ ] Your commits have clear, descriptive messages
 
@@ -186,8 +205,8 @@ Have an idea? We'd love to hear it! Please [open an issue](https://github.com/Th
 
 ### Key Areas
 
-- **Draft System** (`src/utils/draftHelpers.js`) — Card selection, rarity weighting
-- **Game State** (`src/state/gameReducer.js`) — Core game logic
+- **Draft System** (`src/utils/draftHelpers.ts`) — Card selection, rarity weighting
+- **Game State** (`src/state/gameReducer.ts`) — Core game logic
 - **Events System** (`src/systems/events/`) — High-risk events between missions
 - **Multiplayer** (`src/systems/multiplayer/`) — Firebase-based syncing
 - **Analytics** (`src/components/analytics/`) — Post-game statistics

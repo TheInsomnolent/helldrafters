@@ -95,11 +95,13 @@ The app will open at [http://localhost:3000](http://localhost:3000).
 yarn build
 ```
 
-### Testing
+### Testing & Code Quality
 
 ```bash
-yarn test    # Run tests
-yarn lint    # Check for linting errors
+yarn test       # Run tests
+yarn typecheck  # Check TypeScript types
+yarn lint       # Check for linting errors
+yarn knip       # Check for unused code
 ```
 
 ## Support the Project
