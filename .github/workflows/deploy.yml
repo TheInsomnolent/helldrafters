@@ -4,6 +4,7 @@ on:
   push:
     branches:
       - main
+      - develop
 
 permissions:
   contents: write
@@ -36,12 +37,48 @@ jobs:
           REACT_APP_BUILD_TIME: ${{ github.event.head_commit.timestamp }}
           REACT_APP_COMMIT_SHA: ${{ github.sha }}
 
+      - name: Determine deployment directory
+        id: deploy-dir
+        run: |
+          if [ "${{ github.ref }}" == "refs/heads/main" ]; then
+            echo "dir=." >> $GITHUB_OUTPUT
+            echo "path=root" >> $GITHUB_OUTPUT
+          elif [ "${{ github.ref }}" == "refs/heads/develop" ]; then
+            echo "dir=develop" >> $GITHUB_OUTPUT
+            echo "path=develop" >> $GITHUB_OUTPUT
+          fi
+
       - name: Deploy to GitHub Pages
         uses: peaceiris/actions-gh-pages@v3
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
           publish_dir: ./build
           publish_branch: gh-pages
+          destination_dir: ${{ steps.deploy-dir.outputs.dir }}
+
+      - name: Clean up old test deployments
+        if: success()
+        run: |
+          git fetch origin gh-pages:gh-pages
+          git checkout gh-pages
+          
+          # Remove all directories that look like test deployments (pr-* or branch-*)
+          for dir in pr-* branch-* 2>/dev/null; do
+            if [ -d "$dir" ]; then
+              echo "Removing test deployment: $dir"
+              git rm -rf "$dir"
+            fi
+          done
+          
+          # Commit and push if there were changes
+          if git diff --cached --quiet; then
+            echo "No test deployments to clean up"
+          else
+            git config user.name "github-actions[bot]"
+            git config user.email "github-actions[bot]@users.noreply.github.com"
+            git commit -m "Clean up test deployments after ${{ steps.deploy-dir.outputs.path }} deployment"
+            git push origin gh-pages
+          fi
 
       - name: Install Firebase Functions dependencies
         run: |

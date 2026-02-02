@@ -1,0 +1,105 @@
+name: Deploy Test Branch to GitHub Pages
+
+on:
+  workflow_dispatch:
+    inputs:
+      branch:
+        description: 'Branch name to deploy (leave empty to use current branch)'
+        required: false
+        type: string
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  deploy-test:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Determine branch to deploy
+        id: branch
+        run: |
+          if [ -n "${{ inputs.branch }}" ]; then
+            BRANCH="${{ inputs.branch }}"
+          else
+            BRANCH="${{ github.ref_name }}"
+          fi
+          echo "name=$BRANCH" >> $GITHUB_OUTPUT
+          echo "Deploying branch: $BRANCH"
+
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ steps.branch.outputs.name }}
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: 'yarn'
+
+      - name: Install dependencies
+        run: yarn --frozen-lockfile
+
+      - name: Copy CHANGELOG to build
+        run: |
+          echo "Copying CHANGELOG.md to public folder for deployment"
+          cp CHANGELOG.md public/CHANGELOG.md
+
+      - name: Build application
+        run: yarn build
+        env:
+          REACT_APP_BUILD_TIME: ${{ github.event.head_commit.timestamp }}
+          REACT_APP_COMMIT_SHA: ${{ github.sha }}
+
+      - name: Sanitize branch name for directory
+        id: sanitize
+        run: |
+          BRANCH="${{ steps.branch.outputs.name }}"
+          # Replace slashes and other special chars with dashes
+          SAFE_NAME=$(echo "$BRANCH" | sed 's/[^a-zA-Z0-9-]/-/g' | tr '[:upper:]' '[:lower:]')
+          echo "safe=$SAFE_NAME" >> $GITHUB_OUTPUT
+          echo "Sanitized branch name: $SAFE_NAME"
+
+      - name: Deploy to GitHub Pages
+        uses: peaceiris/actions-gh-pages@v3
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_dir: ./build
+          publish_branch: gh-pages
+          destination_dir: branch-${{ steps.sanitize.outputs.safe }}
+
+      - name: Comment on PR with deployment URL
+        if: github.event_name == 'pull_request' || github.event.pull_request
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          BRANCH="${{ steps.branch.outputs.name }}"
+          SAFE_NAME="${{ steps.sanitize.outputs.safe }}"
+          DEPLOY_URL="https://theinsomnolent.github.io/helldrafters/branch-$SAFE_NAME/"
+          
+          # Try to find an open PR for this branch
+          PR_NUMBER=$(gh pr list --head "$BRANCH" --state open --json number --jq '.[0].number')
+          
+          if [ -n "$PR_NUMBER" ]; then
+            echo "Found PR #$PR_NUMBER for branch $BRANCH"
+            
+            # Post comment with deployment URL
+            gh pr comment $PR_NUMBER --body "🚀 **Test deployment available!**
+
+            Branch \`$BRANCH\` has been deployed to:
+            $DEPLOY_URL
+
+            This deployment will be automatically cleaned up when:
+            - This PR is merged or closed
+            - A new build is pushed to \`main\` or \`develop\`"
+          else
+            echo "No open PR found for branch $BRANCH"
+          fi
+
+      - name: Output deployment URL
+        run: |
+          SAFE_NAME="${{ steps.sanitize.outputs.safe }}"
+          echo "✅ Deployment complete!"
+          echo "🌐 URL: https://theinsomnolent.github.io/helldrafters/branch-$SAFE_NAME/"
