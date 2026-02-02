@@ -172,6 +172,7 @@ import {
     type EventChoice,
     type EventOutcome,
 } from './systems/events/events'
+import * as eventsV2 from './systems/eventsV2'
 import { initializeAnalytics, MultiplayerProvider, useMultiplayer } from './systems/multiplayer'
 import { saveRunToHistory } from './systems/persistence/saveManager'
 import {
@@ -257,6 +258,7 @@ function HelldiversRoguelikeApp() {
         setActionHandler,
         lobbyData,
         firebaseReady,
+        lobbyId,
     } = multiplayer
 
     // Register dispatch with multiplayer context
@@ -843,6 +845,13 @@ function HelldiversRoguelikeApp() {
                 dispatch(actions.resetEventSelections())
                 dispatch(actions.setCurrentEvent(event))
                 dispatch(actions.setPhase('EVENT'))
+
+                // Initialize eventsV2 state if using the new system
+                if (gameConfig.useEventsV2 && isMultiplayer && lobbyId && multiplayer.playerId) {
+                    // Initialize the new event UI state in Firebase
+                    eventsV2.initializeEventUIState(lobbyId, event.id, event, multiplayer.playerId)
+                }
+
                 return true
             }
         }
