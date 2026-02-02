@@ -849,7 +849,11 @@ function HelldiversRoguelikeApp() {
                 // Initialize eventsV2 state if using the new system
                 if (gameConfig.useEventsV2 && isMultiplayer && lobbyId && multiplayer.playerId) {
                     // Initialize the new event UI state in Firebase
-                    eventsV2.initializeEventUIState(lobbyId, event.id, event, multiplayer.playerId)
+                    eventsV2
+                        .initializeEventUIState(lobbyId, event.id, event, multiplayer.playerId)
+                        .catch((error) => {
+                            console.error('Failed to initialize eventsV2 state:', error)
+                        })
                 }
 
                 return true

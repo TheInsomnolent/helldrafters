@@ -23,6 +23,11 @@ import type { GameEvent, EventChoice, StratagemSelection } from '../../types'
 /**
  * Sanitize state for Firebase - convert undefined to null
  * Firebase strips undefined values which can cause issues
+ *
+ * Note: The type assertion `as T` is intentional here because:
+ * 1. Firebase doesn't distinguish between null and undefined
+ * 2. We want to preserve the input type for callers
+ * 3. The runtime behavior is correct (null is a valid value in Firebase)
  */
 const sanitizeForFirebase = <T>(obj: T): T => {
     if (obj === undefined) return null as T
@@ -116,34 +121,38 @@ export const updateEventUIState = async (
         onValue(
             eventUIStateRef,
             async (snapshot) => {
-                if (snapshot.exists()) {
-                    const currentState = snapshot.val() as EventUIState
-                    const newState: EventUIState = {
-                        ...currentState,
-                        ...updates,
-                        lastUpdatedAt: Date.now(),
-                        lastUpdatedBy: playerId,
+                try {
+                    if (snapshot.exists()) {
+                        const currentState = snapshot.val() as EventUIState
+                        const newState: EventUIState = {
+                            ...currentState,
+                            ...updates,
+                            lastUpdatedAt: Date.now(),
+                            lastUpdatedBy: playerId,
+                        }
+
+                        // Update outcome preview if selections changed
+                        if (
+                            updates.selectedChoice !== undefined ||
+                            updates.selectedPlayerIndex !== undefined
+                        ) {
+                            newState.outcomePreview = generateOutcomePreview(newState)
+                        }
+
+                        // Update canGoBack based on history
+                        newState.canGoBack = canNavigateBack(newState)
+
+                        const sanitizedState = sanitizeForFirebase(newState)
+                        await set(eventUIStateRef, {
+                            ...sanitizedState,
+                            _updatedAt: serverTimestamp(),
+                        })
+                        resolve()
+                    } else {
+                        reject(new Error('Event UI state not found'))
                     }
-
-                    // Update outcome preview if selections changed
-                    if (
-                        updates.selectedChoice !== undefined ||
-                        updates.selectedPlayerIndex !== undefined
-                    ) {
-                        newState.outcomePreview = generateOutcomePreview(newState)
-                    }
-
-                    // Update canGoBack based on history
-                    newState.canGoBack = canNavigateBack(newState)
-
-                    const sanitizedState = sanitizeForFirebase(newState)
-                    await set(eventUIStateRef, {
-                        ...sanitizedState,
-                        _updatedAt: serverTimestamp(),
-                    })
-                    resolve()
-                } else {
-                    reject(new Error('Event UI state not found'))
+                } catch (error) {
+                    reject(error)
                 }
             },
             { onlyOnce: true },
