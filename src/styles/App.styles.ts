@@ -583,36 +583,80 @@ export const EventPageWrapper = styled.div`
 // DASHBOARD PHASE
 // =============================================
 
-// Main content container for dashboard
+// Main content container for dashboard - responsive grid layout
 export const DashboardMain = styled.div`
-    max-width: 1400px;
+    max-width: 1800px;
     margin: 0 auto;
     padding: 24px;
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 24px;
+
+    /* Constrain content to prevent horizontal overflow on mobile */
+    @media (max-width: 1023px) {
+        padding: 16px;
+        max-width: 100%;
+        overflow-x: hidden;
+    }
+
+    /* Two-column layout on tablet/small desktop: players left, controls right */
+    @media (min-width: 1024px) {
+        grid-template-columns: 1fr 420px;
+        gap: 32px;
+    }
+
+    /* Three-column layout on large PC screens: P1 P2 | CONTROLS */
+    @media (min-width: 1400px) {
+        grid-template-columns: 1fr 1fr 440px;
+    }
 `
 
 // Player roster grid
 export const PlayerRosterGrid = styled.div<{ $playerCount: number }>`
     display: grid;
-    grid-template-columns: ${({ $playerCount }) =>
-        $playerCount > 1 ? 'repeat(auto-fit, minmax(400px, 1fr))' : '1fr'};
-    gap: 32px;
-    margin-bottom: 48px;
+    grid-template-columns: 1fr;
+    gap: 24px;
+
+    /* On tablet/small desktop: single column of players in left area */
+    @media (min-width: 1024px) {
+        grid-column: 1;
+        grid-row: 1;
+    }
+
+    /* On large PC: 2x2 grid of players spanning first 2 columns */
+    @media (min-width: 1400px) {
+        grid-column: 1 / 3;
+        grid-template-columns: ${({ $playerCount }) => ($playerCount > 1 ? '1fr 1fr' : '1fr')};
+        align-content: start;
+    }
 `
 
-// Controls section container
+// Controls section container - right sidebar on larger screens
 export const ControlsSection = styled.div`
     display: flex;
     flex-direction: column;
-    align-items: center;
     gap: 16px;
+
+    /* Right column on tablet/small desktop */
+    @media (min-width: 1024px) {
+        grid-column: 2;
+        grid-row: 1;
+        position: sticky;
+        top: 24px;
+        align-self: start;
+    }
+
+    /* Still right column (now column 3) on large PC */
+    @media (min-width: 1400px) {
+        grid-column: 3;
+    }
 `
 
 // Mission objective card
 export const ObjectiveCard = styled.div<{ $factionColor: string }>`
     width: 100%;
-    max-width: 800px;
     background-color: ${({ $factionColor }) => `${$factionColor}20`};
-    padding: 20px;
+    padding: 16px 20px;
     border-radius: 8px;
     border: 2px solid ${({ $factionColor }) => $factionColor};
     text-align: center;
@@ -637,9 +681,8 @@ export const ObjectiveText = styled.p`
 // Mission status card
 export const MissionStatusCard = styled.div`
     width: 100%;
-    max-width: 800px;
     background-color: #283548;
-    padding: 24px;
+    padding: 20px;
     border-radius: 12px;
     border: 1px solid rgba(100, 116, 139, 0.5);
     text-align: center;
@@ -680,9 +723,13 @@ export const RatingLabel = styled.label`
 export const StarRatingGrid = styled.div<{ $disabled?: boolean }>`
     display: grid;
     grid-template-columns: repeat(5, 1fr);
-    gap: 12px;
+    gap: 8px;
     margin-bottom: 12px;
     pointer-events: ${({ $disabled }) => ($disabled ? 'none' : 'auto')};
+
+    @media (max-width: 480px) {
+        gap: 4px;
+    }
 `
 
 export const StarRatingButton = styled.button<{
@@ -690,14 +737,19 @@ export const StarRatingButton = styled.button<{
     $disabled?: boolean
     $factionColor: string
 }>`
-    padding: 16px 8px;
+    padding: 12px 6px;
     border-radius: 4px;
     font-weight: 900;
-    font-size: 24px;
+    font-size: 20px;
     display: flex;
     flex-direction: column;
     align-items: center;
     justify-content: center;
+
+    @media (max-width: 480px) {
+        padding: 8px 4px;
+        font-size: 16px;
+    }
     transition: all 0.2s;
     background-color: ${({ $selected, $factionColor }) =>
         $selected ? $factionColor : 'transparent'};
@@ -718,7 +770,11 @@ export const StarRatingButton = styled.button<{
 `
 
 export const StarIcon = styled.div`
-    font-size: 16px;
+    font-size: 14px;
+
+    @media (max-width: 480px) {
+        font-size: 12px;
+    }
 `
 
 export const RatingHint = styled.p`
@@ -730,15 +786,19 @@ export const RatingHint = styled.p`
 
 // Samples section
 export const SamplesSection = styled.div<{ $disabled?: boolean }>`
-    margin-bottom: 32px;
+    margin-bottom: 24px;
     opacity: ${({ $disabled }) => ($disabled ? 0.6 : 1)};
 `
 
 export const SamplesGrid = styled.div`
     display: grid;
     grid-template-columns: repeat(3, 1fr);
-    gap: 16px;
+    gap: 12px;
     margin-bottom: 8px;
+
+    @media (max-width: 480px) {
+        gap: 8px;
+    }
 `
 
 export const SampleColumn = styled.div``
@@ -765,16 +825,21 @@ export const SampleLabel = styled.span<{ $color: string }>`
 
 export const SampleInput = styled.input<{ $borderColor: string; $disabled?: boolean }>`
     width: 100%;
-    padding: 12px;
+    padding: 10px 8px;
     background-color: #1f2937;
     border: 1px solid ${({ $borderColor }) => $borderColor};
     border-radius: 4px;
     color: ${({ $borderColor }) => $borderColor};
-    font-size: 16px;
+    font-size: 14px;
     font-weight: bold;
     text-align: center;
     font-family: monospace;
     cursor: ${({ $disabled }) => ($disabled ? 'not-allowed' : 'text')};
+
+    @media (max-width: 480px) {
+        padding: 8px 4px;
+        font-size: 12px;
+    }
 `
 
 export const SampleHint = styled.div`
@@ -856,15 +921,21 @@ export const ExtractionNote = styled.p`
 // Mission buttons
 export const MissionButtonRow = styled.div`
     display: flex;
-    gap: 16px;
+    gap: 12px;
     justify-content: center;
+
+    /* Stack on very narrow screens only */
+    @media (max-width: 380px) {
+        flex-direction: column;
+    }
 `
 
 export const MissionFailButton = styled.button`
     display: flex;
     align-items: center;
+    justify-content: center;
     gap: 8px;
-    padding: 16px 24px;
+    padding: 12px 16px;
     background-color: rgba(127, 29, 29, 0.3);
     color: #ef4444;
     border: 1px solid #7f1d1d;
@@ -873,6 +944,8 @@ export const MissionFailButton = styled.button`
     text-transform: uppercase;
     cursor: pointer;
     transition: all 0.2s;
+    font-size: 12px;
+    white-space: nowrap;
 
     &:hover {
         background-color: rgba(127, 29, 29, 0.5);
@@ -882,15 +955,18 @@ export const MissionFailButton = styled.button`
 export const MissionSuccessButton = styled.button<{ $disabled?: boolean }>`
     display: flex;
     align-items: center;
+    justify-content: center;
     gap: 8px;
-    padding: 16px 32px;
+    padding: 12px 20px;
     background-color: ${COLORS.PRIMARY};
     color: black;
     font-weight: bold;
     text-transform: uppercase;
     border: none;
     border-radius: 4px;
-    letter-spacing: 2px;
+    letter-spacing: 1px;
+    font-size: 12px;
+    white-space: nowrap;
     opacity: ${({ $disabled }) => ($disabled ? 0.5 : 1)};
     cursor: ${({ $disabled }) => ($disabled ? 'not-allowed' : 'pointer')};
     pointer-events: ${({ $disabled }) => ($disabled ? 'none' : 'auto')};
@@ -932,12 +1008,11 @@ export const WaitingForHostSubtext = styled.p`
 // Debug Events section
 export const DebugSection = styled.div`
     width: 100%;
-    max-width: 800px;
     background-color: #1a2332;
-    padding: 24px;
+    padding: 20px;
     border-radius: 12px;
     border: 2px solid #ef4444;
-    margin-top: 24px;
+    margin-top: 16px;
 `
 
 export const DebugHeader = styled.div`

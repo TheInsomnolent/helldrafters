@@ -176,4 +176,10 @@ export const HeaderBar = styled.header<HeaderBarProps>`
     position: sticky;
     top: 0;
     z-index: ${({ theme }) => theme.zIndex.sticky};
+    overflow-x: auto;
+    min-width: 0;
+
+    @media (max-width: 768px) {
+        padding: ${({ theme }) => theme.spacing.md};
+    }
 `

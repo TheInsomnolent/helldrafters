@@ -16,6 +16,13 @@ const HeaderContent = styled.div`
     display: flex;
     justify-content: space-between;
     align-items: center;
+    gap: ${({ theme }) => theme.spacing.md};
+    min-width: 0;
+
+    @media (max-width: 768px) {
+        flex-wrap: wrap;
+        gap: ${({ theme }) => theme.spacing.sm};
+    }
 `
 
 const DifficultyTitle = styled.h1`
@@ -25,6 +32,10 @@ const DifficultyTitle = styled.h1`
     color: ${({ theme }) => theme.colors.textPrimary};
     letter-spacing: 1px;
     margin: 0;
+
+    @media (max-width: 480px) {
+        font-size: 14px;
+    }
 `
 
 const TheaterInfo = styled.div<{ $factionColor: string }>`

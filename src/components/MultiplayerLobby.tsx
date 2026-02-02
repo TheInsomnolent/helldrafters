@@ -191,10 +191,18 @@ const StatusBar = styled.div<{ $accentColor?: string }>`
     display: flex;
     align-items: center;
     justify-content: space-between;
-    gap: ${({ theme }) => theme.spacing.lg};
+    gap: ${({ theme }) => theme.spacing.md};
     position: sticky;
     top: 0;
     z-index: ${({ theme }) => theme.zIndex.sticky};
+    overflow-x: auto;
+    min-width: 0;
+
+    @media (max-width: 768px) {
+        padding: 6px 12px;
+        flex-wrap: wrap;
+        gap: ${({ theme }) => theme.spacing.sm};
+    }
 `
 
 const StatusLabel = styled.span<{ $color?: string }>`

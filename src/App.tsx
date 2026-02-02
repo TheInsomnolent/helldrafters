@@ -141,7 +141,7 @@ import {
     DebugButtonTitle,
     DebugButtonSubtext,
     DebugHint,
-} from './components/App.styles'
+} from './styles/App.styles'
 import { useGamePersistence } from './hooks'
 import {
     DIFFICULTY_CONFIG,
