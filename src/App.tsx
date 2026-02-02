@@ -92,6 +92,55 @@ import {
     SacrificeWaitText,
     FlexButton,
     StartOperationButton,
+    EventPageWrapper,
+    DashboardMain,
+    PlayerRosterGrid,
+    ControlsSection,
+    ObjectiveCard,
+    ObjectiveTitle,
+    ObjectiveText,
+    MissionStatusCard,
+    MissionStatusTitle,
+    OperationStatus,
+    RatingSection,
+    RatingLabel,
+    StarRatingGrid,
+    StarRatingButton,
+    StarIcon,
+    RatingHint,
+    SamplesSection,
+    SamplesGrid,
+    SampleColumn,
+    SampleHeader,
+    SampleIcon,
+    SampleLabel,
+    SampleInput,
+    SampleHint,
+    SamplesNote,
+    ExtractionSection,
+    ExtractionList,
+    ExtractionLabel,
+    ExtractionCheckbox,
+    ExtractionContent,
+    ExtractionName,
+    ExtractionPenalty,
+    ExtractionNote,
+    MissionButtonRow,
+    MissionFailButton,
+    MissionSuccessButton,
+    MissionReportHint,
+    WaitingForHostBox,
+    WaitingForHostText,
+    WaitingForHostSubtext,
+    DebugSection,
+    DebugHeader,
+    DebugTitle,
+    ResetSeenEventsButton,
+    DebugGrid,
+    DebugButton,
+    DebugButtonTitle,
+    DebugButtonSubtext,
+    DebugHint,
 } from './components/App.styles'
 import { useGamePersistence } from './hooks'
 import {
@@ -100,7 +149,7 @@ import {
     STARTING_LOADOUT,
 } from './constants/gameConfig'
 import { Subfaction } from './constants/balancingConfig'
-import { BUTTON_STYLES, COLORS, getFactionColors, SHADOWS } from './constants/theme'
+import { getFactionColors } from './constants/theme'
 import { TYPE } from './constants/types'
 import { DEFAULT_WARBONDS } from './constants/warbonds'
 import { MASTER_DB } from './data/itemsByWarbond'
@@ -2825,7 +2874,7 @@ function HelldiversRoguelikeApp() {
         }
 
         return (
-            <div style={{ minHeight: '100vh' }}>
+            <EventPageWrapper>
                 {/* MULTIPLAYER STATUS BAR */}
                 {isMultiplayer && (
                     <MultiplayerStatusBar gameConfig={gameConfig} onDisconnect={disconnect} />
@@ -2921,7 +2970,7 @@ function HelldiversRoguelikeApp() {
                     }}
                     onConfirmSelections={handleEventChoice}
                 />
-            </div>
+            </EventPageWrapper>
         )
     }
 
@@ -3394,19 +3443,9 @@ function HelldiversRoguelikeApp() {
             />
 
             {/* MAIN CONTENT */}
-            <div style={{ maxWidth: '1400px', margin: '0 auto', padding: '24px' }}>
+            <DashboardMain>
                 {/* PLAYER ROSTER */}
-                <div
-                    style={{
-                        display: 'grid',
-                        gridTemplateColumns:
-                            gameConfig.playerCount > 1
-                                ? 'repeat(auto-fit, minmax(400px, 1fr))'
-                                : '1fr',
-                        gap: '32px',
-                        marginBottom: '48px',
-                    }}
-                >
+                <PlayerRosterGrid $playerCount={gameConfig.playerCount}>
                     {players.map((player, index) => {
                         const {
                             getSlotLockCost,
@@ -3446,127 +3485,41 @@ function HelldiversRoguelikeApp() {
                             />
                         )
                     })}
-                </div>
+                </PlayerRosterGrid>
 
                 {/* CONTROLS */}
-                <div
-                    style={{
-                        display: 'flex',
-                        flexDirection: 'column',
-                        alignItems: 'center',
-                        gap: '16px',
-                    }}
-                >
+                <ControlsSection>
                     {/* Mission Objective Header */}
-                    <div
-                        style={{
-                            width: '100%',
-                            maxWidth: '800px',
-                            backgroundColor: `${factionColors.PRIMARY}20`,
-                            padding: '20px',
-                            borderRadius: '8px',
-                            border: `2px solid ${factionColors.PRIMARY}`,
-                            textAlign: 'center',
-                        }}
-                    >
-                        <h2
-                            style={{
-                                fontSize: '24px',
-                                fontWeight: 'bold',
-                                color: factionColors.PRIMARY,
-                                textTransform: 'uppercase',
-                                margin: 0,
-                                letterSpacing: '1px',
-                            }}
-                        >
+                    <ObjectiveCard $factionColor={factionColors.PRIMARY}>
+                        <ObjectiveTitle $color={factionColors.PRIMARY}>
                             📍 Current Objective
-                        </h2>
-                        <p
-                            style={{
-                                fontSize: '16px',
-                                color: 'white',
-                                margin: '12px 0 0 0',
-                                fontWeight: 'bold',
-                            }}
-                        >
+                        </ObjectiveTitle>
+                        <ObjectiveText>
                             Complete a mission at Difficulty {currentDiff}
                             {gameConfig.enduranceMode &&
                                 ` (Operation: ${currentMission}/${getMissionsForDifficulty(currentDiff)})`}
-                        </p>
-                    </div>
+                        </ObjectiveText>
+                    </ObjectiveCard>
 
-                    <div
-                        style={{
-                            width: '100%',
-                            maxWidth: '800px',
-                            backgroundColor: '#283548',
-                            padding: '24px',
-                            borderRadius: '12px',
-                            border: '1px solid rgba(100, 116, 139, 0.5)',
-                            textAlign: 'center',
-                        }}
-                    >
-                        <h2
-                            style={{
-                                fontSize: '20px',
-                                fontWeight: 'bold',
-                                color: 'white',
-                                textTransform: 'uppercase',
-                                marginBottom: '8px',
-                            }}
-                        >
-                            Mission Status Report
-                        </h2>
+                    <MissionStatusCard>
+                        <MissionStatusTitle>Mission Status Report</MissionStatusTitle>
                         {gameConfig.enduranceMode && (
-                            <div
-                                style={{
-                                    fontSize: '12px',
-                                    color: factionColors.PRIMARY,
-                                    fontFamily: 'monospace',
-                                    marginBottom: '16px',
-                                    fontWeight: 'bold',
-                                }}
-                            >
+                            <OperationStatus $color={factionColors.PRIMARY}>
                                 Operation Status: Mission {currentMission}/
                                 {getMissionsForDifficulty(currentDiff)}
-                            </div>
+                            </OperationStatus>
                         )}
 
                         {/* Star Rating Selection */}
-                        <div
-                            style={{
-                                marginBottom: '32px',
-                                opacity: !isMultiplayer || isHost ? 1 : 0.6,
-                            }}
-                        >
-                            <label
-                                style={{
-                                    display: 'block',
-                                    fontSize: '12px',
-                                    fontWeight: 'bold',
-                                    color: '#94a3b8',
-                                    textTransform: 'uppercase',
-                                    letterSpacing: '0.15em',
-                                    marginBottom: '16px',
-                                }}
-                            >
-                                Mission Performance Rating
-                            </label>
-                            <div
-                                style={{
-                                    display: 'grid',
-                                    gridTemplateColumns: 'repeat(5, 1fr)',
-                                    gap: '12px',
-                                    marginBottom: '12px',
-                                    pointerEvents: !isMultiplayer || isHost ? 'auto' : 'none',
-                                }}
-                            >
+                        <RatingSection $disabled={isMultiplayer && !isHost}>
+                            <RatingLabel>Mission Performance Rating</RatingLabel>
+                            <StarRatingGrid $disabled={isMultiplayer && !isHost}>
                                 {[1, 2, 3, 4, 5].map((n) => {
                                     const maxStars = getMaxStarsForDifficulty(currentDiff)
                                     const isDisabled = n > maxStars || (isMultiplayer && !isHost)
 
                                     return (
-                                        <button
+                                        <StarRatingButton
                                             key={n}
                                             onClick={() =>
                                                 !isDisabled &&
@@ -3575,83 +3528,25 @@ function HelldiversRoguelikeApp() {
                                                 )
                                             }
                                             disabled={isDisabled}
-                                            style={{
-                                                padding: '16px 8px',
-                                                borderRadius: '4px',
-                                                fontWeight: '900',
-                                                fontSize: '24px',
-                                                display: 'flex',
-                                                flexDirection: 'column',
-                                                alignItems: 'center',
-                                                justifyContent: 'center',
-                                                transition: 'all 0.2s',
-                                                backgroundColor:
-                                                    gameConfig.starRating === n
-                                                        ? factionColors.PRIMARY
-                                                        : 'transparent',
-                                                color: isDisabled
-                                                    ? '#334155'
-                                                    : gameConfig.starRating === n
-                                                      ? 'black'
-                                                      : '#64748b',
-                                                border:
-                                                    gameConfig.starRating === n
-                                                        ? `2px solid ${factionColors.PRIMARY}`
-                                                        : isDisabled
-                                                          ? '1px solid #1e293b'
-                                                          : '1px solid rgba(100, 116, 139, 0.5)',
-                                                cursor: isDisabled ? 'not-allowed' : 'pointer',
-                                                opacity: isDisabled ? 0.4 : 1,
-                                            }}
-                                            onMouseEnter={(e) => {
-                                                if (!isDisabled && gameConfig.starRating !== n) {
-                                                    e.currentTarget.style.borderColor = '#64748b'
-                                                }
-                                            }}
-                                            onMouseLeave={(e) => {
-                                                if (!isDisabled && gameConfig.starRating !== n) {
-                                                    e.currentTarget.style.borderColor =
-                                                        'rgba(100, 116, 139, 0.5)'
-                                                }
-                                            }}
+                                            $selected={gameConfig.starRating === n}
+                                            $disabled={isDisabled}
+                                            $factionColor={factionColors.PRIMARY}
                                         >
                                             <div>{n}</div>
-                                            <div style={{ fontSize: '16px' }}>★</div>
-                                        </button>
+                                            <StarIcon>★</StarIcon>
+                                        </StarRatingButton>
                                     )
                                 })}
-                            </div>
-                            <p
-                                style={{
-                                    fontSize: '11px',
-                                    color: '#64748b',
-                                    fontStyle: 'italic',
-                                    margin: 0,
-                                }}
-                            >
+                            </StarRatingGrid>
+                            <RatingHint>
                                 {getDraftHandSize(gameConfig.starRating)} equipment cards will be
                                 offered
-                            </p>
-                        </div>
+                            </RatingHint>
+                        </RatingSection>
 
                         {/* Samples Collected */}
-                        <div
-                            style={{
-                                marginBottom: '32px',
-                                opacity: !isMultiplayer || isHost ? 1 : 0.6,
-                            }}
-                        >
-                            <label
-                                style={{
-                                    display: 'block',
-                                    fontSize: '12px',
-                                    fontWeight: 'bold',
-                                    color: '#94a3b8',
-                                    textTransform: 'uppercase',
-                                    letterSpacing: '0.15em',
-                                    marginBottom: '12px',
-                                }}
-                            >
+                        <SamplesSection $disabled={isMultiplayer && !isHost}>
+                            <RatingLabel>
                                 Samples Collected This Mission{' '}
                                 {isMultiplayer && !isHost && (
                                     <span
@@ -3664,228 +3559,84 @@ function HelldiversRoguelikeApp() {
                                         (Host only)
                                     </span>
                                 )}
-                            </label>
-                            <div
-                                style={{
-                                    display: 'grid',
-                                    gridTemplateColumns: 'repeat(3, 1fr)',
-                                    gap: '16px',
-                                    marginBottom: '8px',
-                                }}
-                            >
+                            </RatingLabel>
+                            <SamplesGrid>
                                 {/* Common Samples */}
-                                <div>
-                                    <div
-                                        style={{
-                                            display: 'flex',
-                                            alignItems: 'center',
-                                            justifyContent: 'center',
-                                            gap: '8px',
-                                            marginBottom: '8px',
-                                        }}
-                                    >
-                                        <img
+                                <SampleColumn>
+                                    <SampleHeader>
+                                        <SampleIcon
                                             src="https://helldivers.wiki.gg/images/Common_Sample_Logo.svg"
                                             alt="Common"
-                                            style={{ width: '20px', height: '20px' }}
                                         />
-                                        <span
-                                            style={{
-                                                fontSize: '12px',
-                                                fontWeight: 'bold',
-                                                color: '#22c55e',
-                                                textTransform: 'uppercase',
-                                            }}
-                                        >
-                                            Common
-                                        </span>
-                                    </div>
-                                    <input
+                                        <SampleLabel $color="#22c55e">Common</SampleLabel>
+                                    </SampleHeader>
+                                    <SampleInput
                                         type="number"
                                         min="0"
                                         max="999"
                                         defaultValue="0"
                                         id="commonSamples"
                                         disabled={isMultiplayer && !isHost}
-                                        style={{
-                                            width: '100%',
-                                            padding: '12px',
-                                            backgroundColor: '#1f2937',
-                                            border: '1px solid #22c55e',
-                                            borderRadius: '4px',
-                                            color: '#22c55e',
-                                            fontSize: '16px',
-                                            fontWeight: 'bold',
-                                            textAlign: 'center',
-                                            fontFamily: 'monospace',
-                                            cursor:
-                                                !isMultiplayer || isHost ? 'text' : 'not-allowed',
-                                        }}
+                                        $borderColor="#22c55e"
+                                        $disabled={isMultiplayer && !isHost}
                                     />
-                                    <div
-                                        style={{
-                                            fontSize: '10px',
-                                            color: '#64748b',
-                                            marginTop: '4px',
-                                            fontStyle: 'italic',
-                                        }}
-                                    >
-                                        +1% event chance each
-                                    </div>
-                                </div>
+                                    <SampleHint>+1% event chance each</SampleHint>
+                                </SampleColumn>
 
                                 {/* Rare Samples */}
-                                <div>
-                                    <div
-                                        style={{
-                                            display: 'flex',
-                                            alignItems: 'center',
-                                            justifyContent: 'center',
-                                            gap: '8px',
-                                            marginBottom: '8px',
-                                        }}
-                                    >
-                                        <img
+                                <SampleColumn>
+                                    <SampleHeader>
+                                        <SampleIcon
                                             src="https://helldivers.wiki.gg/images/Rare_Sample_Logo.svg"
                                             alt="Rare"
-                                            style={{ width: '20px', height: '20px' }}
                                         />
-                                        <span
-                                            style={{
-                                                fontSize: '12px',
-                                                fontWeight: 'bold',
-                                                color: '#f97316',
-                                                textTransform: 'uppercase',
-                                            }}
-                                        >
-                                            Rare
-                                        </span>
-                                    </div>
-                                    <input
+                                        <SampleLabel $color="#f97316">Rare</SampleLabel>
+                                    </SampleHeader>
+                                    <SampleInput
                                         type="number"
                                         min="0"
                                         max="999"
                                         defaultValue="0"
                                         id="rareSamples"
                                         disabled={isMultiplayer && !isHost}
-                                        style={{
-                                            width: '100%',
-                                            padding: '12px',
-                                            backgroundColor: '#1f2937',
-                                            border: '1px solid #f97316',
-                                            borderRadius: '4px',
-                                            color: '#f97316',
-                                            fontSize: '16px',
-                                            fontWeight: 'bold',
-                                            textAlign: 'center',
-                                            fontFamily: 'monospace',
-                                            cursor:
-                                                !isMultiplayer || isHost ? 'text' : 'not-allowed',
-                                        }}
+                                        $borderColor="#f97316"
+                                        $disabled={isMultiplayer && !isHost}
                                     />
-                                    <div
-                                        style={{
-                                            fontSize: '10px',
-                                            color: '#64748b',
-                                            marginTop: '4px',
-                                            fontStyle: 'italic',
-                                        }}
-                                    >
-                                        +2% event chance each
-                                    </div>
-                                </div>
+                                    <SampleHint>+2% event chance each</SampleHint>
+                                </SampleColumn>
 
                                 {/* Super Rare Samples */}
-                                <div>
-                                    <div
-                                        style={{
-                                            display: 'flex',
-                                            alignItems: 'center',
-                                            justifyContent: 'center',
-                                            gap: '8px',
-                                            marginBottom: '8px',
-                                        }}
-                                    >
-                                        <img
+                                <SampleColumn>
+                                    <SampleHeader>
+                                        <SampleIcon
                                             src="https://helldivers.wiki.gg/images/Super_Sample_Logo.svg"
                                             alt="Super Rare"
-                                            style={{ width: '20px', height: '20px' }}
                                         />
-                                        <span
-                                            style={{
-                                                fontSize: '12px',
-                                                fontWeight: 'bold',
-                                                color: '#a855f7',
-                                                textTransform: 'uppercase',
-                                            }}
-                                        >
-                                            Super Rare
-                                        </span>
-                                    </div>
-                                    <input
+                                        <SampleLabel $color="#a855f7">Super Rare</SampleLabel>
+                                    </SampleHeader>
+                                    <SampleInput
                                         type="number"
                                         min="0"
                                         max="999"
                                         defaultValue="0"
                                         id="superRareSamples"
                                         disabled={isMultiplayer && !isHost}
-                                        style={{
-                                            width: '100%',
-                                            padding: '12px',
-                                            backgroundColor: '#1f2937',
-                                            border: '1px solid #a855f7',
-                                            borderRadius: '4px',
-                                            color: '#a855f7',
-                                            fontSize: '16px',
-                                            fontWeight: 'bold',
-                                            textAlign: 'center',
-                                            fontFamily: 'monospace',
-                                            cursor:
-                                                !isMultiplayer || isHost ? 'text' : 'not-allowed',
-                                        }}
+                                        $borderColor="#a855f7"
+                                        $disabled={isMultiplayer && !isHost}
                                     />
-                                    <div
-                                        style={{
-                                            fontSize: '10px',
-                                            color: '#64748b',
-                                            marginTop: '4px',
-                                            fontStyle: 'italic',
-                                        }}
-                                    >
-                                        +3% event chance each
-                                    </div>
-                                </div>
-                            </div>
-                            <p
-                                style={{
-                                    fontSize: '11px',
-                                    color: '#94a3b8',
-                                    fontStyle: 'italic',
-                                    margin: '8px 0 0 0',
-                                    textAlign: 'center',
-                                }}
-                            >
+                                    <SampleHint>+3% event chance each</SampleHint>
+                                </SampleColumn>
+                            </SamplesGrid>
+                            <SamplesNote>
                                 Samples increase the chance of random events. Event chance resets to
                                 base 0% when an event occurs.
-                            </p>
-                        </div>
+                            </SamplesNote>
+                        </SamplesSection>
 
                         {/* Extraction Status */}
-                        <div style={{ marginBottom: '32px' }}>
-                            <label
-                                style={{
-                                    display: 'block',
-                                    fontSize: '12px',
-                                    fontWeight: 'bold',
-                                    color: '#94a3b8',
-                                    textTransform: 'uppercase',
-                                    letterSpacing: '0.15em',
-                                    marginBottom: '16px',
-                                }}
-                            >
-                                Extraction Status
-                            </label>
-                            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                        <ExtractionSection>
+                            <RatingLabel>Extraction Status</RatingLabel>
+                            <ExtractionList>
                                 {players.map((player, idx) => {
                                     // In multiplayer, clients can only toggle their own extraction status
                                     const canToggle = !isMultiplayer || isHost || idx === playerSlot
@@ -3921,110 +3672,55 @@ function HelldiversRoguelikeApp() {
                                     }
 
                                     return (
-                                        <label
+                                        <ExtractionLabel
                                             key={player.id}
-                                            style={{
-                                                display: 'flex',
-                                                alignItems: 'center',
-                                                gap: '12px',
-                                                cursor: canToggle ? 'pointer' : 'not-allowed',
-                                                padding: '10px 16px',
-                                                backgroundColor: player.extracted
-                                                    ? 'rgba(34, 197, 94, 0.1)'
-                                                    : 'rgba(239, 68, 68, 0.1)',
-                                                borderRadius: '4px',
-                                                border: `1px solid ${player.extracted ? '#22c55e' : '#ef4444'}`,
-                                                transition: 'all 0.2s',
-                                                opacity: canToggle ? 1 : 0.7,
-                                            }}
+                                            $extracted={player.extracted !== false}
+                                            $canToggle={canToggle}
                                         >
-                                            <input
+                                            <ExtractionCheckbox
                                                 type="checkbox"
                                                 checked={player.extracted !== false}
                                                 onChange={(e) =>
                                                     handleExtractionChange(e.target.checked)
                                                 }
                                                 disabled={!canToggle}
-                                                style={{
-                                                    width: '18px',
-                                                    height: '18px',
-                                                    cursor: canToggle ? 'pointer' : 'not-allowed',
-                                                }}
+                                                $canToggle={canToggle}
                                             />
-                                            <div
-                                                style={{
-                                                    flex: 1,
-                                                    display: 'flex',
-                                                    justifyContent: 'space-between',
-                                                    alignItems: 'center',
-                                                }}
-                                            >
-                                                <span
-                                                    style={{
-                                                        color: player.extracted
-                                                            ? '#22c55e'
-                                                            : '#ef4444',
-                                                        fontWeight: 'bold',
-                                                        fontSize: '14px',
-                                                    }}
+                                            <ExtractionContent>
+                                                <ExtractionName
+                                                    $extracted={player.extracted !== false}
                                                 >
                                                     {player.name} extracted
-                                                </span>
+                                                </ExtractionName>
                                                 {!player.extracted && gameConfig.brutalityMode && (
-                                                    <span
-                                                        style={{
-                                                            fontSize: '11px',
-                                                            color: '#ef4444',
-                                                            fontStyle: 'italic',
-                                                        }}
-                                                    >
+                                                    <ExtractionPenalty>
                                                         Must sacrifice item
-                                                    </span>
+                                                    </ExtractionPenalty>
                                                 )}
                                                 {!player.extracted &&
                                                     !gameConfig.brutalityMode &&
                                                     players.every((p) => !p.extracted) && (
-                                                        <span
-                                                            style={{
-                                                                fontSize: '11px',
-                                                                color: '#ef4444',
-                                                                fontStyle: 'italic',
-                                                            }}
-                                                        >
+                                                        <ExtractionPenalty>
                                                             TPK - Must sacrifice item
-                                                        </span>
+                                                        </ExtractionPenalty>
                                                     )}
-                                            </div>
-                                        </label>
+                                            </ExtractionContent>
+                                        </ExtractionLabel>
                                     )
                                 })}
-                            </div>
-                            <p
-                                style={{
-                                    fontSize: '11px',
-                                    color: '#94a3b8',
-                                    fontStyle: 'italic',
-                                    margin: '8px 0 0 0',
-                                    textAlign: 'center',
-                                }}
-                            >
+                            </ExtractionList>
+                            <ExtractionNote>
                                 {gameConfig.brutalityMode
                                     ? 'Brutality Mode: Non-extracted Helldivers must sacrifice equipment'
                                     : 'If all Helldivers fail to extract, all must sacrifice equipment'}
-                            </p>
-                        </div>
+                            </ExtractionNote>
+                        </ExtractionSection>
 
                         {/* Mission outcome buttons - only host can control in multiplayer */}
                         {!isMultiplayer || isHost ? (
                             <>
-                                <div
-                                    style={{
-                                        display: 'flex',
-                                        gap: '16px',
-                                        justifyContent: 'center',
-                                    }}
-                                >
-                                    <button
+                                <MissionButtonRow>
+                                    <MissionFailButton
                                         onClick={() => {
                                             if (
                                                 window.confirm(
@@ -4053,34 +3749,12 @@ function HelldiversRoguelikeApp() {
                                                 }
                                             }
                                         }}
-                                        style={{
-                                            display: 'flex',
-                                            alignItems: 'center',
-                                            gap: '8px',
-                                            padding: '16px 24px',
-                                            backgroundColor: 'rgba(127, 29, 29, 0.3)',
-                                            color: '#ef4444',
-                                            border: '1px solid #7f1d1d',
-                                            borderRadius: '4px',
-                                            fontWeight: 'bold',
-                                            textTransform: 'uppercase',
-                                            cursor: 'pointer',
-                                            transition: 'all 0.2s',
-                                        }}
-                                        onMouseEnter={(e) =>
-                                            (e.currentTarget.style.backgroundColor =
-                                                'rgba(127, 29, 29, 0.5)')
-                                        }
-                                        onMouseLeave={(e) =>
-                                            (e.currentTarget.style.backgroundColor =
-                                                'rgba(127, 29, 29, 0.3)')
-                                        }
                                     >
                                         <XCircle />
                                         Mission Failed
-                                    </button>
+                                    </MissionFailButton>
 
-                                    <button
+                                    <MissionSuccessButton
                                         onClick={() => {
                                             // Debounce: prevent multiple clicks
                                             if (missionSuccessDebouncing) return
@@ -4401,144 +4075,45 @@ function HelldiversRoguelikeApp() {
                                             }
                                         }}
                                         disabled={missionSuccessDebouncing}
-                                        style={{
-                                            ...BUTTON_STYLES.PRIMARY,
-                                            display: 'flex',
-                                            alignItems: 'center',
-                                            gap: '8px',
-                                            padding: '16px 32px',
-                                            border: 'none',
-                                            borderRadius: '4px',
-                                            letterSpacing: '2px',
-                                            opacity: missionSuccessDebouncing ? 0.5 : 1,
-                                            cursor: missionSuccessDebouncing
-                                                ? 'not-allowed'
-                                                : 'pointer',
-                                            pointerEvents: missionSuccessDebouncing
-                                                ? 'none'
-                                                : 'auto',
-                                        }}
-                                        onMouseEnter={(e) => {
-                                            if (!missionSuccessDebouncing) {
-                                                e.currentTarget.style.backgroundColor =
-                                                    COLORS.PRIMARY_HOVER
-                                                e.currentTarget.style.boxShadow =
-                                                    SHADOWS.BUTTON_PRIMARY_HOVER
-                                            }
-                                        }}
-                                        onMouseLeave={(e) => {
-                                            if (!missionSuccessDebouncing) {
-                                                e.currentTarget.style.backgroundColor =
-                                                    COLORS.PRIMARY
-                                                e.currentTarget.style.boxShadow =
-                                                    SHADOWS.BUTTON_PRIMARY
-                                            }
-                                        }}
+                                        $disabled={missionSuccessDebouncing}
                                     >
                                         <CheckCircle />
                                         {missionSuccessDebouncing
                                             ? 'Processing...'
                                             : 'Mission Success'}
-                                    </button>
-                                </div>
+                                    </MissionSuccessButton>
+                                </MissionButtonRow>
 
-                                <p
-                                    style={{
-                                        marginTop: '16px',
-                                        fontSize: '12px',
-                                        color: '#64748b',
-                                        fontFamily: 'monospace',
-                                        margin: '16px 0 0 0',
-                                    }}
-                                >
+                                <MissionReportHint>
                                     Report success to earn Requisition & proceed to draft.
-                                </p>
+                                </MissionReportHint>
                             </>
                         ) : (
-                            <div
-                                style={{
-                                    textAlign: 'center',
-                                    padding: '24px',
-                                    backgroundColor: 'rgba(100, 116, 139, 0.1)',
-                                    borderRadius: '8px',
-                                    border: '1px solid rgba(100, 116, 139, 0.3)',
-                                }}
-                            >
-                                <p style={{ color: '#94a3b8', margin: 0 }}>
+                            <WaitingForHostBox>
+                                <WaitingForHostText>
                                     ⏳ Waiting for host to report mission outcome...
-                                </p>
-                                <p style={{ color: '#64748b', fontSize: '12px', marginTop: '8px' }}>
+                                </WaitingForHostText>
+                                <WaitingForHostSubtext>
                                     Toggle your extraction status above while waiting.
-                                </p>
-                            </div>
+                                </WaitingForHostSubtext>
+                            </WaitingForHostBox>
                         )}
-                    </div>
+                    </MissionStatusCard>
 
                     {/* Debug Events Mode UI */}
                     {gameConfig.debugEventsMode && (
-                        <div
-                            style={{
-                                width: '100%',
-                                maxWidth: '800px',
-                                backgroundColor: '#1a2332',
-                                padding: '24px',
-                                borderRadius: '12px',
-                                border: '2px solid #ef4444',
-                                marginTop: '24px',
-                            }}
-                        >
-                            <div
-                                style={{
-                                    display: 'flex',
-                                    justifyContent: 'space-between',
-                                    alignItems: 'center',
-                                    marginBottom: '16px',
-                                }}
-                            >
-                                <h3
-                                    style={{
-                                        fontSize: '16px',
-                                        fontWeight: 'bold',
-                                        color: '#ef4444',
-                                        textTransform: 'uppercase',
-                                        margin: 0,
-                                    }}
-                                >
-                                    🔧 Debug: Manual Event Trigger
-                                </h3>
-                                <button
+                        <DebugSection>
+                            <DebugHeader>
+                                <DebugTitle>🔧 Debug: Manual Event Trigger</DebugTitle>
+                                <ResetSeenEventsButton
                                     onClick={() => dispatch(actions.resetSeenEvents())}
-                                    style={{
-                                        padding: '8px 16px',
-                                        backgroundColor: '#ef4444',
-                                        color: 'white',
-                                        border: 'none',
-                                        borderRadius: '4px',
-                                        fontSize: '11px',
-                                        fontWeight: 'bold',
-                                        cursor: 'pointer',
-                                        textTransform: 'uppercase',
-                                        transition: 'all 0.2s',
-                                    }}
-                                    onMouseEnter={(e) =>
-                                        (e.currentTarget.style.backgroundColor = '#dc2626')
-                                    }
-                                    onMouseLeave={(e) =>
-                                        (e.currentTarget.style.backgroundColor = '#ef4444')
-                                    }
                                 >
                                     Reset Seen Events
-                                </button>
-                            </div>
-                            <div
-                                style={{
-                                    display: 'grid',
-                                    gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))',
-                                    gap: '12px',
-                                }}
-                            >
+                                </ResetSeenEventsButton>
+                            </DebugHeader>
+                            <DebugGrid>
                                 {EVENTS.map((event) => (
-                                    <button
+                                    <DebugButton
                                         key={event.id}
                                         onClick={() => {
                                             dispatch(actions.addSeenEvent(event.id))
@@ -4547,70 +4122,24 @@ function HelldiversRoguelikeApp() {
                                             dispatch(actions.setCurrentEvent(event))
                                             dispatch(actions.setPhase('EVENT'))
                                         }}
-                                        style={{
-                                            padding: '12px',
-                                            backgroundColor: seenEvents.includes(event.id)
-                                                ? '#374151'
-                                                : '#283548',
-                                            color: seenEvents.includes(event.id)
-                                                ? '#6b7280'
-                                                : '#cbd5e1',
-                                            border: '1px solid rgba(239, 68, 68, 0.3)',
-                                            borderRadius: '4px',
-                                            fontSize: '11px',
-                                            cursor: seenEvents.includes(event.id)
-                                                ? 'not-allowed'
-                                                : 'pointer',
-                                            transition: 'all 0.2s',
-                                            textAlign: 'left',
-                                            opacity: seenEvents.includes(event.id) ? 0.5 : 1,
-                                        }}
                                         disabled={seenEvents.includes(event.id)}
-                                        onMouseEnter={(e) => {
-                                            if (!seenEvents.includes(event.id)) {
-                                                e.currentTarget.style.borderColor = '#ef4444'
-                                                e.currentTarget.style.backgroundColor = '#374151'
-                                            }
-                                        }}
-                                        onMouseLeave={(e) => {
-                                            if (!seenEvents.includes(event.id)) {
-                                                e.currentTarget.style.borderColor =
-                                                    'rgba(239, 68, 68, 0.3)'
-                                                e.currentTarget.style.backgroundColor = '#283548'
-                                            }
-                                        }}
+                                        $seen={seenEvents.includes(event.id)}
                                     >
-                                        <div
-                                            style={{
-                                                fontWeight: 'bold',
-                                                marginBottom: '4px',
-                                                fontSize: '12px',
-                                            }}
-                                        >
-                                            {event.name}
-                                        </div>
-                                        <div style={{ fontSize: '9px', color: '#64748b' }}>
+                                        <DebugButtonTitle>{event.name}</DebugButtonTitle>
+                                        <DebugButtonSubtext>
                                             {event.id}{' '}
                                             {seenEvents.includes(event.id) ? '(SEEN)' : ''}
-                                        </div>
-                                    </button>
+                                        </DebugButtonSubtext>
+                                    </DebugButton>
                                 ))}
-                            </div>
-                            <p
-                                style={{
-                                    fontSize: '10px',
-                                    color: '#64748b',
-                                    marginTop: '12px',
-                                    textAlign: 'center',
-                                    fontStyle: 'italic',
-                                }}
-                            >
+                            </DebugGrid>
+                            <DebugHint>
                                 Events marked as SEEN have already been triggered this run
-                            </p>
-                        </div>
+                            </DebugHint>
+                        </DebugSection>
                     )}
-                </div>
-            </div>
+                </ControlsSection>
+            </DashboardMain>
 
             {/* FOOTER */}
             <GameFooter />

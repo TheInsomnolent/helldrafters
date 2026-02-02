@@ -101,39 +101,3 @@ export const TYPOGRAPHY = {
     LETTER_SPACING_NORMAL: '0.05em',
     LETTER_SPACING_TIGHT: '0.02em',
 } as const
-
-export interface ButtonStyle {
-    backgroundColor: string
-    color: string
-    border: string
-    fontWeight: string
-    textTransform: string
-    letterSpacing: string
-    cursor: string
-    transition: string
-    boxShadow?: string
-}
-
-export const BUTTON_STYLES: Record<string, ButtonStyle> = {
-    PRIMARY: {
-        backgroundColor: COLORS.PRIMARY,
-        color: 'black',
-        border: `2px solid ${COLORS.PRIMARY}`,
-        fontWeight: '900',
-        textTransform: 'uppercase',
-        letterSpacing: TYPOGRAPHY.LETTER_SPACING_NORMAL,
-        cursor: 'pointer',
-        transition: 'all 0.2s',
-        boxShadow: SHADOWS.BUTTON_PRIMARY,
-    },
-    SECONDARY: {
-        backgroundColor: 'transparent',
-        color: COLORS.TEXT_MUTED,
-        border: `2px solid ${COLORS.CARD_BORDER}`,
-        fontWeight: '900',
-        textTransform: 'uppercase',
-        letterSpacing: TYPOGRAPHY.LETTER_SPACING_NORMAL,
-        cursor: 'pointer',
-        transition: 'all 0.2s',
-    },
-}

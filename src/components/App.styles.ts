@@ -571,3 +571,446 @@ export const ExportRow = styled.div`
     margin-bottom: 16px;
     gap: 12px;
 `
+
+// =============================================
+// EVENT PHASE
+// =============================================
+export const EventPageWrapper = styled.div`
+    min-height: 100vh;
+`
+
+// =============================================
+// DASHBOARD PHASE
+// =============================================
+
+// Main content container for dashboard
+export const DashboardMain = styled.div`
+    max-width: 1400px;
+    margin: 0 auto;
+    padding: 24px;
+`
+
+// Player roster grid
+export const PlayerRosterGrid = styled.div<{ $playerCount: number }>`
+    display: grid;
+    grid-template-columns: ${({ $playerCount }) =>
+        $playerCount > 1 ? 'repeat(auto-fit, minmax(400px, 1fr))' : '1fr'};
+    gap: 32px;
+    margin-bottom: 48px;
+`
+
+// Controls section container
+export const ControlsSection = styled.div`
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 16px;
+`
+
+// Mission objective card
+export const ObjectiveCard = styled.div<{ $factionColor: string }>`
+    width: 100%;
+    max-width: 800px;
+    background-color: ${({ $factionColor }) => `${$factionColor}20`};
+    padding: 20px;
+    border-radius: 8px;
+    border: 2px solid ${({ $factionColor }) => $factionColor};
+    text-align: center;
+`
+
+export const ObjectiveTitle = styled.h2<{ $color: string }>`
+    font-size: 24px;
+    font-weight: bold;
+    color: ${({ $color }) => $color};
+    text-transform: uppercase;
+    margin: 0;
+    letter-spacing: 1px;
+`
+
+export const ObjectiveText = styled.p`
+    font-size: 16px;
+    color: white;
+    margin: 12px 0 0 0;
+    font-weight: bold;
+`
+
+// Mission status card
+export const MissionStatusCard = styled.div`
+    width: 100%;
+    max-width: 800px;
+    background-color: #283548;
+    padding: 24px;
+    border-radius: 12px;
+    border: 1px solid rgba(100, 116, 139, 0.5);
+    text-align: center;
+`
+
+export const MissionStatusTitle = styled.h2`
+    font-size: 20px;
+    font-weight: bold;
+    color: white;
+    text-transform: uppercase;
+    margin-bottom: 8px;
+`
+
+export const OperationStatus = styled.div<{ $color: string }>`
+    font-size: 12px;
+    color: ${({ $color }) => $color};
+    font-family: monospace;
+    margin-bottom: 16px;
+    font-weight: bold;
+`
+
+// Star rating section
+export const RatingSection = styled.div<{ $disabled?: boolean }>`
+    margin-bottom: 32px;
+    opacity: ${({ $disabled }) => ($disabled ? 0.6 : 1)};
+`
+
+export const RatingLabel = styled.label`
+    display: block;
+    font-size: 12px;
+    font-weight: bold;
+    color: #94a3b8;
+    text-transform: uppercase;
+    letter-spacing: 0.15em;
+    margin-bottom: 16px;
+`
+
+export const StarRatingGrid = styled.div<{ $disabled?: boolean }>`
+    display: grid;
+    grid-template-columns: repeat(5, 1fr);
+    gap: 12px;
+    margin-bottom: 12px;
+    pointer-events: ${({ $disabled }) => ($disabled ? 'none' : 'auto')};
+`
+
+export const StarRatingButton = styled.button<{
+    $selected?: boolean
+    $disabled?: boolean
+    $factionColor: string
+}>`
+    padding: 16px 8px;
+    border-radius: 4px;
+    font-weight: 900;
+    font-size: 24px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.2s;
+    background-color: ${({ $selected, $factionColor }) =>
+        $selected ? $factionColor : 'transparent'};
+    color: ${({ $disabled, $selected }) =>
+        $disabled ? '#334155' : $selected ? 'black' : '#64748b'};
+    border: ${({ $selected, $disabled, $factionColor }) =>
+        $selected
+            ? `2px solid ${$factionColor}`
+            : $disabled
+              ? '1px solid #1e293b'
+              : '1px solid rgba(100, 116, 139, 0.5)'};
+    cursor: ${({ $disabled }) => ($disabled ? 'not-allowed' : 'pointer')};
+    opacity: ${({ $disabled }) => ($disabled ? 0.4 : 1)};
+
+    &:hover:not(:disabled) {
+        border-color: ${({ $selected }) => ($selected ? undefined : '#64748b')};
+    }
+`
+
+export const StarIcon = styled.div`
+    font-size: 16px;
+`
+
+export const RatingHint = styled.p`
+    font-size: 11px;
+    color: #64748b;
+    font-style: italic;
+    margin: 0;
+`
+
+// Samples section
+export const SamplesSection = styled.div<{ $disabled?: boolean }>`
+    margin-bottom: 32px;
+    opacity: ${({ $disabled }) => ($disabled ? 0.6 : 1)};
+`
+
+export const SamplesGrid = styled.div`
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 16px;
+    margin-bottom: 8px;
+`
+
+export const SampleColumn = styled.div``
+
+export const SampleHeader = styled.div`
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    margin-bottom: 8px;
+`
+
+export const SampleIcon = styled.img`
+    width: 20px;
+    height: 20px;
+`
+
+export const SampleLabel = styled.span<{ $color: string }>`
+    font-size: 12px;
+    font-weight: bold;
+    color: ${({ $color }) => $color};
+    text-transform: uppercase;
+`
+
+export const SampleInput = styled.input<{ $borderColor: string; $disabled?: boolean }>`
+    width: 100%;
+    padding: 12px;
+    background-color: #1f2937;
+    border: 1px solid ${({ $borderColor }) => $borderColor};
+    border-radius: 4px;
+    color: ${({ $borderColor }) => $borderColor};
+    font-size: 16px;
+    font-weight: bold;
+    text-align: center;
+    font-family: monospace;
+    cursor: ${({ $disabled }) => ($disabled ? 'not-allowed' : 'text')};
+`
+
+export const SampleHint = styled.div`
+    font-size: 10px;
+    color: #64748b;
+    margin-top: 4px;
+    font-style: italic;
+`
+
+export const SamplesNote = styled.p`
+    font-size: 11px;
+    color: #94a3b8;
+    font-style: italic;
+    margin: 8px 0 0 0;
+    text-align: center;
+`
+
+// Extraction status section
+export const ExtractionSection = styled.div`
+    margin-bottom: 32px;
+`
+
+export const ExtractionList = styled.div`
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+`
+
+export const ExtractionLabel = styled.label<{
+    $extracted: boolean
+    $canToggle: boolean
+}>`
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    cursor: ${({ $canToggle }) => ($canToggle ? 'pointer' : 'not-allowed')};
+    padding: 10px 16px;
+    background-color: ${({ $extracted }) =>
+        $extracted ? 'rgba(34, 197, 94, 0.1)' : 'rgba(239, 68, 68, 0.1)'};
+    border-radius: 4px;
+    border: 1px solid ${({ $extracted }) => ($extracted ? '#22c55e' : '#ef4444')};
+    transition: all 0.2s;
+    opacity: ${({ $canToggle }) => ($canToggle ? 1 : 0.7)};
+`
+
+export const ExtractionCheckbox = styled.input<{ $canToggle: boolean }>`
+    width: 18px;
+    height: 18px;
+    cursor: ${({ $canToggle }) => ($canToggle ? 'pointer' : 'not-allowed')};
+`
+
+export const ExtractionContent = styled.div`
+    flex: 1;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+`
+
+export const ExtractionName = styled.span<{ $extracted: boolean }>`
+    color: ${({ $extracted }) => ($extracted ? '#22c55e' : '#ef4444')};
+    font-weight: bold;
+    font-size: 14px;
+`
+
+export const ExtractionPenalty = styled.span`
+    font-size: 11px;
+    color: #ef4444;
+    font-style: italic;
+`
+
+export const ExtractionNote = styled.p`
+    font-size: 11px;
+    color: #94a3b8;
+    font-style: italic;
+    margin: 8px 0 0 0;
+    text-align: center;
+`
+
+// Mission buttons
+export const MissionButtonRow = styled.div`
+    display: flex;
+    gap: 16px;
+    justify-content: center;
+`
+
+export const MissionFailButton = styled.button`
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 16px 24px;
+    background-color: rgba(127, 29, 29, 0.3);
+    color: #ef4444;
+    border: 1px solid #7f1d1d;
+    border-radius: 4px;
+    font-weight: bold;
+    text-transform: uppercase;
+    cursor: pointer;
+    transition: all 0.2s;
+
+    &:hover {
+        background-color: rgba(127, 29, 29, 0.5);
+    }
+`
+
+export const MissionSuccessButton = styled.button<{ $disabled?: boolean }>`
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 16px 32px;
+    background-color: ${COLORS.PRIMARY};
+    color: black;
+    font-weight: bold;
+    text-transform: uppercase;
+    border: none;
+    border-radius: 4px;
+    letter-spacing: 2px;
+    opacity: ${({ $disabled }) => ($disabled ? 0.5 : 1)};
+    cursor: ${({ $disabled }) => ($disabled ? 'not-allowed' : 'pointer')};
+    pointer-events: ${({ $disabled }) => ($disabled ? 'none' : 'auto')};
+    transition: all 0.2s;
+
+    &:hover:not(:disabled) {
+        background-color: ${COLORS.PRIMARY_HOVER};
+    }
+`
+
+export const MissionReportHint = styled.p`
+    margin-top: 16px;
+    font-size: 12px;
+    color: #64748b;
+    font-family: monospace;
+    margin: 16px 0 0 0;
+`
+
+// Waiting for host message
+export const WaitingForHostBox = styled.div`
+    text-align: center;
+    padding: 24px;
+    background-color: rgba(100, 116, 139, 0.1);
+    border-radius: 8px;
+    border: 1px solid rgba(100, 116, 139, 0.3);
+`
+
+export const WaitingForHostText = styled.p`
+    color: #94a3b8;
+    margin: 0;
+`
+
+export const WaitingForHostSubtext = styled.p`
+    color: #64748b;
+    font-size: 12px;
+    margin-top: 8px;
+`
+
+// Debug Events section
+export const DebugSection = styled.div`
+    width: 100%;
+    max-width: 800px;
+    background-color: #1a2332;
+    padding: 24px;
+    border-radius: 12px;
+    border: 2px solid #ef4444;
+    margin-top: 24px;
+`
+
+export const DebugHeader = styled.div`
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 16px;
+`
+
+export const DebugTitle = styled.h3`
+    font-size: 16px;
+    font-weight: bold;
+    color: #ef4444;
+    text-transform: uppercase;
+    margin: 0;
+`
+
+export const ResetSeenEventsButton = styled.button`
+    padding: 8px 16px;
+    background-color: #ef4444;
+    color: white;
+    border: none;
+    border-radius: 4px;
+    font-size: 11px;
+    font-weight: bold;
+    cursor: pointer;
+    text-transform: uppercase;
+    transition: all 0.2s;
+
+    &:hover {
+        background-color: #dc2626;
+    }
+`
+
+export const DebugGrid = styled.div`
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+    gap: 12px;
+`
+
+export const DebugButton = styled.button<{ $seen?: boolean }>`
+    padding: 12px;
+    background-color: ${({ $seen }) => ($seen ? '#374151' : '#283548')};
+    color: ${({ $seen }) => ($seen ? '#6b7280' : '#cbd5e1')};
+    border: 1px solid rgba(239, 68, 68, 0.3);
+    border-radius: 4px;
+    font-size: 11px;
+    cursor: ${({ $seen }) => ($seen ? 'not-allowed' : 'pointer')};
+    transition: all 0.2s;
+    text-align: left;
+    opacity: ${({ $seen }) => ($seen ? 0.5 : 1)};
+
+    &:hover:not(:disabled) {
+        border-color: #ef4444;
+        background-color: #374151;
+    }
+`
+
+export const DebugButtonTitle = styled.div`
+    font-weight: bold;
+    margin-bottom: 4px;
+    font-size: 12px;
+`
+
+export const DebugButtonSubtext = styled.div`
+    font-size: 9px;
+    color: #64748b;
+`
+
+export const DebugHint = styled.p`
+    font-size: 10px;
+    color: #64748b;
+    margin-top: 12px;
+    text-align: center;
+    font-style: italic;
+`
