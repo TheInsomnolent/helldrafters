@@ -70,8 +70,11 @@ jobs:
           git fetch origin gh-pages:gh-pages
           git checkout gh-pages
           
+          # Enable nullglob to handle case where no matches exist
+          shopt -s nullglob
+          
           # Remove all directories that look like test deployments (pr-* or branch-*)
-          for dir in pr-* branch-* 2>/dev/null; do
+          for dir in pr-* branch-*; do
             if [ -d "$dir" ]; then
               echo "Removing test deployment: $dir"
               git rm -rf "$dir"

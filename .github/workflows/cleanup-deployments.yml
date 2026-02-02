@@ -79,6 +79,9 @@ jobs:
           
           REMOVED=false
           
+          # Enable nullglob to handle case where no matches exist
+          shopt -s nullglob
+          
           # Check each branch-* directory
           for dir in branch-*; do
             if [ ! -d "$dir" ]; then
