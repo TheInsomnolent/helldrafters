@@ -41,14 +41,22 @@ jobs:
         id: deploy-dir
         run: |
           if [ "${{ github.ref }}" == "refs/heads/main" ]; then
-            echo "dir=." >> $GITHUB_OUTPUT
             echo "path=root" >> $GITHUB_OUTPUT
           elif [ "${{ github.ref }}" == "refs/heads/develop" ]; then
             echo "dir=develop" >> $GITHUB_OUTPUT
             echo "path=develop" >> $GITHUB_OUTPUT
           fi
 
-      - name: Deploy to GitHub Pages
+      - name: Deploy to GitHub Pages (main)
+        if: github.ref == 'refs/heads/main'
+        uses: peaceiris/actions-gh-pages@v3
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_dir: ./build
+          publish_branch: gh-pages
+
+      - name: Deploy to GitHub Pages (develop)
+        if: github.ref == 'refs/heads/develop'
         uses: peaceiris/actions-gh-pages@v3
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
@@ -81,11 +89,13 @@ jobs:
           fi
 
       - name: Install Firebase Functions dependencies
+        if: github.ref == 'refs/heads/main'
         run: |
           cd functions
           yarn --frozen-lockfile
 
       - name: Setup Firebase project
+        if: github.ref == 'refs/heads/main'
         run: |
           if [ -z "${{ vars.FIREBASE_PROJECT_ID }}" ]; then
             echo "ERROR: FIREBASE_PROJECT_ID variable is not set!"
@@ -98,6 +108,7 @@ jobs:
           cat .firebaserc
 
       - name: Deploy to Firebase
+        if: github.ref == 'refs/heads/main'
         uses: w9jds/firebase-action@master
         with:
           args: deploy --only database,functions --project ${{ vars.FIREBASE_PROJECT_ID }} --force
