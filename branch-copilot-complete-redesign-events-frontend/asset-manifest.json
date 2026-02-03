@@ -1,0 +1,13 @@
+{
+  "files": {
+    "main.css": "/helldrafters/branch-/static/css/main.58720be0.css",
+    "main.js": "/helldrafters/branch-/static/js/main.8e454caa.js",
+    "index.html": "/helldrafters/branch-/index.html",
+    "main.58720be0.css.map": "/helldrafters/branch-/static/css/main.58720be0.css.map",
+    "main.8e454caa.js.map": "/helldrafters/branch-/static/js/main.8e454caa.js.map"
+  },
+  "entrypoints": [
+    "static/css/main.58720be0.css",
+    "static/js/main.8e454caa.js"
+  ]
+}
