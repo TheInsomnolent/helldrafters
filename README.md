@@ -87,7 +87,7 @@ yarn
 yarn start
 ```
 
-The app will open at [http://localhost:3000](http://localhost:3000).
+The App will open at [http://localhost:3000](http://localhost:3000).
 
 ### Building
 
