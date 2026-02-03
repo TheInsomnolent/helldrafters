@@ -3359,6 +3359,8 @@ function HelldiversRoguelikeApp() {
                                             factionColors={factionColors}
                                             onSelect={isMyTurn ? handleDraftPick : undefined}
                                             onRemove={isMyTurn ? removeCardFromDraft : undefined}
+                                            shouldPulse={isMyTurn}
+                                            animationDelay={idx * 0.2}
                                         />
                                     ))}
                                 </ItemGrid>
