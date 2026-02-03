@@ -12,7 +12,8 @@
         "build/**",
         "public/**",
         "src/reportWebVitals.ts",
-        "src/setupTests.ts"
+        "src/setupTests.ts",
+        "src/systems/eventsV2/**"
     ],
     "ignoreDependencies": [
         "web-vitals",

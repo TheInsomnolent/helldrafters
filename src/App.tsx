@@ -172,6 +172,7 @@ import {
     type EventChoice,
     type EventOutcome,
 } from './systems/events/events'
+import * as eventsV2 from './systems/eventsV2'
 import { initializeAnalytics, MultiplayerProvider, useMultiplayer } from './systems/multiplayer'
 import { saveRunToHistory } from './systems/persistence/saveManager'
 import {
@@ -257,6 +258,7 @@ function HelldiversRoguelikeApp() {
         setActionHandler,
         lobbyData,
         firebaseReady,
+        lobbyId,
     } = multiplayer
 
     // Register dispatch with multiplayer context
@@ -405,6 +407,46 @@ function HelldiversRoguelikeApp() {
             syncState(state)
         }
     }, [isMultiplayer, isHost, state, phase, syncState])
+
+    // Subscribe clients to eventsV2 state updates from Firebase
+    // This ensures clients stay in sync with the host's event UI state
+    useEffect(() => {
+        // Only subscribe if:
+        // 1. Events are enabled
+        // 2. We're in multiplayer mode
+        // 3. We have a lobbyId
+        if (!eventsEnabled || !isMultiplayer || !lobbyId) {
+            return
+        }
+
+        console.debug(`[eventsV2] Subscribing to event UI state for lobby ${lobbyId}`)
+
+        const unsubscribe = eventsV2.subscribeEventUIState(lobbyId, (eventUIState) => {
+            if (eventUIState) {
+                console.debug('[eventsV2] Received event UI state update:', {
+                    eventId: eventUIState.eventId,
+                    currentStep: eventUIState.currentStep,
+                    isComplete: eventUIState.isComplete,
+                })
+            } else {
+                console.debug('[eventsV2] Event UI state cleared (null)')
+                // When eventsV2 state is cleared, ensure local event state is also cleared
+                // This helps clients catch up when events are completed
+                if (currentEvent && !isHost) {
+                    console.debug(
+                        '[eventsV2] Client clearing local event state due to Firebase state clear',
+                    )
+                    dispatch(actions.setCurrentEvent(null))
+                    dispatch(actions.resetEventSelections())
+                }
+            }
+        })
+
+        return () => {
+            console.debug(`[eventsV2] Unsubscribing from event UI state for lobby ${lobbyId}`)
+            unsubscribe()
+        }
+    }, [eventsEnabled, isMultiplayer, lobbyId, isHost, currentEvent, dispatch])
 
     // Handle new player joining mid-game (host only)
     // When a new player joins into a slot that doesn't have a loadout, create one for them
@@ -843,10 +885,52 @@ function HelldiversRoguelikeApp() {
                 dispatch(actions.resetEventSelections())
                 dispatch(actions.setCurrentEvent(event))
                 dispatch(actions.setPhase('EVENT'))
+
+                // Initialize eventsV2 state for Firebase sync (always enabled when events are enabled)
+                if (eventsEnabled && isMultiplayer && lobbyId && multiplayer.playerId) {
+                    console.debug(
+                        `[eventsV2] Host initializing event UI state for event ${event.id} in lobby ${lobbyId}`,
+                    )
+                    // Initialize the new event UI state in Firebase
+                    eventsV2
+                        .initializeEventUIState(lobbyId, event.id, event, multiplayer.playerId)
+                        .then(() => {
+                            console.debug(
+                                `[eventsV2] Successfully initialized event UI state for event ${event.id}`,
+                            )
+                        })
+                        .catch((error) => {
+                            console.error('[eventsV2] Failed to initialize eventsV2 state:', error)
+                        })
+                }
+
                 return true
             }
         }
         return false
+    }
+
+    /**
+     * Clear event state from Firebase when completing an event
+     * Call this whenever closing/completing an event
+     */
+    const clearEventsV2State = () => {
+        if (eventsEnabled && isMultiplayer && lobbyId) {
+            console.debug(`[eventsV2] Host clearing event UI state for lobby ${lobbyId}`)
+            eventsV2
+                .clearEventUIState(lobbyId)
+                .then(() => {
+                    console.debug(
+                        `[eventsV2] Successfully cleared event UI state for lobby ${lobbyId}`,
+                    )
+                })
+                .catch((error) => {
+                    console.error(
+                        `[eventsV2] Failed to clear eventsV2 state for lobby ${lobbyId}:`,
+                        error,
+                    )
+                })
+        }
     }
 
     const proceedToNextDraft = (updatedPlayers: Player[]) => {
@@ -2653,6 +2737,7 @@ function HelldiversRoguelikeApp() {
                 // Close event
                 dispatch(actions.setCurrentEvent(null))
                 dispatch(actions.resetEventSelections())
+                clearEventsV2State()
 
                 // Get the updated players
                 const updatedPlayers = updates.players || players
@@ -2739,6 +2824,7 @@ function HelldiversRoguelikeApp() {
             // After event, proceed to dashboard
             dispatch(actions.setCurrentEvent(null))
             dispatch(actions.resetEventSelections())
+            clearEventsV2State()
             dispatch(actions.setPhase('DASHBOARD'))
         }
 
@@ -2758,6 +2844,7 @@ function HelldiversRoguelikeApp() {
                 window.__boosterOutcome = null
                 dispatch(actions.setCurrentEvent(null))
                 dispatch(actions.resetEventSelections())
+                clearEventsV2State()
                 dispatch(actions.setPhase('DASHBOARD'))
                 return
             }
@@ -2798,6 +2885,7 @@ function HelldiversRoguelikeApp() {
                 // Clean up
                 dispatch(actions.setCurrentEvent(null))
                 dispatch(actions.resetEventSelections())
+                clearEventsV2State()
                 dispatch(actions.setPhase('DASHBOARD'))
                 return
             }
@@ -2863,6 +2951,7 @@ function HelldiversRoguelikeApp() {
 
             dispatch(actions.setCurrentEvent(null))
             dispatch(actions.resetEventSelections())
+            clearEventsV2State()
             dispatch(actions.setPhase('DASHBOARD'))
         }
 
@@ -2870,6 +2959,7 @@ function HelldiversRoguelikeApp() {
             // Emergency skip for beta testing - helps escape soft-locks
             dispatch(actions.setCurrentEvent(null))
             dispatch(actions.resetEventSelections())
+            clearEventsV2State()
             dispatch(actions.setPhase('DASHBOARD'))
         }
 
@@ -2948,6 +3038,7 @@ function HelldiversRoguelikeApp() {
                         dispatch(actions.setCurrentEvent(null))
                         dispatch(actions.setEventPlayerChoice(null))
                         dispatch(actions.resetEventSelections())
+                        clearEventsV2State()
                         dispatch(actions.setPhase('DASHBOARD'))
                     }}
                     onSpecialDraftSelection={(playerIndex, itemId) => {

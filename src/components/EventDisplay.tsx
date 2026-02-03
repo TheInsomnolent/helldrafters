@@ -108,6 +108,7 @@ export default function EventDisplay({
     connectedPlayerIndices = null, // Array of connected player indices (null means all connected)
 }: EventDisplayProps) {
     const [showSkipConfirm, setShowSkipConfirm] = useState(false)
+
     // Helper to check if a player index is connected (selectable for events)
     const isPlayerSelectable = (playerIdx: number): boolean => {
         // If connectedPlayerIndices is null, all players are selectable
@@ -1811,14 +1812,18 @@ export default function EventDisplay({
                                             eventPlayerChoice,
                                         )
                                         const canSelect = isHost && affordable
+
                                         const outcomeText = formatOutcomes(choice.outcomes)
                                         const reqCost = choice.requiresRequisition
+
                                         return (
                                             <button
                                                 key={idx}
-                                                onClick={() =>
-                                                    canSelect && handleChoiceClick(choice)
-                                                }
+                                                onClick={() => {
+                                                    if (canSelect) {
+                                                        handleChoiceClick(choice)
+                                                    }
+                                                }}
                                                 disabled={!canSelect}
                                                 style={{
                                                     padding: '16px',
@@ -1836,19 +1841,22 @@ export default function EventDisplay({
                                                     display: 'flex',
                                                     flexDirection: 'column',
                                                     gap: '8px',
+                                                    position: 'relative',
                                                 }}
-                                                onMouseEnter={(e) =>
-                                                    canSelect &&
-                                                    ((
-                                                        e.target as HTMLElement
-                                                    ).style.backgroundColor = '#ffd95a')
-                                                }
-                                                onMouseLeave={(e) =>
-                                                    canSelect &&
-                                                    ((
-                                                        e.target as HTMLElement
-                                                    ).style.backgroundColor = '#F5C642')
-                                                }
+                                                onMouseEnter={(e) => {
+                                                    if (canSelect) {
+                                                        ;(
+                                                            e.target as HTMLElement
+                                                        ).style.backgroundColor = '#ffd95a'
+                                                    }
+                                                }}
+                                                onMouseLeave={(e) => {
+                                                    if (canSelect) {
+                                                        ;(
+                                                            e.target as HTMLElement
+                                                        ).style.backgroundColor = '#F5C642'
+                                                    }
+                                                }}
                                             >
                                                 <div
                                                     style={{
@@ -1859,17 +1867,25 @@ export default function EventDisplay({
                                                     }}
                                                 >
                                                     <span>{choice.text}</span>
-                                                    {reqCost && (
-                                                        <span
-                                                            style={{
-                                                                fontSize: '13px',
-                                                                fontWeight: 'bold',
-                                                                opacity: affordable ? 1 : 0.6,
-                                                            }}
-                                                        >
-                                                            Costs {reqCost} requisition
-                                                        </span>
-                                                    )}
+                                                    <div
+                                                        style={{
+                                                            display: 'flex',
+                                                            gap: '12px',
+                                                            alignItems: 'center',
+                                                        }}
+                                                    >
+                                                        {reqCost && (
+                                                            <span
+                                                                style={{
+                                                                    fontSize: '13px',
+                                                                    fontWeight: 'bold',
+                                                                    opacity: affordable ? 1 : 0.6,
+                                                                }}
+                                                            >
+                                                                Costs {reqCost} requisition
+                                                            </span>
+                                                        )}
+                                                    </div>
                                                 </div>
                                                 <div
                                                     style={{
