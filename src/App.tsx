@@ -408,6 +408,47 @@ function HelldiversRoguelikeApp() {
         }
     }, [isMultiplayer, isHost, state, phase, syncState])
 
+    // Subscribe clients to eventsV2 state updates from Firebase
+    // This ensures clients stay in sync with the host's event UI state
+    useEffect(() => {
+        // Only subscribe if:
+        // 1. eventsV2 is enabled
+        // 2. We're in multiplayer mode
+        // 3. We have a lobbyId
+        // 4. We're not the host (host manages state, clients receive it)
+        if (!gameConfig.useEventsV2 || !isMultiplayer || !lobbyId) {
+            return
+        }
+
+        console.debug(`[eventsV2] Subscribing to event UI state for lobby ${lobbyId}`)
+
+        const unsubscribe = eventsV2.subscribeEventUIState(lobbyId, (eventUIState) => {
+            if (eventUIState) {
+                console.debug('[eventsV2] Received event UI state update:', {
+                    eventId: eventUIState.eventId,
+                    currentStep: eventUIState.currentStep,
+                    isComplete: eventUIState.isComplete,
+                })
+            } else {
+                console.debug('[eventsV2] Event UI state cleared (null)')
+                // When eventsV2 state is cleared, ensure local event state is also cleared
+                // This helps clients catch up when events are completed
+                if (currentEvent && !isHost) {
+                    console.debug(
+                        '[eventsV2] Client clearing local event state due to Firebase state clear',
+                    )
+                    dispatch(actions.setCurrentEvent(null))
+                    dispatch(actions.resetEventSelections())
+                }
+            }
+        })
+
+        return () => {
+            console.debug(`[eventsV2] Unsubscribing from event UI state for lobby ${lobbyId}`)
+            unsubscribe()
+        }
+    }, [gameConfig.useEventsV2, isMultiplayer, lobbyId, isHost, currentEvent, dispatch])
+
     // Handle new player joining mid-game (host only)
     // When a new player joins into a slot that doesn't have a loadout, create one for them
     useEffect(() => {
@@ -848,11 +889,19 @@ function HelldiversRoguelikeApp() {
 
                 // Initialize eventsV2 state if using the new system
                 if (gameConfig.useEventsV2 && isMultiplayer && lobbyId && multiplayer.playerId) {
+                    console.debug(
+                        `[eventsV2] Host initializing event UI state for event ${event.id} in lobby ${lobbyId}`,
+                    )
                     // Initialize the new event UI state in Firebase
                     eventsV2
                         .initializeEventUIState(lobbyId, event.id, event, multiplayer.playerId)
+                        .then(() => {
+                            console.debug(
+                                `[eventsV2] Successfully initialized event UI state for event ${event.id}`,
+                            )
+                        })
                         .catch((error) => {
-                            console.error('Failed to initialize eventsV2 state:', error)
+                            console.error('[eventsV2] Failed to initialize eventsV2 state:', error)
                         })
                 }
 
@@ -868,9 +917,20 @@ function HelldiversRoguelikeApp() {
      */
     const clearEventsV2State = () => {
         if (gameConfig.useEventsV2 && isMultiplayer && lobbyId) {
-            eventsV2.clearEventUIState(lobbyId).catch((error) => {
-                console.error(`Failed to clear eventsV2 state for lobby ${lobbyId}:`, error)
-            })
+            console.debug(`[eventsV2] Host clearing event UI state for lobby ${lobbyId}`)
+            eventsV2
+                .clearEventUIState(lobbyId)
+                .then(() => {
+                    console.debug(
+                        `[eventsV2] Successfully cleared event UI state for lobby ${lobbyId}`,
+                    )
+                })
+                .catch((error) => {
+                    console.error(
+                        `[eventsV2] Failed to clear eventsV2 state for lobby ${lobbyId}:`,
+                        error,
+                    )
+                })
         }
     }
 
