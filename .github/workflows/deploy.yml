@@ -4,6 +4,7 @@ on:
   push:
     branches:
       - main
+      - develop
 
 permissions:
   contents: write
@@ -11,7 +12,7 @@ permissions:
 jobs:
   deploy:
     runs-on: ubuntu-latest
-    
+
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -19,11 +20,11 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: '18'
-          cache: 'npm'
+          node-version: '22'
+          cache: 'yarn'
 
       - name: Install dependencies
-        run: npm ci
+        run: yarn --frozen-lockfile
 
       - name: Copy CHANGELOG to build
         run: |
@@ -31,24 +32,74 @@ jobs:
           cp CHANGELOG.md public/CHANGELOG.md
 
       - name: Build application
-        run: npm run build
+        run: yarn build
         env:
           REACT_APP_BUILD_TIME: ${{ github.event.head_commit.timestamp }}
           REACT_APP_COMMIT_SHA: ${{ github.sha }}
+          PUBLIC_URL: ${{ github.ref == 'refs/heads/develop' && '/helldrafters/develop' || '/helldrafters' }}
 
-      - name: Deploy to GitHub Pages
+      - name: Determine deployment directory
+        id: deploy-dir
+        run: |
+          if [ "${{ github.ref }}" == "refs/heads/main" ]; then
+            echo "path=root" >> $GITHUB_OUTPUT
+          elif [ "${{ github.ref }}" == "refs/heads/develop" ]; then
+            echo "dir=develop" >> $GITHUB_OUTPUT
+            echo "path=develop" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Deploy to GitHub Pages (main)
+        if: github.ref == 'refs/heads/main'
         uses: peaceiris/actions-gh-pages@v3
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
           publish_dir: ./build
           publish_branch: gh-pages
 
+      - name: Deploy to GitHub Pages (develop)
+        if: github.ref == 'refs/heads/develop'
+        uses: peaceiris/actions-gh-pages@v3
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_dir: ./build
+          publish_branch: gh-pages
+          destination_dir: ${{ steps.deploy-dir.outputs.dir }}
+
+      - name: Clean up old test deployments
+        if: success()
+        run: |
+          git fetch origin gh-pages:gh-pages
+          git checkout gh-pages
+
+          # Enable nullglob to handle case where no matches exist
+          shopt -s nullglob
+
+          # Remove all directories that look like test deployments (pr-* or branch-*)
+          for dir in pr-* branch-*; do
+            if [ -d "$dir" ]; then
+              echo "Removing test deployment: $dir"
+              git rm -rf "$dir"
+            fi
+          done
+
+          # Commit and push if there were changes
+          if git diff --cached --quiet; then
+            echo "No test deployments to clean up"
+          else
+            git config user.name "github-actions[bot]"
+            git config user.email "github-actions[bot]@users.noreply.github.com"
+            git commit -m "Clean up test deployments after ${{ steps.deploy-dir.outputs.path }} deployment"
+            git push origin gh-pages
+          fi
+
       - name: Install Firebase Functions dependencies
+        if: github.ref == 'refs/heads/main'
         run: |
           cd functions
-          npm ci
+          yarn --frozen-lockfile
 
       - name: Setup Firebase project
+        if: github.ref == 'refs/heads/main'
         run: |
           if [ -z "${{ vars.FIREBASE_PROJECT_ID }}" ]; then
             echo "ERROR: FIREBASE_PROJECT_ID variable is not set!"
@@ -61,6 +112,7 @@ jobs:
           cat .firebaserc
 
       - name: Deploy to Firebase
+        if: github.ref == 'refs/heads/main'
         uses: w9jds/firebase-action@master
         with:
           args: deploy --only database,functions --project ${{ vars.FIREBASE_PROJECT_ID }} --force

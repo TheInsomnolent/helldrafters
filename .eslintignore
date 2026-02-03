@@ -1,0 +1,21 @@
+# Dependencies
+node_modules/
+
+# Build outputs
+build/
+dist/
+coverage/
+
+# Firebase Functions (has its own ESLint config)
+functions/
+
+# Generated files
+*.min.js
+
+# Config files
+*.config.js
+postcss.config.js
+tailwind.config.js
+
+# Public folder
+public/

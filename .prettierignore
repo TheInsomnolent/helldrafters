@@ -1,0 +1,39 @@
+# Dependencies
+node_modules/
+functions/node_modules/
+
+# Build outputs
+build/
+dist/
+coverage/
+
+# Firebase Functions (uses Google style)
+functions/
+
+# Package manager files
+package-lock.json
+yarn.lock
+pnpm-lock.yaml
+
+# IDE and editor files
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Env files
+.env
+.env.*
+
+# Generated files
+*.min.js
+*.min.css
+*.map
+
+# Public assets that shouldn't be formatted
+public/*.json
+public/*.xml

@@ -28,10 +28,10 @@ Fixes #
 
 <!-- Describe how you tested your changes -->
 
-- [ ] Tested locally with `npm start`
-- [ ] All tests pass (`npm test`)
-- [ ] Linting passes with zero warnings (`npm run lint`)
-- [ ] Build succeeds (`npm run build`)
+- [ ] Tested locally with `yarn start`
+- [ ] All tests pass (`yarn test`)
+- [ ] Linting passes with zero warnings (`yarn lint`)
+- [ ] Build succeeds (`yarn build`)
 - [ ] Tested in browser(s): <!-- List browsers/versions -->
 - [ ] Tested on device(s): <!-- Desktop, mobile, tablet -->
 

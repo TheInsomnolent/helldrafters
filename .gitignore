@@ -5,6 +5,10 @@
 /.pnp
 .pnp.js
 
+# wrong package manager lockfiles (this project uses yarn)
+package-lock.json
+pnpm-lock.yaml
+
 # testing
 /coverage
 

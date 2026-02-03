@@ -35,6 +35,11 @@
           ".read": true
         },
         
+        "eventUIState": {
+          ".write": "data.parent().child('hostId').val() === auth.uid || auth == null",
+          ".read": true
+        },
+        
         "clientActions": {
           ".read": true,
           
