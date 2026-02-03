@@ -52,6 +52,7 @@ jobs:
         env:
           REACT_APP_BUILD_TIME: ${{ github.event.head_commit.timestamp }}
           REACT_APP_COMMIT_SHA: ${{ github.sha }}
+          PUBLIC_URL: /helldrafters/branch-${{ steps.sanitize.outputs.safe }}
 
       - name: Sanitize branch name for directory
         id: sanitize
@@ -77,19 +78,19 @@ jobs:
           BRANCH="${{ steps.branch.outputs.name }}"
           SAFE_NAME="${{ steps.sanitize.outputs.safe }}"
           DEPLOY_URL="https://theinsomnolent.github.io/helldrafters/branch-$SAFE_NAME/"
-          
+
           # Try to find an open PR for this branch
           PR_NUMBER=$(gh pr list --head "$BRANCH" --state open --json number --jq '.[0].number' || echo "")
-          
+
           if [ -n "$PR_NUMBER" ]; then
             echo "Found PR #$PR_NUMBER for branch $BRANCH"
-            
+
             # Post comment with deployment URL
             gh pr comment $PR_NUMBER --body "🚀 **Test deployment available!**
-          
+
           Branch \`$BRANCH\` has been deployed to:
           $DEPLOY_URL
-          
+
           This deployment will be automatically cleaned up when:
           - This PR is merged or closed
           - A new build is pushed to \`main\` or \`develop\`"
