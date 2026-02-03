@@ -7,12 +7,11 @@
  * Key improvements:
  * - All UI state synced via Firebase for consistent multiplayer experience
  * - Clear separation of host decisions vs player-specific decisions
- * - Voting system for non-host players
  * - Backward navigation until event is completed
  * - Better UX with upfront outcome explanation
  *
- * The system can be enabled alongside the existing events system for testing,
- * with a toggle in the game settings to switch between systems.
+ * The eventsV2 system is now the primary events mechanism and is automatically
+ * enabled when events are enabled in the game configuration.
  */
 
 // Event UI State types and helpers
@@ -50,8 +49,6 @@ export {
     setBoosterDraft,
     setPendingFaction,
     setSubfactionSelection,
-    castVote,
-    removeVote,
     submitPlayerDecision,
     setWaitingForPlayers,
     completeEvent,

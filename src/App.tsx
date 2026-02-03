@@ -373,9 +373,6 @@ function HelldiversRoguelikeApp() {
     const [missionSuccessDebouncing, setMissionSuccessDebouncing] = React.useState(false) // Debounce for mission success button
     const [gameStartTime, setGameStartTime] = React.useState<number | null>(null) // Track game start time for analytics
 
-    // EventsV2 voting state
-    const [eventsV2Votes, setEventsV2Votes] = React.useState<eventsV2.PlayerVote[]>([])
-
     // Analytics state
     const [showRunHistory, setShowRunHistory] = React.useState(false) // For run history modal
     // Note: runAnalyticsData is now stored in game state (state.runAnalyticsData) so it syncs to clients
@@ -415,11 +412,10 @@ function HelldiversRoguelikeApp() {
     // This ensures clients stay in sync with the host's event UI state
     useEffect(() => {
         // Only subscribe if:
-        // 1. eventsV2 is enabled
+        // 1. Events are enabled
         // 2. We're in multiplayer mode
         // 3. We have a lobbyId
-        // 4. We're not the host (host manages state, clients receive it)
-        if (!gameConfig.useEventsV2 || !isMultiplayer || !lobbyId) {
+        if (!eventsEnabled || !isMultiplayer || !lobbyId) {
             return
         }
 
@@ -431,16 +427,9 @@ function HelldiversRoguelikeApp() {
                     eventId: eventUIState.eventId,
                     currentStep: eventUIState.currentStep,
                     isComplete: eventUIState.isComplete,
-                    voteCount: eventUIState.votes?.length || 0,
                 })
-                // Update votes from Firebase state
-                if (eventUIState.votes) {
-                    setEventsV2Votes(eventUIState.votes)
-                }
             } else {
                 console.debug('[eventsV2] Event UI state cleared (null)')
-                // Clear votes when event state is cleared
-                setEventsV2Votes([])
                 // When eventsV2 state is cleared, ensure local event state is also cleared
                 // This helps clients catch up when events are completed
                 if (currentEvent && !isHost) {
@@ -457,7 +446,7 @@ function HelldiversRoguelikeApp() {
             console.debug(`[eventsV2] Unsubscribing from event UI state for lobby ${lobbyId}`)
             unsubscribe()
         }
-    }, [gameConfig.useEventsV2, isMultiplayer, lobbyId, isHost, currentEvent, dispatch])
+    }, [eventsEnabled, isMultiplayer, lobbyId, isHost, currentEvent, dispatch])
 
     // Handle new player joining mid-game (host only)
     // When a new player joins into a slot that doesn't have a loadout, create one for them
@@ -897,8 +886,8 @@ function HelldiversRoguelikeApp() {
                 dispatch(actions.setCurrentEvent(event))
                 dispatch(actions.setPhase('EVENT'))
 
-                // Initialize eventsV2 state if using the new system
-                if (gameConfig.useEventsV2 && isMultiplayer && lobbyId && multiplayer.playerId) {
+                // Initialize eventsV2 state for Firebase sync (always enabled when events are enabled)
+                if (eventsEnabled && isMultiplayer && lobbyId && multiplayer.playerId) {
                     console.debug(
                         `[eventsV2] Host initializing event UI state for event ${event.id} in lobby ${lobbyId}`,
                     )
@@ -922,11 +911,11 @@ function HelldiversRoguelikeApp() {
     }
 
     /**
-     * Clear event state from Firebase when using eventsV2
+     * Clear event state from Firebase when completing an event
      * Call this whenever closing/completing an event
      */
     const clearEventsV2State = () => {
-        if (gameConfig.useEventsV2 && isMultiplayer && lobbyId) {
+        if (eventsEnabled && isMultiplayer && lobbyId) {
             console.debug(`[eventsV2] Host clearing event UI state for lobby ${lobbyId}`)
             eventsV2
                 .clearEventUIState(lobbyId)
@@ -3071,43 +3060,6 @@ function HelldiversRoguelikeApp() {
                         dispatch(actions.setEventSpecialDraftSelection({ playerIndex, itemId }))
                     }}
                     onConfirmSelections={handleEventChoice}
-                    // EventsV2 voting props
-                    votes={eventsV2Votes}
-                    useEventsV2={gameConfig.useEventsV2}
-                    onVote={
-                        gameConfig.useEventsV2 && isMultiplayer && lobbyId && !isHost
-                            ? async (choiceIndex: number) => {
-                                  // Get current event UI state from Firebase to cast vote
-                                  const playerName =
-                                      lobbyData?.players?.[multiplayer.playerId || '']?.name ||
-                                      `Player ${(playerSlot || 0) + 1}`
-                                  try {
-                                      // Get current state first
-                                      const unsubscribe = eventsV2.subscribeEventUIState(
-                                          lobbyId,
-                                          async (eventUIState) => {
-                                              unsubscribe() // Only need one read
-                                              if (eventUIState && multiplayer.playerId) {
-                                                  await eventsV2.castVote(
-                                                      lobbyId,
-                                                      eventUIState,
-                                                      multiplayer.playerId,
-                                                      playerName,
-                                                      playerSlot || 0,
-                                                      choiceIndex,
-                                                  )
-                                                  console.debug(
-                                                      `[eventsV2] Vote cast for choice ${choiceIndex}`,
-                                                  )
-                                              }
-                                          },
-                                      )
-                                  } catch (error) {
-                                      console.error('[eventsV2] Failed to cast vote:', error)
-                                  }
-                              }
-                            : undefined
-                    }
                 />
             </EventPageWrapper>
         )

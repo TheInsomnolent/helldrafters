@@ -86,7 +86,6 @@ export const initialState: GameState = {
         enduranceMode: false,
         debugEventsMode: isDebugModeEnabled(),
         brutalityMode: false,
-        useEventsV2: false,
     },
     currentDiff: 1,
     currentMission: 1,

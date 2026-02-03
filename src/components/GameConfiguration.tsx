@@ -219,35 +219,6 @@ export default function GameConfiguration({
                             </OptionDescription>
                         </div>
                     </CheckboxLabel>
-                    {eventsEnabled && (
-                        <CheckboxLabel
-                            $selected={gameConfig.useEventsV2 ?? false}
-                            $factionPrimary={factionColors.PRIMARY}
-                            style={{ marginLeft: '24px' }}
-                        >
-                            <Checkbox
-                                checked={gameConfig.useEventsV2 ?? false}
-                                onChange={(e) =>
-                                    onUpdateGameConfig({ useEventsV2: e.target.checked })
-                                }
-                                $factionPrimary={factionColors.PRIMARY}
-                            />
-                            <div>
-                                <Flex $align="center" $gap="sm">
-                                    <OptionTitle $factionPrimary={factionColors.PRIMARY}>
-                                        Use New Events System (V2)
-                                    </OptionTitle>
-                                    <Badge $variant="info" $size="sm">
-                                        EXPERIMENTAL
-                                    </Badge>
-                                </Flex>
-                                <OptionDescription>
-                                    Improved multiplayer sync with voting, better navigation, and
-                                    clearer outcome previews
-                                </OptionDescription>
-                            </div>
-                        </CheckboxLabel>
-                    )}
                     <CheckboxLabel
                         $selected={gameConfig.endlessMode}
                         $factionPrimary={factionColors.PRIMARY}

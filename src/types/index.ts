@@ -316,7 +316,6 @@ export interface GameConfig {
     enduranceMode: boolean
     debugEventsMode: boolean
     brutalityMode: boolean
-    useEventsV2?: boolean // Use new events system with improved multiplayer sync
 }
 
 /**
