@@ -862,6 +862,18 @@ function HelldiversRoguelikeApp() {
         return false
     }
 
+    /**
+     * Clear event state from Firebase when using eventsV2
+     * Call this whenever closing/completing an event
+     */
+    const clearEventsV2State = () => {
+        if (gameConfig.useEventsV2 && isMultiplayer && lobbyId) {
+            eventsV2.clearEventUIState(lobbyId).catch((error) => {
+                console.error('Failed to clear eventsV2 state:', error)
+            })
+        }
+    }
+
     const proceedToNextDraft = (updatedPlayers: Player[]) => {
         const currentPlayerIdx = draftState.activePlayerIndex
         const currentPlayer = updatedPlayers[currentPlayerIdx]
@@ -2666,6 +2678,7 @@ function HelldiversRoguelikeApp() {
                 // Close event
                 dispatch(actions.setCurrentEvent(null))
                 dispatch(actions.resetEventSelections())
+                clearEventsV2State()
 
                 // Get the updated players
                 const updatedPlayers = updates.players || players
@@ -2752,6 +2765,7 @@ function HelldiversRoguelikeApp() {
             // After event, proceed to dashboard
             dispatch(actions.setCurrentEvent(null))
             dispatch(actions.resetEventSelections())
+            clearEventsV2State()
             dispatch(actions.setPhase('DASHBOARD'))
         }
 
@@ -2771,6 +2785,7 @@ function HelldiversRoguelikeApp() {
                 window.__boosterOutcome = null
                 dispatch(actions.setCurrentEvent(null))
                 dispatch(actions.resetEventSelections())
+                clearEventsV2State()
                 dispatch(actions.setPhase('DASHBOARD'))
                 return
             }
@@ -2811,6 +2826,7 @@ function HelldiversRoguelikeApp() {
                 // Clean up
                 dispatch(actions.setCurrentEvent(null))
                 dispatch(actions.resetEventSelections())
+                clearEventsV2State()
                 dispatch(actions.setPhase('DASHBOARD'))
                 return
             }
@@ -2876,6 +2892,7 @@ function HelldiversRoguelikeApp() {
 
             dispatch(actions.setCurrentEvent(null))
             dispatch(actions.resetEventSelections())
+            clearEventsV2State()
             dispatch(actions.setPhase('DASHBOARD'))
         }
 
@@ -2883,6 +2900,7 @@ function HelldiversRoguelikeApp() {
             // Emergency skip for beta testing - helps escape soft-locks
             dispatch(actions.setCurrentEvent(null))
             dispatch(actions.resetEventSelections())
+            clearEventsV2State()
             dispatch(actions.setPhase('DASHBOARD'))
         }
 
@@ -2961,6 +2979,7 @@ function HelldiversRoguelikeApp() {
                         dispatch(actions.setCurrentEvent(null))
                         dispatch(actions.setEventPlayerChoice(null))
                         dispatch(actions.resetEventSelections())
+                        clearEventsV2State()
                         dispatch(actions.setPhase('DASHBOARD'))
                     }}
                     onSpecialDraftSelection={(playerIndex, itemId) => {
