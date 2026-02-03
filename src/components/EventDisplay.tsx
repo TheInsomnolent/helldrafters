@@ -1891,6 +1891,20 @@ export default function EventDisplay({
                                         // Non-hosts can vote when eventsV2 is enabled
                                         const canVote =
                                             !isHost && useEventsV2 && onVote && affordable
+
+                                        // Debug logging for voting
+                                        if (idx === 0) {
+                                            console.debug('[eventsV2] Voting state:', {
+                                                isHost,
+                                                useEventsV2,
+                                                hasOnVote: !!onVote,
+                                                affordable,
+                                                canSelect,
+                                                canVote,
+                                                playerSlot,
+                                            })
+                                        }
+
                                         const outcomeText = formatOutcomes(choice.outcomes)
                                         const reqCost = choice.requiresRequisition
                                         // Check if current player has voted for this choice
