@@ -42,6 +42,15 @@ jobs:
       - name: Install dependencies
         run: yarn --frozen-lockfile
 
+      - name: Sanitize branch name for directory
+        id: sanitize
+        run: |
+          BRANCH="${{ steps.branch.outputs.name }}"
+          # Replace slashes and other special chars with dashes
+          SAFE_NAME=$(echo "$BRANCH" | sed 's/[^a-zA-Z0-9-]/-/g' | tr '[:upper:]' '[:lower:]')
+          echo "safe=$SAFE_NAME" >> $GITHUB_OUTPUT
+          echo "Sanitized branch name: $SAFE_NAME"
+
       - name: Copy CHANGELOG to build
         run: |
           echo "Copying CHANGELOG.md to public folder for deployment"
@@ -53,15 +62,6 @@ jobs:
           REACT_APP_BUILD_TIME: ${{ github.event.head_commit.timestamp }}
           REACT_APP_COMMIT_SHA: ${{ github.sha }}
           PUBLIC_URL: /helldrafters/branch-${{ steps.sanitize.outputs.safe }}
-
-      - name: Sanitize branch name for directory
-        id: sanitize
-        run: |
-          BRANCH="${{ steps.branch.outputs.name }}"
-          # Replace slashes and other special chars with dashes
-          SAFE_NAME=$(echo "$BRANCH" | sed 's/[^a-zA-Z0-9-]/-/g' | tr '[:upper:]' '[:lower:]')
-          echo "safe=$SAFE_NAME" >> $GITHUB_OUTPUT
-          echo "Sanitized branch name: $SAFE_NAME"
 
       - name: Deploy to GitHub Pages
         uses: peaceiris/actions-gh-pages@v3
