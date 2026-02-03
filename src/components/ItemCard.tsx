@@ -6,7 +6,7 @@
  */
 
 import React from 'react'
-import styled, { css } from 'styled-components'
+import styled, { css, keyframes } from 'styled-components'
 import { ARMOR_PASSIVE_DESCRIPTIONS } from '../constants/armorPassives'
 import type { FactionColorSet } from '../constants/theme'
 import { TYPE, RARITY, type Rarity } from '../constants/types'
@@ -28,7 +28,27 @@ const isItem = (item: DraftHandItem): item is Item =>
 // STYLED COMPONENTS
 // ============================================================================
 
-const CardContainer = styled.div<{ $factionPrimary?: string }>`
+// Pulsating glow animation (similar to HELLDRAFTERS title)
+const pulseGlow = keyframes`
+    0% {
+        box-shadow: 0 0 0 rgba(245, 198, 66, 0);
+    }
+    25% {
+        box-shadow: 0 0 20px rgba(245, 198, 66, 0.5), 0 0 40px rgba(245, 198, 66, 0.3);
+    }
+    50% {
+        box-shadow: 0 0 0 rgba(245, 198, 66, 0);
+    }
+    100% {
+        box-shadow: 0 0 0 rgba(245, 198, 66, 0);
+    }
+`
+
+const CardContainer = styled.div<{
+    $factionPrimary?: string
+    $shouldPulse?: boolean
+    $animationDelay?: number
+}>`
     position: relative;
     background-color: ${({ theme }) => theme.colors.cardBg};
     border: 2px solid rgba(100, 116, 139, 0.5);
@@ -40,6 +60,13 @@ const CardContainer = styled.div<{ $factionPrimary?: string }>`
     min-height: 320px;
     width: 280px;
     flex-shrink: 0;
+
+    ${({ $shouldPulse, $animationDelay = 0 }) =>
+        $shouldPulse &&
+        css`
+            animation: ${pulseGlow} 2s ease-in-out infinite;
+            animation-delay: ${$animationDelay}s;
+        `}
 
     &:hover {
         border-color: ${({ $factionPrimary }) => $factionPrimary || 'rgba(100, 116, 139, 0.5)'};
@@ -188,9 +215,18 @@ interface ItemCardProps {
     factionColors: FactionColorSet
     onSelect?: (item: DraftHandItem) => void
     onRemove?: (item: DraftHandItem) => void
+    shouldPulse?: boolean
+    animationDelay?: number
 }
 
-const ItemCard: React.FC<ItemCardProps> = ({ item, factionColors, onSelect, onRemove }) => {
+const ItemCard: React.FC<ItemCardProps> = ({
+    item,
+    factionColors,
+    onSelect,
+    onRemove,
+    shouldPulse = false,
+    animationDelay = 0,
+}) => {
     // Guard: if item is undefined, don't render
     if (!item) {
         return null
@@ -250,7 +286,11 @@ const ItemCard: React.FC<ItemCardProps> = ({ item, factionColors, onSelect, onRe
     const iconUrl = getItemIconUrl(displayItem)
 
     return (
-        <CardContainer $factionPrimary={onSelect ? factionColors.PRIMARY : undefined}>
+        <CardContainer
+            $factionPrimary={onSelect ? factionColors.PRIMARY : undefined}
+            $shouldPulse={shouldPulse}
+            $animationDelay={animationDelay}
+        >
             {onRemove && (
                 <RemoveButton
                     onClick={(e) => {
