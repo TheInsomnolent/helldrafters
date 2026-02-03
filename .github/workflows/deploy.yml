@@ -36,6 +36,7 @@ jobs:
         env:
           REACT_APP_BUILD_TIME: ${{ github.event.head_commit.timestamp }}
           REACT_APP_COMMIT_SHA: ${{ github.sha }}
+          PUBLIC_URL: ${{ github.ref == 'refs/heads/develop' && '/helldrafters/develop' || '/helldrafters' }}
 
       - name: Determine deployment directory
         id: deploy-dir
@@ -69,10 +70,10 @@ jobs:
         run: |
           git fetch origin gh-pages:gh-pages
           git checkout gh-pages
-          
+
           # Enable nullglob to handle case where no matches exist
           shopt -s nullglob
-          
+
           # Remove all directories that look like test deployments (pr-* or branch-*)
           for dir in pr-* branch-*; do
             if [ -d "$dir" ]; then
@@ -80,7 +81,7 @@ jobs:
               git rm -rf "$dir"
             fi
           done
-          
+
           # Commit and push if there were changes
           if git diff --cached --quiet; then
             echo "No test deployments to clean up"
