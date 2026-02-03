@@ -1,13 +1,13 @@
 {
   "files": {
     "main.css": "/helldrafters/branch-copilot-complete-redesign-events-frontend/static/css/main.58720be0.css",
-    "main.js": "/helldrafters/branch-copilot-complete-redesign-events-frontend/static/js/main.c2784f4c.js",
+    "main.js": "/helldrafters/branch-copilot-complete-redesign-events-frontend/static/js/main.6eca8d0d.js",
     "index.html": "/helldrafters/branch-copilot-complete-redesign-events-frontend/index.html",
     "main.58720be0.css.map": "/helldrafters/branch-copilot-complete-redesign-events-frontend/static/css/main.58720be0.css.map",
-    "main.c2784f4c.js.map": "/helldrafters/branch-copilot-complete-redesign-events-frontend/static/js/main.c2784f4c.js.map"
+    "main.6eca8d0d.js.map": "/helldrafters/branch-copilot-complete-redesign-events-frontend/static/js/main.6eca8d0d.js.map"
   },
   "entrypoints": [
     "static/css/main.58720be0.css",
-    "static/js/main.c2784f4c.js"
+    "static/js/main.6eca8d0d.js"
   ]
 }
