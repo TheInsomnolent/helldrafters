@@ -869,7 +869,7 @@ function HelldiversRoguelikeApp() {
     const clearEventsV2State = () => {
         if (gameConfig.useEventsV2 && isMultiplayer && lobbyId) {
             eventsV2.clearEventUIState(lobbyId).catch((error) => {
-                console.error('Failed to clear eventsV2 state:', error)
+                console.error(`Failed to clear eventsV2 state for lobby ${lobbyId}:`, error)
             })
         }
     }
