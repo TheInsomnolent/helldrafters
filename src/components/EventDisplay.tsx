@@ -16,6 +16,17 @@ import { getFactionColors } from '../constants/theme'
 import { RARITY } from '../constants/types'
 import type { Player, Item, Faction, StratagemSelection } from '../types'
 
+/**
+ * Vote from a non-host player for their preferred choice
+ */
+interface PlayerVote {
+    playerId: string
+    playerName: string
+    playerSlot: number
+    choiceIndex: number
+    timestamp: number
+}
+
 interface EventDisplayProps {
     currentEvent: GameEvent | null
     eventPlayerChoice: number | null
@@ -61,6 +72,10 @@ interface EventDisplayProps {
     onSpecialDraftSelection: (playerIndex: number, itemId: string) => void
     onConfirmSelections: (choice?: EventChoice) => void
     connectedPlayerIndices?: number[] | null
+    // Voting props (for eventsV2)
+    votes?: PlayerVote[]
+    onVote?: (choiceIndex: number) => void
+    useEventsV2?: boolean
 }
 
 /**
@@ -106,6 +121,10 @@ export default function EventDisplay({
     onSpecialDraftSelection,
     onConfirmSelections,
     connectedPlayerIndices = null, // Array of connected player indices (null means all connected)
+    // Voting props (eventsV2)
+    votes = [],
+    onVote,
+    useEventsV2 = false,
 }: EventDisplayProps) {
     const [showSkipConfirm, setShowSkipConfirm] = useState(false)
     // Helper to check if a player index is connected (selectable for events)
@@ -1777,7 +1796,7 @@ export default function EventDisplay({
                                     </div>
                                 )}
 
-                                {/* Client waiting message */}
+                                {/* Client waiting message - updated for voting */}
                                 {!isHost && (
                                     <div
                                         style={{
@@ -1790,7 +1809,65 @@ export default function EventDisplay({
                                         }}
                                     >
                                         <div style={{ color: '#94a3b8', fontSize: '14px' }}>
-                                            Waiting for host to make a choice...
+                                            {useEventsV2 && onVote
+                                                ? 'Cast your vote below - the host will make the final decision'
+                                                : 'Waiting for host to make a choice...'}
+                                        </div>
+                                    </div>
+                                )}
+
+                                {/* Voting summary display */}
+                                {useEventsV2 && votes && votes.length > 0 && (
+                                    <div
+                                        style={{
+                                            marginBottom: '16px',
+                                            padding: '12px 16px',
+                                            backgroundColor: 'rgba(147, 51, 234, 0.15)',
+                                            border: '1px solid rgba(147, 51, 234, 0.4)',
+                                            borderRadius: '4px',
+                                        }}
+                                    >
+                                        <div
+                                            style={{
+                                                fontSize: '12px',
+                                                color: '#a78bfa',
+                                                marginBottom: '8px',
+                                                textTransform: 'uppercase',
+                                                fontWeight: 'bold',
+                                            }}
+                                        >
+                                            🗳️ Player Votes
+                                        </div>
+                                        <div
+                                            style={{
+                                                display: 'flex',
+                                                flexWrap: 'wrap',
+                                                gap: '8px',
+                                            }}
+                                        >
+                                            {votes.map((vote) => (
+                                                <div
+                                                    key={vote.playerId}
+                                                    style={{
+                                                        padding: '4px 8px',
+                                                        backgroundColor: 'rgba(147, 51, 234, 0.3)',
+                                                        borderRadius: '4px',
+                                                        fontSize: '12px',
+                                                        color: '#e9d5ff',
+                                                    }}
+                                                >
+                                                    <span style={{ fontWeight: 'bold' }}>
+                                                        {vote.playerName ||
+                                                            `Player ${vote.playerSlot + 1}`}
+                                                    </span>
+                                                    {' → '}
+                                                    <span>
+                                                        {currentEvent?.choices?.[vote.choiceIndex]
+                                                            ?.text ||
+                                                            `Option ${vote.choiceIndex + 1}`}
+                                                    </span>
+                                                </div>
+                                            ))}
                                         </div>
                                     </div>
                                 )}
@@ -1800,7 +1877,7 @@ export default function EventDisplay({
                                         display: 'flex',
                                         flexDirection: 'column',
                                         gap: '12px',
-                                        opacity: isHost ? 1 : 0.6,
+                                        opacity: isHost ? 1 : useEventsV2 ? 0.9 : 0.6,
                                     }}
                                 >
                                     {currentEvent.choices?.map((choice, idx) => {
@@ -1811,44 +1888,83 @@ export default function EventDisplay({
                                             eventPlayerChoice,
                                         )
                                         const canSelect = isHost && affordable
+                                        // Non-hosts can vote when eventsV2 is enabled
+                                        const canVote =
+                                            !isHost && useEventsV2 && onVote && affordable
                                         const outcomeText = formatOutcomes(choice.outcomes)
                                         const reqCost = choice.requiresRequisition
+                                        // Check if current player has voted for this choice
+                                        const myVote = votes?.find(
+                                            (v) => v.playerSlot === playerSlot,
+                                        )
+                                        const hasVotedForThis = myVote?.choiceIndex === idx
+                                        // Count votes for this choice
+                                        const voteCount =
+                                            votes?.filter((v) => v.choiceIndex === idx).length || 0
+
                                         return (
                                             <button
                                                 key={idx}
-                                                onClick={() =>
-                                                    canSelect && handleChoiceClick(choice)
-                                                }
-                                                disabled={!canSelect}
+                                                onClick={() => {
+                                                    if (canSelect) {
+                                                        handleChoiceClick(choice)
+                                                    } else if (canVote) {
+                                                        onVote(idx)
+                                                    }
+                                                }}
+                                                disabled={!canSelect && !canVote}
                                                 style={{
                                                     padding: '16px',
                                                     fontSize: '16px',
                                                     fontWeight: 'bold',
-                                                    backgroundColor: affordable
-                                                        ? '#F5C642'
-                                                        : '#555',
-                                                    color: affordable ? '#0f1419' : '#888',
-                                                    border: 'none',
+                                                    backgroundColor: hasVotedForThis
+                                                        ? '#7c3aed'
+                                                        : affordable
+                                                          ? '#F5C642'
+                                                          : '#555',
+                                                    color: hasVotedForThis
+                                                        ? '#fff'
+                                                        : affordable
+                                                          ? '#0f1419'
+                                                          : '#888',
+                                                    border: hasVotedForThis
+                                                        ? '2px solid #a78bfa'
+                                                        : 'none',
                                                     borderRadius: '4px',
-                                                    cursor: canSelect ? 'pointer' : 'not-allowed',
+                                                    cursor:
+                                                        canSelect || canVote
+                                                            ? 'pointer'
+                                                            : 'not-allowed',
                                                     transition: 'all 0.2s',
                                                     textAlign: 'left',
                                                     display: 'flex',
                                                     flexDirection: 'column',
                                                     gap: '8px',
+                                                    position: 'relative',
                                                 }}
-                                                onMouseEnter={(e) =>
-                                                    canSelect &&
-                                                    ((
-                                                        e.target as HTMLElement
-                                                    ).style.backgroundColor = '#ffd95a')
-                                                }
-                                                onMouseLeave={(e) =>
-                                                    canSelect &&
-                                                    ((
-                                                        e.target as HTMLElement
-                                                    ).style.backgroundColor = '#F5C642')
-                                                }
+                                                onMouseEnter={(e) => {
+                                                    if (canSelect) {
+                                                        ;(
+                                                            e.target as HTMLElement
+                                                        ).style.backgroundColor = '#ffd95a'
+                                                    } else if (canVote && !hasVotedForThis) {
+                                                        ;(
+                                                            e.target as HTMLElement
+                                                        ).style.backgroundColor = '#e0b800'
+                                                    }
+                                                }}
+                                                onMouseLeave={(e) => {
+                                                    if (
+                                                        canSelect ||
+                                                        (canVote && !hasVotedForThis)
+                                                    ) {
+                                                        ;(
+                                                            e.target as HTMLElement
+                                                        ).style.backgroundColor = hasVotedForThis
+                                                            ? '#7c3aed'
+                                                            : '#F5C642'
+                                                    }
+                                                }}
                                             >
                                                 <div
                                                     style={{
@@ -1858,18 +1974,47 @@ export default function EventDisplay({
                                                         fontSize: '16px',
                                                     }}
                                                 >
-                                                    <span>{choice.text}</span>
-                                                    {reqCost && (
-                                                        <span
-                                                            style={{
-                                                                fontSize: '13px',
-                                                                fontWeight: 'bold',
-                                                                opacity: affordable ? 1 : 0.6,
-                                                            }}
-                                                        >
-                                                            Costs {reqCost} requisition
-                                                        </span>
-                                                    )}
+                                                    <span>
+                                                        {hasVotedForThis && '✓ '}
+                                                        {choice.text}
+                                                    </span>
+                                                    <div
+                                                        style={{
+                                                            display: 'flex',
+                                                            gap: '12px',
+                                                            alignItems: 'center',
+                                                        }}
+                                                    >
+                                                        {/* Vote count badge */}
+                                                        {useEventsV2 && voteCount > 0 && (
+                                                            <span
+                                                                style={{
+                                                                    fontSize: '12px',
+                                                                    fontWeight: 'bold',
+                                                                    padding: '2px 8px',
+                                                                    backgroundColor:
+                                                                        'rgba(147, 51, 234, 0.3)',
+                                                                    borderRadius: '12px',
+                                                                    color: hasVotedForThis
+                                                                        ? '#fff'
+                                                                        : '#9333ea',
+                                                                }}
+                                                            >
+                                                                🗳️ {voteCount}
+                                                            </span>
+                                                        )}
+                                                        {reqCost && (
+                                                            <span
+                                                                style={{
+                                                                    fontSize: '13px',
+                                                                    fontWeight: 'bold',
+                                                                    opacity: affordable ? 1 : 0.6,
+                                                                }}
+                                                            >
+                                                                Costs {reqCost} requisition
+                                                            </span>
+                                                        )}
+                                                    </div>
                                                 </div>
                                                 <div
                                                     style={{
@@ -1881,6 +2026,20 @@ export default function EventDisplay({
                                                 >
                                                     {outcomeText}
                                                 </div>
+                                                {/* Vote indicator for non-hosts */}
+                                                {!isHost && useEventsV2 && affordable && (
+                                                    <div
+                                                        style={{
+                                                            fontSize: '11px',
+                                                            opacity: 0.7,
+                                                            marginTop: '4px',
+                                                        }}
+                                                    >
+                                                        {hasVotedForThis
+                                                            ? '✓ Your vote'
+                                                            : 'Click to vote for this option'}
+                                                    </div>
+                                                )}
                                             </button>
                                         )
                                     })}

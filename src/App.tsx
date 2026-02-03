@@ -373,6 +373,9 @@ function HelldiversRoguelikeApp() {
     const [missionSuccessDebouncing, setMissionSuccessDebouncing] = React.useState(false) // Debounce for mission success button
     const [gameStartTime, setGameStartTime] = React.useState<number | null>(null) // Track game start time for analytics
 
+    // EventsV2 voting state
+    const [eventsV2Votes, setEventsV2Votes] = React.useState<eventsV2.PlayerVote[]>([])
+
     // Analytics state
     const [showRunHistory, setShowRunHistory] = React.useState(false) // For run history modal
     // Note: runAnalyticsData is now stored in game state (state.runAnalyticsData) so it syncs to clients
@@ -428,9 +431,16 @@ function HelldiversRoguelikeApp() {
                     eventId: eventUIState.eventId,
                     currentStep: eventUIState.currentStep,
                     isComplete: eventUIState.isComplete,
+                    voteCount: eventUIState.votes?.length || 0,
                 })
+                // Update votes from Firebase state
+                if (eventUIState.votes) {
+                    setEventsV2Votes(eventUIState.votes)
+                }
             } else {
                 console.debug('[eventsV2] Event UI state cleared (null)')
+                // Clear votes when event state is cleared
+                setEventsV2Votes([])
                 // When eventsV2 state is cleared, ensure local event state is also cleared
                 // This helps clients catch up when events are completed
                 if (currentEvent && !isHost) {
@@ -3061,6 +3071,43 @@ function HelldiversRoguelikeApp() {
                         dispatch(actions.setEventSpecialDraftSelection({ playerIndex, itemId }))
                     }}
                     onConfirmSelections={handleEventChoice}
+                    // EventsV2 voting props
+                    votes={eventsV2Votes}
+                    useEventsV2={gameConfig.useEventsV2}
+                    onVote={
+                        gameConfig.useEventsV2 && isMultiplayer && lobbyId && !isHost
+                            ? async (choiceIndex: number) => {
+                                  // Get current event UI state from Firebase to cast vote
+                                  const playerName =
+                                      lobbyData?.players?.[multiplayer.playerId || '']?.name ||
+                                      `Player ${(playerSlot || 0) + 1}`
+                                  try {
+                                      // Get current state first
+                                      const unsubscribe = eventsV2.subscribeEventUIState(
+                                          lobbyId,
+                                          async (eventUIState) => {
+                                              unsubscribe() // Only need one read
+                                              if (eventUIState && multiplayer.playerId) {
+                                                  await eventsV2.castVote(
+                                                      lobbyId,
+                                                      eventUIState,
+                                                      multiplayer.playerId,
+                                                      playerName,
+                                                      playerSlot || 0,
+                                                      choiceIndex,
+                                                  )
+                                                  console.debug(
+                                                      `[eventsV2] Vote cast for choice ${choiceIndex}`,
+                                                  )
+                                              }
+                                          },
+                                      )
+                                  } catch (error) {
+                                      console.error('[eventsV2] Failed to cast vote:', error)
+                                  }
+                              }
+                            : undefined
+                    }
                 />
             </EventPageWrapper>
         )
