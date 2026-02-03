@@ -127,6 +127,22 @@ export default function EventDisplay({
     useEventsV2 = false,
 }: EventDisplayProps) {
     const [showSkipConfirm, setShowSkipConfirm] = useState(false)
+
+    // Comprehensive debug logging for eventsV2 voting investigation
+    console.debug('[eventsV2] EventDisplay render:', {
+        hasEvent: !!currentEvent,
+        eventType: currentEvent?.type,
+        eventId: currentEvent?.id,
+        isHost,
+        useEventsV2,
+        hasOnVote: !!onVote,
+        isMultiplayer,
+        playerSlot,
+        eventPlayerChoice,
+        needsPlayerChoice: currentEvent ? needsPlayerChoice(currentEvent) : null,
+        votesCount: votes?.length || 0,
+    })
+
     // Helper to check if a player index is connected (selectable for events)
     const isPlayerSelectable = (playerIdx: number): boolean => {
         // If connectedPlayerIndices is null, all players are selectable
@@ -1753,6 +1769,17 @@ export default function EventDisplay({
                         (!needsPlayerChoice(currentEvent) || eventPlayerChoice !== null) &&
                         !selectedChoice && (
                             <>
+                                {/* Debug log for choice section visibility */}
+                                {(() => {
+                                    console.debug('[eventsV2] Choice section VISIBLE:', {
+                                        isHost,
+                                        useEventsV2,
+                                        hasOnVote: !!onVote,
+                                        needsPlayerChoice: needsPlayerChoice(currentEvent),
+                                        eventPlayerChoice,
+                                    })
+                                    return null
+                                })()}
                                 {needsPlayerChoice(currentEvent) && eventPlayerChoice !== null && (
                                     <div style={{ marginBottom: '16px', textAlign: 'center' }}>
                                         {isHost ? (
