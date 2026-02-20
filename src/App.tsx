@@ -1,162 +1,138 @@
 import { CheckCircle, RefreshCw, XCircle } from 'lucide-react'
-import React, { useEffect, useReducer } from 'react'
+import { useEffect, useReducer, useRef, useState } from 'react'
 import { HashRouter, Route, Routes } from 'react-router-dom'
 import { ThemeProvider } from 'styled-components'
-import { theme, GlobalStyles, Button, Caption, SPACING } from './styles'
+import { AnalyticsDashboard } from './components/analytics'
 import CardLibrary from './components/CardLibrary'
 import ContributorsModal from './components/ContributorsModal'
+import CustomSetup from './components/CustomSetup'
 import EventDisplay from './components/EventDisplay'
 import ExplainerModal from './components/ExplainerModal'
+import ExportButton from './components/ExportButton'
 import GameFooter from './components/GameFooter'
 import GameHeader from './components/GameHeader'
-import ExportButton from './components/ExportButton'
-import { ItemCard, isArmorCombo, isItem } from './components/ItemCard'
-import KickedScreen from './components/KickedScreen'
-import LoadingScreen from './components/LoadingScreen'
-import MenuScreen from './components/MenuScreen'
-import RemoveCardConfirmModal from './components/RemoveCardConfirmModal'
-import SacrificeConfirmModal from './components/SacrificeConfirmModal'
-import SoloConfigScreen from './components/SoloConfigScreen'
-import StratagemReplacementModal from './components/StratagemReplacementModal'
 import GameLobby, { addExcludedItemsToSavedConfig } from './components/GameLobby'
+import { isArmorCombo, isItem, ItemCard } from './components/ItemCard'
+import KickedScreen from './components/KickedScreen'
 import LoadoutDisplay from './components/LoadoutDisplay'
+import MenuScreen from './components/MenuScreen'
 import {
     JoinGameScreen,
     MultiplayerModeSelect,
     MultiplayerStatusBar,
     MultiplayerWaitingRoom,
 } from './components/MultiplayerLobby'
+import RemoveCardConfirmModal from './components/RemoveCardConfirmModal'
 import RunHistoryModal from './components/RunHistoryModal'
-import { AnalyticsDashboard } from './components/analytics'
-import {
-    PageWrapper,
-    ContentWrapper,
-    CenteredContent,
-    SectionHeader,
-    PhaseSubtitle,
-    PhaseTitle,
-    TitleSeparator,
-    PhaseDescription,
-    SectionBox,
-    AlertBox,
-    AlertTitle,
-    AlertSubtitle,
-    WaitingMessage,
-    WaitingText,
-    ItemGrid,
-    LoadoutOverview,
-    LoadoutLabel,
-    LoadoutItems,
-    LoadoutSlot,
-    LoadoutSlotLabel,
-    LoadoutSlotValue,
-    ButtonRow,
-    ActionButton,
-    SkipButton,
-    HintText,
-    MonoText,
-    SacrificeHeader,
-    SacrificePenaltyBadge,
-    SacrificePenaltyTitle,
-    SacrificePenaltySubtext,
-    SacrificeCard,
-    SacrificeCardSlot,
-    SacrificeCardName,
-    SacrificeCardRarity,
-    SacrificeCardHint,
-    EmptyBox,
-    EmptyIcon,
-    EmptyTitle,
-    EmptyDescription,
-    FormSectionLabel,
-    DifficultyButton,
-    PlayerTabs,
-    PlayerTab,
-    LoadoutField,
-    LoadoutFieldLabel,
-    LoadoutSelect,
-    StratagemGrid,
-    StratagemSelect,
-    CustomSetupActions,
-    ExportRow,
-    DifficultyGrid,
-    DifficultyLabel,
-    SectionBoxSpaced,
-    CustomSetupPhaseTitle,
-    LoadoutConfigTitle,
-    LoadoutFieldSpaced,
-    LoadoutSelectColored,
-    StratagemGap,
-    RequisitionDisplay,
-    SacrificeWaitSection,
-    SacrificeWaitText,
-    FlexButton,
-    StartOperationButton,
-    EventPageWrapper,
-    DashboardMain,
-    PlayerRosterGrid,
-    ControlsSection,
-    ObjectiveCard,
-    ObjectiveTitle,
-    ObjectiveText,
-    MissionStatusCard,
-    MissionStatusTitle,
-    OperationStatus,
-    RatingSection,
-    RatingLabel,
-    StarRatingGrid,
-    StarRatingButton,
-    StarIcon,
-    RatingHint,
-    SamplesSection,
-    SamplesGrid,
-    SampleColumn,
-    SampleHeader,
-    SampleIcon,
-    SampleLabel,
-    SampleInput,
-    SampleHint,
-    SamplesNote,
-    ExtractionSection,
-    ExtractionList,
-    ExtractionLabel,
-    ExtractionCheckbox,
-    ExtractionContent,
-    ExtractionName,
-    ExtractionPenalty,
-    ExtractionNote,
-    MissionButtonRow,
-    MissionFailButton,
-    MissionSuccessButton,
-    MissionReportHint,
-    WaitingForHostBox,
-    WaitingForHostText,
-    WaitingForHostSubtext,
-    DebugSection,
-    DebugHeader,
-    DebugTitle,
-    ResetSeenEventsButton,
-    DebugGrid,
-    DebugButton,
-    DebugButtonTitle,
-    DebugButtonSubtext,
-    DebugHint,
-} from './styles/App.styles'
-import { useGamePersistence } from './hooks'
-import {
-    DIFFICULTY_CONFIG,
-    getMissionsForDifficulty,
-    STARTING_LOADOUT,
-} from './constants/gameConfig'
+import SacrificeConfirmModal from './components/SacrificeConfirmModal'
+import SoloConfigScreen from './components/SoloConfigScreen'
+import StratagemReplacementModal from './components/StratagemReplacementModal'
 import { Subfaction } from './constants/balancingConfig'
+import { getMissionsForDifficulty, STARTING_LOADOUT } from './constants/gameConfig'
 import { getFactionColors } from './constants/theme'
 import { TYPE } from './constants/types'
 import { DEFAULT_WARBONDS } from './constants/warbonds'
 import { MASTER_DB } from './data/itemsByWarbond'
+import { useGamePersistence } from './hooks'
 import * as actions from './state/actions'
 import * as types from './state/actionTypes'
-import { gameReducer, initialState } from './state/gameReducer'
 import * as runAnalytics from './state/analyticsStore'
+import { gameReducer, initialState } from './state/gameReducer'
+import { Button, Caption, GlobalStyles, SPACING, theme } from './styles'
+import {
+    ActionButton,
+    AlertBox,
+    AlertSubtitle,
+    AlertTitle,
+    ButtonRow,
+    CenteredContent,
+    ContentWrapper,
+    ControlsSection,
+    DashboardMain,
+    DebugButton,
+    DebugButtonSubtext,
+    DebugButtonTitle,
+    DebugGrid,
+    DebugHeader,
+    DebugHint,
+    DebugSection,
+    DebugTitle,
+    EmptyBox,
+    EmptyDescription,
+    EmptyIcon,
+    EmptyTitle,
+    EventPageWrapper,
+    ExportRow,
+    ExtractionCheckbox,
+    ExtractionContent,
+    ExtractionLabel,
+    ExtractionList,
+    ExtractionName,
+    ExtractionNote,
+    ExtractionPenalty,
+    ExtractionSection,
+    HintText,
+    ItemGrid,
+    LoadoutItems,
+    LoadoutLabel,
+    LoadoutOverview,
+    LoadoutSlot,
+    LoadoutSlotLabel,
+    LoadoutSlotValue,
+    MissionButtonRow,
+    MissionFailButton,
+    MissionReportHint,
+    MissionStatusCard,
+    MissionStatusTitle,
+    MissionSuccessButton,
+    MonoText,
+    ObjectiveCard,
+    ObjectiveText,
+    ObjectiveTitle,
+    OperationStatus,
+    PageWrapper,
+    PhaseDescription,
+    PhaseSubtitle,
+    PhaseTitle,
+    PlayerRosterGrid,
+    RatingHint,
+    RatingLabel,
+    RatingSection,
+    RequisitionDisplay,
+    ResetSeenEventsButton,
+    SacrificeCard,
+    SacrificeCardHint,
+    SacrificeCardName,
+    SacrificeCardRarity,
+    SacrificeCardSlot,
+    SacrificeHeader,
+    SacrificePenaltyBadge,
+    SacrificePenaltySubtext,
+    SacrificePenaltyTitle,
+    SacrificeWaitSection,
+    SacrificeWaitText,
+    SampleColumn,
+    SampleHeader,
+    SampleHint,
+    SampleIcon,
+    SampleInput,
+    SampleLabel,
+    SamplesGrid,
+    SamplesNote,
+    SamplesSection,
+    SectionHeader,
+    SkipButton,
+    StarIcon,
+    StarRatingButton,
+    StarRatingGrid,
+    StratagemGap,
+    TitleSeparator,
+    WaitingForHostBox,
+    WaitingForHostSubtext,
+    WaitingForHostText,
+    WaitingMessage,
+    WaitingText,
+} from './styles/App.styles'
 import {
     applyGainBoosterWithSelection,
     canAffordChoice,
@@ -175,6 +151,7 @@ import {
 import * as eventsV2 from './systems/eventsV2'
 import { initializeAnalytics, MultiplayerProvider, useMultiplayer } from './systems/multiplayer'
 import { saveRunToHistory } from './systems/persistence/saveManager'
+import type { DraftHandItem, Faction, Item, ItemType, Loadout, Player, SlotType } from './types'
 import {
     trackDraftSelection,
     trackEventChoice,
@@ -184,32 +161,15 @@ import {
     trackMultiplayerAction,
     trackPageView,
 } from './utils/analytics'
-import { generateDraftHand, getDraftHandSize, getWeightedPool } from './utils/draftHelpers'
+import {
+    createDraftState,
+    generateDraftHand,
+    getDraftHandSize,
+    getWeightedPool,
+} from './utils/draftHelpers'
 import { ArmorCombo, getArmorComboDisplayName, getItemById } from './utils/itemHelpers'
 import { areStratagemSlotsFull, getFirstEmptyStratagemSlot } from './utils/loadoutHelpers'
-import type {
-    DraftState,
-    DraftHandItem,
-    Item,
-    ItemType,
-    Faction,
-    SlotType,
-    Player,
-    Loadout,
-} from './types'
-
-// Helper to create a default DraftState with all required properties
-const createDraftState = (overrides: Partial<DraftState> = {}): DraftState => ({
-    activePlayerIndex: 0,
-    roundCards: [],
-    isRerolling: false,
-    pendingStratagem: null,
-    extraDraftRound: 0,
-    draftOrder: [],
-    isRetrospective: false,
-    retrospectivePlayerIndex: null,
-    ...overrides,
-})
+import { createPlayer } from './utils/playerHelper'
 
 // Extend Window interface to include our custom property
 declare global {
@@ -217,20 +177,6 @@ declare global {
         __boosterOutcome?: unknown
     }
 }
-
-// Helper to create a Player with all required fields and sensible defaults
-const createPlayer = (
-    overrides: Partial<Player> & { id: string; name: string; loadout: Loadout },
-): Player => ({
-    inventory: [],
-    lockedSlots: [],
-    disabledWarbonds: [],
-    superstoreItems: [],
-    warbonds: [...DEFAULT_WARBONDS],
-    includeSuperstore: false,
-    extracted: true,
-    ...overrides,
-})
 
 function HelldiversRoguelikeApp() {
     // --- STATE (Using useReducer for complex state management) ---
@@ -316,7 +262,6 @@ function HelldiversRoguelikeApp() {
         currentMission,
         requisition,
         burnedCards,
-        customSetup,
         players,
         draftState,
         draftHistory,
@@ -343,12 +288,12 @@ function HelldiversRoguelikeApp() {
     const factionColors = getFactionColors(gameConfig.faction)
 
     // UI-only state (not part of game state)
-    const [selectedPlayer, setSelectedPlayer] = React.useState(0) // For custom setup phase
-    const [multiplayerMode, setMultiplayerMode] = React.useState<string | null>(null) // null, 'select', 'host', 'join', 'waiting'
-    const [initialLobbyCode, setInitialLobbyCode] = React.useState<string | null>(null) // For auto-populating join from URL
+    const [selectedPlayer, setSelectedPlayer] = useState(0) // For custom setup phase
+    const [multiplayerMode, setMultiplayerMode] = useState<string | null>(null) // null, 'select', 'host', 'join', 'waiting'
+    const [initialLobbyCode, setInitialLobbyCode] = useState<string | null>(null) // For auto-populating join from URL
 
     // Check for ?join=<lobbyId> URL parameter on mount
-    React.useEffect(() => {
+    useEffect(() => {
         const urlParams = new URLSearchParams(window.location.search)
         const joinCode = urlParams.get('join')
         if (joinCode && firebaseReady) {
@@ -360,21 +305,21 @@ function HelldiversRoguelikeApp() {
             window.history.replaceState({}, '', newUrl)
         }
     }, [firebaseReady])
-    const [showExplainer, setShowExplainer] = React.useState(false) // For explainer modal
-    const [showPatchNotes, setShowPatchNotes] = React.useState(false) // For patch notes modal
-    const [showGenAIDisclosure, setShowGenAIDisclosure] = React.useState(false) // For Gen AI disclosure modal
-    const [showContributors, setShowContributors] = React.useState(false) // For contributors modal
-    const [showRemoveCardConfirm, setShowRemoveCardConfirm] = React.useState(false) // For remove card confirmation modal
-    const [showSacrificeConfirm, setShowSacrificeConfirm] = React.useState(false) // For sacrifice confirmation modal
-    const [pendingSacrificeItem, setPendingSacrificeItem] = React.useState<
+    const [showExplainer, setShowExplainer] = useState(false) // For explainer modal
+    const [showPatchNotes, setShowPatchNotes] = useState(false) // For patch notes modal
+    const [showGenAIDisclosure, setShowGenAIDisclosure] = useState(false) // For Gen AI disclosure modal
+    const [showContributors, setShowContributors] = useState(false) // For contributors modal
+    const [showRemoveCardConfirm, setShowRemoveCardConfirm] = useState(false) // For remove card confirmation modal
+    const [showSacrificeConfirm, setShowSacrificeConfirm] = useState(false) // For sacrifice confirmation modal
+    const [pendingSacrificeItem, setPendingSacrificeItem] = useState<
         (Item & { slot: string }) | null
     >(null) // Item pending sacrifice
-    const [pendingCardRemoval, setPendingCardRemoval] = React.useState<DraftHandItem | null>(null) // Card pending removal
-    const [missionSuccessDebouncing, setMissionSuccessDebouncing] = React.useState(false) // Debounce for mission success button
-    const [gameStartTime, setGameStartTime] = React.useState<number | null>(null) // Track game start time for analytics
+    const [pendingCardRemoval, setPendingCardRemoval] = useState<DraftHandItem | null>(null) // Card pending removal
+    const [missionSuccessDebouncing, setMissionSuccessDebouncing] = useState(false) // Debounce for mission success button
+    const [gameStartTime, setGameStartTime] = useState<number | null>(null) // Track game start time for analytics
 
     // Analytics state
-    const [showRunHistory, setShowRunHistory] = React.useState(false) // For run history modal
+    const [showRunHistory, setShowRunHistory] = useState(false) // For run history modal
     // Note: runAnalyticsData is now stored in game state (state.runAnalyticsData) so it syncs to clients
 
     // Game persistence (save/load functionality)
@@ -723,31 +668,6 @@ function HelldiversRoguelikeApp() {
             runAnalytics.initializeAnalytics(gameConfig, newPlayers)
             dispatch(actions.setRunAnalyticsData(null))
         }
-    }
-
-    const startGameFromCustomSetup = () => {
-        const newPlayers = customSetup.loadouts.map((loadout: Loadout, i: number) =>
-            createPlayer({
-                id: String(i + 1),
-                name: `Helldiver ${i + 1}`,
-                loadout: { ...loadout },
-                inventory: Object.values(loadout)
-                    .flat()
-                    .filter((id): id is string => id !== null),
-                weaponRestricted: false,
-            }),
-        )
-        dispatch(actions.setPlayers(newPlayers))
-        dispatch(actions.setDifficulty(customSetup.difficulty))
-        dispatch(actions.setRequisition(0))
-        setGameStartTime(Date.now())
-        trackGameStart(isMultiplayer ? 'multiplayer' : 'solo', customSetup.difficulty)
-        dispatch(actions.setBurnedCards([]))
-        dispatch(actions.setPhase('DASHBOARD'))
-
-        // Initialize run analytics
-        runAnalytics.initializeAnalytics(gameConfig, newPlayers)
-        dispatch(actions.setRunAnalyticsData(null))
     }
 
     // --- CORE LOGIC: THE DRAFT DIRECTOR ---
@@ -1406,7 +1326,7 @@ function HelldiversRoguelikeApp() {
     }
 
     // Ref to hold the draft pick handler for multiplayer (avoids stale closure issues)
-    const draftPickHandlerRef = React.useRef<((action: MultiplayerAction) => boolean) | null>(null)
+    const draftPickHandlerRef = useRef<((action: MultiplayerAction) => boolean) | null>(null)
 
     // Update the ref whenever dependencies change
     draftPickHandlerRef.current = (action: MultiplayerAction) => {
@@ -2311,262 +2231,12 @@ function HelldiversRoguelikeApp() {
     if (phase === 'CUSTOM_SETUP') {
         // In multiplayer, only the host can configure custom setup
         // Clients should wait for the host to finish
-        if (isMultiplayer && !isHost) {
-            return (
-                <LoadingScreen
-                    title="HOST CONFIGURING CUSTOM START"
-                    subtitle="Please wait while the host configures the starting difficulty and loadouts..."
-                    factionColors={factionColors}
-                />
-            )
-        }
-
-        // Safety check: ensure customSetup.loadouts exists before proceeding
-        if (!customSetup || !customSetup.loadouts) {
-            return <LoadingScreen title="LOADING..." factionColors={factionColors} />
-        }
-
-        const updateLoadoutSlot = (playerIdx: number, slotType: string, itemId: string | null) => {
-            const newLoadouts = [...customSetup.loadouts]
-            if (slotType === 'stratagem' && itemId) {
-                const slotIndex = parseInt(itemId.split('_')[1])
-                const stratagems = [...newLoadouts[playerIdx].stratagems]
-                stratagems[slotIndex] = itemId.split('_')[0]
-                newLoadouts[playerIdx] = { ...newLoadouts[playerIdx], stratagems }
-            } else {
-                newLoadouts[playerIdx] = { ...newLoadouts[playerIdx], [slotType]: itemId }
-            }
-            dispatch(actions.updateCustomSetup({ loadouts: newLoadouts }))
-        }
-
-        const currentLoadout = customSetup.loadouts[selectedPlayer]
-        const itemsByType = {
-            primary: MASTER_DB.filter((i) => i.type === TYPE.PRIMARY),
-            secondary: MASTER_DB.filter((i) => i.type === TYPE.SECONDARY),
-            grenade: MASTER_DB.filter((i) => i.type === TYPE.GRENADE),
-            armor: MASTER_DB.filter((i) => i.type === TYPE.ARMOR),
-            booster: MASTER_DB.filter((i) => i.type === TYPE.BOOSTER),
-            stratagem: MASTER_DB.filter((i) => i.type === TYPE.STRATAGEM),
-        }
-
         return (
-            <PageWrapper $withPadding>
-                <CenteredContent>
-                    <SectionHeader $center $marginBottom={SPACING.xxl}>
-                        <CustomSetupPhaseTitle $color={factionColors.PRIMARY}>
-                            CUSTOM START SETUP
-                        </CustomSetupPhaseTitle>
-                        <PhaseDescription>
-                            Configure starting difficulty and loadouts
-                        </PhaseDescription>
-                    </SectionHeader>
-
-                    {/* Difficulty Selection */}
-                    <SectionBoxSpaced $marginBottom={SPACING.xl}>
-                        <FormSectionLabel>Starting Difficulty</FormSectionLabel>
-                        <DifficultyGrid>
-                            {DIFFICULTY_CONFIG.map((diff) => (
-                                <DifficultyButton
-                                    key={diff.level}
-                                    onClick={() =>
-                                        dispatch(
-                                            actions.updateCustomSetup({ difficulty: diff.level }),
-                                        )
-                                    }
-                                    $selected={customSetup.difficulty === diff.level}
-                                    $factionColor={factionColors.PRIMARY}
-                                    title={diff.name}
-                                >
-                                    {diff.level}
-                                </DifficultyButton>
-                            ))}
-                        </DifficultyGrid>
-                        <DifficultyLabel $color={factionColors.PRIMARY}>
-                            {DIFFICULTY_CONFIG[customSetup.difficulty - 1]?.name}
-                        </DifficultyLabel>
-                    </SectionBoxSpaced>
-
-                    {/* Player Tabs */}
-                    <PlayerTabs>
-                        {customSetup.loadouts.map((_, i) => (
-                            <PlayerTab
-                                key={i}
-                                onClick={() => setSelectedPlayer(i)}
-                                $active={selectedPlayer === i}
-                                $factionColor={factionColors.PRIMARY}
-                            >
-                                Helldiver {i + 1}
-                            </PlayerTab>
-                        ))}
-                    </PlayerTabs>
-
-                    {/* Loadout Editor */}
-                    <SectionBox>
-                        <LoadoutConfigTitle $color={factionColors.PRIMARY}>
-                            Loadout Configuration
-                        </LoadoutConfigTitle>
-
-                        {/* Primary */}
-                        <LoadoutFieldSpaced $marginBottom={SPACING.lg}>
-                            <LoadoutFieldLabel>Primary</LoadoutFieldLabel>
-                            <LoadoutSelectColored
-                                value={currentLoadout.primary || ''}
-                                onChange={(e) =>
-                                    updateLoadoutSlot(
-                                        selectedPlayer,
-                                        'primary',
-                                        e.target.value || null,
-                                    )
-                                }
-                                $color={factionColors.PRIMARY}
-                            >
-                                <option value="">None</option>
-                                {itemsByType.primary.map((item) => (
-                                    <option key={item.id} value={item.id}>
-                                        {item.name} ({item.rarity})
-                                    </option>
-                                ))}
-                            </LoadoutSelectColored>
-                        </LoadoutFieldSpaced>
-
-                        {/* Secondary */}
-                        <LoadoutFieldSpaced $marginBottom={SPACING.lg}>
-                            <LoadoutFieldLabel>Secondary</LoadoutFieldLabel>
-                            <LoadoutSelect
-                                value={currentLoadout.secondary || ''}
-                                onChange={(e) =>
-                                    updateLoadoutSlot(
-                                        selectedPlayer,
-                                        'secondary',
-                                        e.target.value || null,
-                                    )
-                                }
-                            >
-                                <option value="">None</option>
-                                {itemsByType.secondary.map((item) => (
-                                    <option key={item.id} value={item.id}>
-                                        {item.name} ({item.rarity})
-                                    </option>
-                                ))}
-                            </LoadoutSelect>
-                        </LoadoutFieldSpaced>
-
-                        {/* Grenade */}
-                        <LoadoutFieldSpaced $marginBottom={SPACING.lg}>
-                            <LoadoutFieldLabel>Grenade</LoadoutFieldLabel>
-                            <LoadoutSelect
-                                value={currentLoadout.grenade || ''}
-                                onChange={(e) =>
-                                    updateLoadoutSlot(
-                                        selectedPlayer,
-                                        'grenade',
-                                        e.target.value || null,
-                                    )
-                                }
-                            >
-                                <option value="">None</option>
-                                {itemsByType.grenade.map((item) => (
-                                    <option key={item.id} value={item.id}>
-                                        {item.name} ({item.rarity})
-                                    </option>
-                                ))}
-                            </LoadoutSelect>
-                        </LoadoutFieldSpaced>
-
-                        {/* Armor */}
-                        <LoadoutFieldSpaced $marginBottom={SPACING.lg}>
-                            <LoadoutFieldLabel>Armor</LoadoutFieldLabel>
-                            <LoadoutSelect
-                                value={currentLoadout.armor || ''}
-                                onChange={(e) =>
-                                    updateLoadoutSlot(
-                                        selectedPlayer,
-                                        'armor',
-                                        e.target.value || null,
-                                    )
-                                }
-                            >
-                                <option value="">None</option>
-                                {itemsByType.armor.map((item) => (
-                                    <option key={item.id} value={item.id}>
-                                        {item.name} ({item.rarity})
-                                    </option>
-                                ))}
-                            </LoadoutSelect>
-                        </LoadoutFieldSpaced>
-
-                        {/* Booster */}
-                        <LoadoutFieldSpaced $marginBottom={SPACING.lg}>
-                            <LoadoutFieldLabel>Booster</LoadoutFieldLabel>
-                            <LoadoutSelect
-                                value={currentLoadout.booster || ''}
-                                onChange={(e) =>
-                                    updateLoadoutSlot(
-                                        selectedPlayer,
-                                        'booster',
-                                        e.target.value || null,
-                                    )
-                                }
-                            >
-                                <option value="">None</option>
-                                {itemsByType.booster.map((item) => (
-                                    <option key={item.id} value={item.id}>
-                                        {item.name} ({item.rarity})
-                                    </option>
-                                ))}
-                            </LoadoutSelect>
-                        </LoadoutFieldSpaced>
-
-                        {/* Stratagems */}
-                        <LoadoutField>
-                            <LoadoutFieldLabel>Stratagems</LoadoutFieldLabel>
-                            <StratagemGrid>
-                                {[0, 1, 2, 3].map((slotIdx) => (
-                                    <StratagemSelect
-                                        key={slotIdx}
-                                        value={currentLoadout.stratagems[slotIdx] || ''}
-                                        onChange={(e) => {
-                                            const newStratagems = [...currentLoadout.stratagems]
-                                            newStratagems[slotIdx] = e.target.value || null
-                                            // Update stratagems directly on loadout
-                                            const newLoadouts = [...customSetup.loadouts]
-                                            newLoadouts[selectedPlayer] = {
-                                                ...newLoadouts[selectedPlayer],
-                                                stratagems: newStratagems,
-                                            }
-                                            dispatch(
-                                                actions.updateCustomSetup({
-                                                    loadouts: newLoadouts,
-                                                }),
-                                            )
-                                        }}
-                                    >
-                                        <option value="">Slot {slotIdx + 1}: None</option>
-                                        {itemsByType.stratagem.map((item) => (
-                                            <option key={item.id} value={item.id}>
-                                                {item.name}
-                                            </option>
-                                        ))}
-                                    </StratagemSelect>
-                                ))}
-                            </StratagemGrid>
-                        </LoadoutField>
-                    </SectionBox>
-
-                    {/* Action Buttons */}
-                    <CustomSetupActions>
-                        <FlexButton
-                            onClick={() => dispatch(actions.setPhase('MENU'))}
-                            $variant="danger"
-                        >
-                            Back to Menu
-                        </FlexButton>
-                        <StartOperationButton onClick={startGameFromCustomSetup} $variant="primary">
-                            Start Operation
-                        </StartOperationButton>
-                    </CustomSetupActions>
-                </CenteredContent>
-            </PageWrapper>
+            <CustomSetup
+                selectedPlayer={selectedPlayer}
+                setSelectedPlayer={setSelectedPlayer}
+                setGameStartTime={setGameStartTime}
+            />
         )
     }
 
