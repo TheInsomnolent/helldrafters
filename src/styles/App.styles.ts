@@ -1,5 +1,5 @@
 import styled, { css } from 'styled-components'
-import { COLORS, Text, Button } from '../styles'
+import { Button, COLORS, Text } from '../styles'
 
 // Page wrappers for different phases
 export const PageWrapper = styled.div<{ $withPadding?: boolean; $withFooterMargin?: boolean }>`
