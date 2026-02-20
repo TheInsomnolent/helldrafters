@@ -2,161 +2,161 @@ import { CheckCircle, RefreshCw, XCircle } from 'lucide-react'
 import React, { useEffect, useReducer } from 'react'
 import { HashRouter, Route, Routes } from 'react-router-dom'
 import { ThemeProvider } from 'styled-components'
-import { theme, GlobalStyles, Button, Caption, SPACING } from './styles'
+import { AnalyticsDashboard } from './components/analytics'
 import CardLibrary from './components/CardLibrary'
 import ContributorsModal from './components/ContributorsModal'
 import EventDisplay from './components/EventDisplay'
 import ExplainerModal from './components/ExplainerModal'
+import ExportButton from './components/ExportButton'
 import GameFooter from './components/GameFooter'
 import GameHeader from './components/GameHeader'
-import ExportButton from './components/ExportButton'
-import { ItemCard, isArmorCombo, isItem } from './components/ItemCard'
+import GameLobby, { addExcludedItemsToSavedConfig } from './components/GameLobby'
+import { isArmorCombo, isItem, ItemCard } from './components/ItemCard'
 import KickedScreen from './components/KickedScreen'
 import LoadingScreen from './components/LoadingScreen'
-import MenuScreen from './components/MenuScreen'
-import RemoveCardConfirmModal from './components/RemoveCardConfirmModal'
-import SacrificeConfirmModal from './components/SacrificeConfirmModal'
-import SoloConfigScreen from './components/SoloConfigScreen'
-import StratagemReplacementModal from './components/StratagemReplacementModal'
-import GameLobby, { addExcludedItemsToSavedConfig } from './components/GameLobby'
 import LoadoutDisplay from './components/LoadoutDisplay'
+import MenuScreen from './components/MenuScreen'
 import {
     JoinGameScreen,
     MultiplayerModeSelect,
     MultiplayerStatusBar,
     MultiplayerWaitingRoom,
 } from './components/MultiplayerLobby'
+import RemoveCardConfirmModal from './components/RemoveCardConfirmModal'
 import RunHistoryModal from './components/RunHistoryModal'
-import { AnalyticsDashboard } from './components/analytics'
-import {
-    PageWrapper,
-    ContentWrapper,
-    CenteredContent,
-    SectionHeader,
-    PhaseSubtitle,
-    PhaseTitle,
-    TitleSeparator,
-    PhaseDescription,
-    SectionBox,
-    AlertBox,
-    AlertTitle,
-    AlertSubtitle,
-    WaitingMessage,
-    WaitingText,
-    ItemGrid,
-    LoadoutOverview,
-    LoadoutLabel,
-    LoadoutItems,
-    LoadoutSlot,
-    LoadoutSlotLabel,
-    LoadoutSlotValue,
-    ButtonRow,
-    ActionButton,
-    SkipButton,
-    HintText,
-    MonoText,
-    SacrificeHeader,
-    SacrificePenaltyBadge,
-    SacrificePenaltyTitle,
-    SacrificePenaltySubtext,
-    SacrificeCard,
-    SacrificeCardSlot,
-    SacrificeCardName,
-    SacrificeCardRarity,
-    SacrificeCardHint,
-    EmptyBox,
-    EmptyIcon,
-    EmptyTitle,
-    EmptyDescription,
-    FormSectionLabel,
-    DifficultyButton,
-    PlayerTabs,
-    PlayerTab,
-    LoadoutField,
-    LoadoutFieldLabel,
-    LoadoutSelect,
-    StratagemGrid,
-    StratagemSelect,
-    CustomSetupActions,
-    ExportRow,
-    DifficultyGrid,
-    DifficultyLabel,
-    SectionBoxSpaced,
-    CustomSetupPhaseTitle,
-    LoadoutConfigTitle,
-    LoadoutFieldSpaced,
-    LoadoutSelectColored,
-    StratagemGap,
-    RequisitionDisplay,
-    SacrificeWaitSection,
-    SacrificeWaitText,
-    FlexButton,
-    StartOperationButton,
-    EventPageWrapper,
-    DashboardMain,
-    PlayerRosterGrid,
-    ControlsSection,
-    ObjectiveCard,
-    ObjectiveTitle,
-    ObjectiveText,
-    MissionStatusCard,
-    MissionStatusTitle,
-    OperationStatus,
-    RatingSection,
-    RatingLabel,
-    StarRatingGrid,
-    StarRatingButton,
-    StarIcon,
-    RatingHint,
-    SamplesSection,
-    SamplesGrid,
-    SampleColumn,
-    SampleHeader,
-    SampleIcon,
-    SampleLabel,
-    SampleInput,
-    SampleHint,
-    SamplesNote,
-    ExtractionSection,
-    ExtractionList,
-    ExtractionLabel,
-    ExtractionCheckbox,
-    ExtractionContent,
-    ExtractionName,
-    ExtractionPenalty,
-    ExtractionNote,
-    MissionButtonRow,
-    MissionFailButton,
-    MissionSuccessButton,
-    MissionReportHint,
-    WaitingForHostBox,
-    WaitingForHostText,
-    WaitingForHostSubtext,
-    DebugSection,
-    DebugHeader,
-    DebugTitle,
-    ResetSeenEventsButton,
-    DebugGrid,
-    DebugButton,
-    DebugButtonTitle,
-    DebugButtonSubtext,
-    DebugHint,
-} from './styles/App.styles'
-import { useGamePersistence } from './hooks'
+import SacrificeConfirmModal from './components/SacrificeConfirmModal'
+import SoloConfigScreen from './components/SoloConfigScreen'
+import StratagemReplacementModal from './components/StratagemReplacementModal'
+import { Subfaction } from './constants/balancingConfig'
 import {
     DIFFICULTY_CONFIG,
     getMissionsForDifficulty,
     STARTING_LOADOUT,
 } from './constants/gameConfig'
-import { Subfaction } from './constants/balancingConfig'
 import { getFactionColors } from './constants/theme'
 import { TYPE } from './constants/types'
 import { DEFAULT_WARBONDS } from './constants/warbonds'
 import { MASTER_DB } from './data/itemsByWarbond'
+import { useGamePersistence } from './hooks'
 import * as actions from './state/actions'
 import * as types from './state/actionTypes'
-import { gameReducer, initialState } from './state/gameReducer'
 import * as runAnalytics from './state/analyticsStore'
+import { gameReducer, initialState } from './state/gameReducer'
+import { Button, Caption, GlobalStyles, SPACING, theme } from './styles'
+import {
+    ActionButton,
+    AlertBox,
+    AlertSubtitle,
+    AlertTitle,
+    ButtonRow,
+    CenteredContent,
+    ContentWrapper,
+    ControlsSection,
+    CustomSetupActions,
+    CustomSetupPhaseTitle,
+    DashboardMain,
+    DebugButton,
+    DebugButtonSubtext,
+    DebugButtonTitle,
+    DebugGrid,
+    DebugHeader,
+    DebugHint,
+    DebugSection,
+    DebugTitle,
+    DifficultyButton,
+    DifficultyGrid,
+    DifficultyLabel,
+    EmptyBox,
+    EmptyDescription,
+    EmptyIcon,
+    EmptyTitle,
+    EventPageWrapper,
+    ExportRow,
+    ExtractionCheckbox,
+    ExtractionContent,
+    ExtractionLabel,
+    ExtractionList,
+    ExtractionName,
+    ExtractionNote,
+    ExtractionPenalty,
+    ExtractionSection,
+    FlexButton,
+    FormSectionLabel,
+    HintText,
+    ItemGrid,
+    LoadoutConfigTitle,
+    LoadoutField,
+    LoadoutFieldLabel,
+    LoadoutFieldSpaced,
+    LoadoutItems,
+    LoadoutLabel,
+    LoadoutOverview,
+    LoadoutSelect,
+    LoadoutSelectColored,
+    LoadoutSlot,
+    LoadoutSlotLabel,
+    LoadoutSlotValue,
+    MissionButtonRow,
+    MissionFailButton,
+    MissionReportHint,
+    MissionStatusCard,
+    MissionStatusTitle,
+    MissionSuccessButton,
+    MonoText,
+    ObjectiveCard,
+    ObjectiveText,
+    ObjectiveTitle,
+    OperationStatus,
+    PageWrapper,
+    PhaseDescription,
+    PhaseSubtitle,
+    PhaseTitle,
+    PlayerRosterGrid,
+    PlayerTab,
+    PlayerTabs,
+    RatingHint,
+    RatingLabel,
+    RatingSection,
+    RequisitionDisplay,
+    ResetSeenEventsButton,
+    SacrificeCard,
+    SacrificeCardHint,
+    SacrificeCardName,
+    SacrificeCardRarity,
+    SacrificeCardSlot,
+    SacrificeHeader,
+    SacrificePenaltyBadge,
+    SacrificePenaltySubtext,
+    SacrificePenaltyTitle,
+    SacrificeWaitSection,
+    SacrificeWaitText,
+    SampleColumn,
+    SampleHeader,
+    SampleHint,
+    SampleIcon,
+    SampleInput,
+    SampleLabel,
+    SamplesGrid,
+    SamplesNote,
+    SamplesSection,
+    SectionBox,
+    SectionBoxSpaced,
+    SectionHeader,
+    SkipButton,
+    StarIcon,
+    StarRatingButton,
+    StarRatingGrid,
+    StartOperationButton,
+    StratagemGap,
+    StratagemGrid,
+    StratagemSelect,
+    TitleSeparator,
+    WaitingForHostBox,
+    WaitingForHostSubtext,
+    WaitingForHostText,
+    WaitingMessage,
+    WaitingText,
+} from './styles/App.styles'
 import {
     applyGainBoosterWithSelection,
     canAffordChoice,
@@ -175,6 +175,16 @@ import {
 import * as eventsV2 from './systems/eventsV2'
 import { initializeAnalytics, MultiplayerProvider, useMultiplayer } from './systems/multiplayer'
 import { saveRunToHistory } from './systems/persistence/saveManager'
+import type {
+    DraftHandItem,
+    DraftState,
+    Faction,
+    Item,
+    ItemType,
+    Loadout,
+    Player,
+    SlotType,
+} from './types'
 import {
     trackDraftSelection,
     trackEventChoice,
@@ -187,16 +197,6 @@ import {
 import { generateDraftHand, getDraftHandSize, getWeightedPool } from './utils/draftHelpers'
 import { ArmorCombo, getArmorComboDisplayName, getItemById } from './utils/itemHelpers'
 import { areStratagemSlotsFull, getFirstEmptyStratagemSlot } from './utils/loadoutHelpers'
-import type {
-    DraftState,
-    DraftHandItem,
-    Item,
-    ItemType,
-    Faction,
-    SlotType,
-    Player,
-    Loadout,
-} from './types'
 
 // Helper to create a default DraftState with all required properties
 const createDraftState = (overrides: Partial<DraftState> = {}): DraftState => ({
@@ -4265,7 +4265,7 @@ export default function HelldiversRoguelike() {
             <HashRouter>
                 <MultiplayerProvider>
                     <Routes>
-                        <Route path="card-library" element={<CardLibrary />} />
+                        <Route path="/card-library" element={<CardLibrary />} />
                         <Route path="/" element={<HelldiversRoguelikeApp />} />
                     </Routes>
                 </MultiplayerProvider>
