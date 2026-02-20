@@ -1,0 +1,122 @@
+name: Cleanup Test Deployments
+
+on:
+  pull_request:
+    types: [closed]
+  workflow_dispatch:
+    inputs:
+      branch:
+        description: 'Specific branch deployment to clean up (leave empty to clean all closed PR branches)'
+        required: false
+        type: string
+
+permissions:
+  contents: write
+
+jobs:
+  cleanup:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout gh-pages branch
+        uses: actions/checkout@v4
+        with:
+          ref: gh-pages
+          fetch-depth: 0
+
+      - name: Determine what to clean up
+        id: determine
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          if [ "${{ github.event_name }}" == "pull_request" ]; then
+            # Clean up deployment for the closed PR
+            BRANCH="${{ github.event.pull_request.head.ref }}"
+            echo "mode=single" >> $GITHUB_OUTPUT
+            echo "branch=$BRANCH" >> $GITHUB_OUTPUT
+            echo "Cleaning up deployment for closed PR branch: $BRANCH"
+          elif [ -n "${{ inputs.branch }}" ]; then
+            # Manual cleanup of specific branch
+            echo "mode=single" >> $GITHUB_OUTPUT
+            echo "branch=${{ inputs.branch }}" >> $GITHUB_OUTPUT
+            echo "Cleaning up deployment for branch: ${{ inputs.branch }}"
+          else
+            # Manual cleanup of all closed PR branches
+            echo "mode=all-closed" >> $GITHUB_OUTPUT
+            echo "Cleaning up all deployments for closed PRs"
+          fi
+
+      - name: Clean up single branch deployment
+        if: steps.determine.outputs.mode == 'single'
+        run: |
+          BRANCH="${{ steps.determine.outputs.branch }}"
+          # Sanitize branch name (same logic as deploy-test.yml)
+          SAFE_NAME=$(echo "$BRANCH" | sed 's/[^a-zA-Z0-9-]/-/g' | tr '[:upper:]' '[:lower:]')
+          DIR="branch-$SAFE_NAME"
+          
+          if [ -d "$DIR" ]; then
+            echo "Removing deployment: $DIR"
+            git rm -rf "$DIR"
+            git config user.name "github-actions[bot]"
+            git config user.email "github-actions[bot]@users.noreply.github.com"
+            git commit -m "Clean up test deployment for branch: $BRANCH"
+            git push origin gh-pages
+            echo "✅ Cleaned up deployment for $BRANCH"
+          else
+            echo "No deployment found for branch $BRANCH (looked for $DIR)"
+          fi
+
+      - name: Clean up all closed PR branches
+        if: steps.determine.outputs.mode == 'all-closed'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          # Get list of all open PRs
+          OPEN_BRANCHES=$(gh pr list --state open --json headRefName --jq '.[].headRefName')
+          
+          echo "Open PR branches:"
+          echo "$OPEN_BRANCHES"
+          
+          REMOVED=false
+          
+          # Enable nullglob to handle case where no matches exist
+          shopt -s nullglob
+          
+          # Check each branch-* directory
+          for dir in branch-*; do
+            if [ ! -d "$dir" ]; then
+              continue
+            fi
+            
+            # Extract original branch name (reverse the sanitization)
+            SAFE_NAME="${dir#branch-}"
+            
+            # Check if this branch still has an open PR
+            FOUND=false
+            while IFS= read -r open_branch; do
+              OPEN_SAFE=$(echo "$open_branch" | sed 's/[^a-zA-Z0-9-]/-/g' | tr '[:upper:]' '[:lower:]')
+              if [ "$SAFE_NAME" == "$OPEN_SAFE" ]; then
+                FOUND=true
+                break
+              fi
+            done <<< "$OPEN_BRANCHES"
+            
+            if [ "$FOUND" == "false" ]; then
+              echo "Removing deployment: $dir (no open PR found)"
+              git rm -rf "$dir"
+              REMOVED=true
+            else
+              echo "Keeping deployment: $dir (PR is still open)"
+            fi
+          done
+          
+          # Commit and push if there were changes
+          if [ "$REMOVED" == "true" ]; then
+            git config user.name "github-actions[bot]"
+            git config user.email "github-actions[bot]@users.noreply.github.com"
+            git commit -m "Clean up test deployments for closed PRs"
+            git push origin gh-pages
+            echo "✅ Cleaned up closed PR deployments"
+          else
+            echo "No deployments to clean up"
+          fi

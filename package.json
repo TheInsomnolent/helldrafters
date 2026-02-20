@@ -2,36 +2,54 @@
   "name": "helldrafters",
   "version": "0.1.0",
   "private": true,
+  "packageManager": "yarn@1.22.22",
   "homepage": "https://TheInsomnolent.github.io/helldrafters",
   "dependencies": {
     "@testing-library/dom": "^10.4.1",
     "@testing-library/jest-dom": "^6.9.1",
-    "@testing-library/react": "^16.3.1",
+    "@testing-library/react": "^16.3.2",
     "@testing-library/user-event": "^13.5.0",
     "firebase": "^12.8.0",
     "html2canvas": "^1.4.1",
     "lucide-react": "^0.562.0",
-    "react": "^19.2.3",
-    "react-dom": "^19.2.3",
+    "react": "^19.2.4",
+    "react-dom": "^19.2.4",
     "react-router-dom": "^7.12.0",
     "react-scripts": "5.0.1",
     "recharts": "^3.7.0",
+    "styled-components": "^6.3.8",
     "uuid": "^13.0.0",
     "web-vitals": "^2.1.4"
   },
   "scripts": {
-    "predeploy": "npm run build",
+    "predeploy": "yarn build",
     "deploy": "gh-pages -d build",
     "start": "react-scripts start",
     "build": "react-scripts build",
     "test": "react-scripts test",
-    "lint": "eslint src --ext .js,.jsx --max-warnings 0",
-    "eject": "react-scripts eject"
+    "typecheck": "tsc --noEmit",
+    "lint": "eslint src --ext .js,.jsx,.ts,.tsx --max-warnings 0",
+    "lint:fix": "eslint src --ext .js,.jsx,.ts,.tsx --fix",
+    "format": "prettier --write \"src/**/*.{js,jsx,ts,tsx,json,css,md}\"",
+    "format:check": "prettier --check \"src/**/*.{js,jsx,ts,tsx,json,css,md}\"",
+    "style": "yarn format:check && yarn lint",
+    "style:fix": "yarn format && yarn lint:fix",
+    "eject": "react-scripts eject",
+    "prepare": "husky",
+    "knip": "knip"
   },
-  "eslintConfig": {
-    "extends": [
-      "react-app",
-      "react-app/jest"
+  "lint-staged": {
+    "src/**/*.{ts,tsx}": [
+      "prettier --write",
+      "eslint --fix --max-warnings 0",
+      "bash -c 'tsc --noEmit'"
+    ],
+    "src/**/*.{js,jsx}": [
+      "prettier --write",
+      "eslint --fix --max-warnings 0"
+    ],
+    "src/**/*.{json,css,md}": [
+      "prettier --write"
     ]
   },
   "browserslist": {
@@ -47,10 +65,22 @@
     ]
   },
   "devDependencies": {
-    "@tailwindcss/postcss": "^4.1.18",
-    "autoprefixer": "^10.4.23",
+    "@types/jest": "^30.0.0",
+    "@types/node": "^25.1.0",
+    "@types/react": "^19.2.10",
+    "@types/react-dom": "^19.2.3",
+    "@typescript-eslint/eslint-plugin": "^8.54.0",
+    "@typescript-eslint/parser": "^8.54.0",
+    "autoprefixer": "^10.4.24",
+    "eslint": "^8.57.0",
+    "eslint-config-prettier": "^9.1.0",
+    "eslint-plugin-prettier": "^5.2.0",
     "gh-pages": "^6.1.1",
+    "husky": "^9.1.0",
+    "knip": "^5.82.1",
+    "lint-staged": "^15.2.0",
     "postcss": "^8.5.6",
-    "tailwindcss": "^4.1.18"
+    "prettier": "^3.3.0",
+    "typescript": "^5.9.3"
   }
 }

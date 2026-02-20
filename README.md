@@ -30,7 +30,7 @@ Perfect for solo players or squads looking for a fresh challenge, Helldrafters a
 - **Events System**: Optional high-risk, high-reward events between missions
 - **Loadout Sacrifice**: Failed missions force you to sacrifice equipment, raising the stakes
 - **Custom Start Mode**: Configure starting difficulty and loadouts for challenge runs
-- **Multiple Game Modes**: 
+- **Multiple Game Modes**:
   - **Global Uniqueness**: Players can't draft the same cards
   - **Burn Cards**: Once seen, a card never appears again
   - **Brutality Mode**: Harsher penalties for non-extracted players
@@ -83,23 +83,25 @@ When reporting bugs, please use the bug report template and include:
 ### Running Locally
 
 ```bash
-npm install
-npm start
+yarn
+yarn start
 ```
 
-The app will open at [http://localhost:3000](http://localhost:3000).
+The App will open at [http://localhost:3000](http://localhost:3000).
 
 ### Building
 
 ```bash
-npm run build
+yarn build
 ```
 
-### Testing
+### Testing & Code Quality
 
 ```bash
-npm test        # Run tests
-npm run lint    # Check for linting errors
+yarn test       # Run tests
+yarn typecheck  # Check TypeScript types
+yarn lint       # Check for linting errors
+yarn knip       # Check for unused code
 ```
 
 ## Support the Project
