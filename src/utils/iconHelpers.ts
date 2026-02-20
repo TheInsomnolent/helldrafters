@@ -84,6 +84,7 @@ export const CUSTOM_ICON_URLS: Record<string, string> = {
     p_double_freedom: `${WIKI_BASE_URL}/thumb/DBS-2_Shotgun_Primary_Render.png/600px-DBS-2_Shotgun_Primary_Render.png`,
     p_censor: `${WIKI_BASE_URL}/R-72_Censor_Primary_Weaponry.png`,
     p_suppressor: `${WIKI_BASE_URL}/AR-59_Suppressor_Primary_Weaponry.png`,
+    p_trident: `${WIKI_BASE_URL}/LAS-13_Trident_Primary_Weaponry.png`,
 
     // Secondary Weapons - using _Secondary_Weaponry.png pattern
     s_peacemaker: `${WIKI_BASE_URL}/P-2_Peacemaker_Secondary_Weaponry.png`,
@@ -125,7 +126,8 @@ export const CUSTOM_ICON_URLS: Record<string, string> = {
     g_urchin: `${WIKI_BASE_URL}/thumb/G-109_Urchin_Throwable_Render.png/300px-G-109_Urchin_Throwable_Render.png`,
     g_arc: `${WIKI_BASE_URL}/thumb/G-31_ARC_Throwable_Render.png/300px-G-31_ARC_Throwable_Render.png`,
     g_pineapple: `${WIKI_BASE_URL}/thumb/G-7_Pineapple_Throwable_Render.png/300px-G-7_Pineapple_Throwable_Render.png`,
-    g_lure_mine: `${WIKI_BASE_URL}/thumb/TM-1_Lure_Mine_Throwable_Icon.png/51px-TM-1_Lure_Mine_Throwable_Icon.png`,
+    g_lure_mine: `${WIKI_BASE_URL}/thumb/TM-1_Lure_Mine_Throwable_Render.png/600px-TM-1_Lure_Mine_Throwable_Render.png`,
+    g_shield: `${WIKI_BASE_URL}/thumb/G-SH-39_Shield_Throwable_Render.png/600px-G-SH-39_Shield_Throwable_Render.png`,
 
     // Boosters - wiki uses _Booster_Icon.svg format
     b_space: `${WIKI_BASE_URL}/Hellpod_Space_Optimization_Booster_Icon.svg`,
@@ -199,6 +201,9 @@ export const CUSTOM_ICON_URLS: Record<string, string> = {
     st_gl: `${WIKI_BASE_URL}/Grenade_Launcher_Stratagem_Icon.png`,
     st_wasp: `${WIKI_BASE_URL}/StA-X3_W.A.S.P._Launcher_Stratagem_Icon.png`,
     st_c4: `${WIKI_BASE_URL}/B-MD_C4_Pack_Stratagem_Icon.png`,
+    st_breaching_hammer: `${WIKI_BASE_URL}/CQC-20_Breaching_Hammer_Stratagem_Icon.png`,
+    st_leveller: `${WIKI_BASE_URL}/EAT-411_Leveller_Stratagem_Icon.png`,
+    st_belt_fed_grenade_launcher: `${WIKI_BASE_URL}/GL-28_Belt-Fed_Grenade_Launcher_Stratagem_Icon.png`,
 
     // Backpacks
     st_bp_jump: `${WIKI_BASE_URL}/Jump_Pack_Stratagem_Icon.png`,
@@ -308,6 +313,9 @@ export const CUSTOM_ICON_URLS: Record<string, string> = {
     // Redacted Regiment
     a_rs67: `${WIKI_BASE_URL}/RS-89_Shadow_Paragon_Body_Armory.png`,
     a_rs67ns: `${WIKI_BASE_URL}/RS-67_Null_Cipher_Body_Armory.png`,
+    // Siege Breakers
+    a_sa7: `${WIKI_BASE_URL}/SA-7_Headfirst_Body_Icon.png`,
+    a_sa8: `${WIKI_BASE_URL}/SA-8_Ram_Body_Icon.png`,
 
     // Halo ODST
     a_a9: `${WIKI_BASE_URL}/A-9_Helljumper_Body_Icon.png`,

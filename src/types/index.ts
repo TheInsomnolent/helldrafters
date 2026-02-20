@@ -118,6 +118,7 @@ export const ARMOR_PASSIVE = {
     ADRENO_DEFIBRILLATOR: 'adreno_defibrillator',
     FEET_FIRST: 'feet_first',
     REDUCED_SIGNATURE: 'reduced_signature',
+    SUPPLEMENTARY_ADRENALINE: 'supplementary_adrenaline',
 } as const
 
 export type ArmorPassive = (typeof ARMOR_PASSIVE)[keyof typeof ARMOR_PASSIVE]

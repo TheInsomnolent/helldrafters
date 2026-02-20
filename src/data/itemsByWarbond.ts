@@ -1863,6 +1863,72 @@ export const REDACTED_REGIMENT_ITEMS: Item[] = [
 ]
 
 // =============================================================================
+// SIEGE BREAKERS (Premium Warbond)
+// =============================================================================
+export const SIEGE_BREAKERS_ITEMS: Item[] = [
+    {
+        id: 'p_trident',
+        name: 'LAS-13 Trident',
+        type: TYPE.PRIMARY,
+        rarity: RARITY.UNCOMMON,
+        tags: [],
+        warbond: 'siege_breakers',
+    },
+    {
+        id: 'a_sa7',
+        name: 'SA-7 Headfirst',
+        type: TYPE.ARMOR,
+        rarity: RARITY.UNCOMMON,
+        tags: [],
+        warbond: 'siege_breakers',
+        passive: ARMOR_PASSIVE.SUPPLEMENTARY_ADRENALINE,
+        armorClass: ARMOR_CLASS.MEDIUM,
+    },
+    {
+        id: 'a_sa8',
+        name: 'SA-8 Ram',
+        type: TYPE.ARMOR,
+        rarity: RARITY.UNCOMMON,
+        tags: [],
+        warbond: 'siege_breakers',
+        passive: ARMOR_PASSIVE.SUPPLEMENTARY_ADRENALINE,
+        armorClass: ARMOR_CLASS.HEAVY,
+    },
+    {
+        id: 'st_breaching_hammer',
+        name: 'Breaching Hammer',
+        type: TYPE.STRATAGEM,
+        rarity: RARITY.RARE,
+        tags: [TAGS.SUPPORT_WEAPON, TAGS.EXPLOSIVE],
+        warbond: 'siege_breakers',
+    },
+    {
+        id: 'st_leveller',
+        name: 'EAT-411 Leveller',
+        type: TYPE.STRATAGEM,
+        rarity: RARITY.RARE,
+        tags: [TAGS.SUPPORT_WEAPON, TAGS.EXPLOSIVE],
+        warbond: 'siege_breakers',
+    },
+    {
+        id: 'st_belt_fed_grenade_launcher',
+        name: 'Belt Fed Grenade Launcher',
+        type: TYPE.STRATAGEM,
+        rarity: RARITY.UNCOMMON,
+        tags: [TAGS.SUPPORT_WEAPON, TAGS.EXPLOSIVE, TAGS.BACKPACK],
+        warbond: 'siege_breakers',
+    },
+    {
+        id: 'g_shield',
+        name: 'G/SH-39 Shield',
+        type: TYPE.GRENADE,
+        rarity: RARITY.RARE,
+        tags: [TAGS.DEFENSIVE],
+        warbond: 'siege_breakers',
+    },
+]
+
+// =============================================================================
 // HALO: ODST (Legendary Warbond)
 // =============================================================================
 export const OBEDIENT_DEMOCRACY_SUPPORT_TROOPERS_ITEMS: Item[] = [
@@ -2401,6 +2467,7 @@ export const MASTER_DB: Item[] = [
     ...DUST_DEVILS_ITEMS,
     ...PYTHON_COMMANDOS_ITEMS,
     ...REDACTED_REGIMENT_ITEMS,
+    ...SIEGE_BREAKERS_ITEMS,
     ...OBEDIENT_DEMOCRACY_SUPPORT_TROOPERS_ITEMS,
     ...RIGHTEOUS_REVENANTS_ITEMS,
     ...PREMIUM_EDITION_ITEMS,
