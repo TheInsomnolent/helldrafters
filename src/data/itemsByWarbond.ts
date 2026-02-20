@@ -1895,14 +1895,6 @@ export const SIEGE_BREAKERS_ITEMS: Item[] = [
         armorClass: ARMOR_CLASS.HEAVY,
     },
     {
-        id: 'b_concealed_insertion',
-        name: 'Concealed Insertion',
-        type: TYPE.BOOSTER,
-        rarity: RARITY.UNCOMMON,
-        tags: [TAGS.SMOKE],
-        warbond: 'siege_breakers',
-    },
-    {
         id: 'st_breaching_hammer',
         name: 'Breaching Hammer',
         type: TYPE.STRATAGEM,
