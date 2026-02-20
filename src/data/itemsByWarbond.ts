@@ -2034,6 +2034,14 @@ export const RIGHTEOUS_REVENANTS_ITEMS: Item[] = [
         passive: ARMOR_PASSIVE.ACCLIMATED,
         armorClass: ARMOR_CLASS.MEDIUM,
     },
+    {
+        id: 'st_wasp',
+        name: 'W.A.S.P. Launcher',
+        type: TYPE.STRATAGEM,
+        rarity: RARITY.COMMON,
+        tags: [TAGS.SUPPORT_WEAPON, TAGS.EXPLOSIVE, TAGS.BACKPACK],
+        warbond: 'righteous_revenants',
+    },
 ]
 
 // =============================================================================
@@ -2219,6 +2227,16 @@ export const SUPERSTORE_ITEMS: Item[] = [
         passive: ARMOR_PASSIVE.ADRENO_DEFIBRILLATOR,
         armorClass: ARMOR_CLASS.LIGHT,
     },
+    {
+        id: 'a_rs100',
+        name: 'RS-100 Sanctioner',
+        type: TYPE.ARMOR,
+        rarity: RARITY.RARE,
+        tags: [],
+        superstore: true,
+        passive: ARMOR_PASSIVE.REDUCED_SIGNATURE,
+        armorClass: ARMOR_CLASS.LIGHT,
+    },
 
     // Armor - Medium
     {
@@ -2329,6 +2347,16 @@ export const SUPERSTORE_ITEMS: Item[] = [
         tags: [],
         superstore: true,
         passive: ARMOR_PASSIVE.ROCK_SOLID,
+        armorClass: ARMOR_CLASS.MEDIUM,
+    },
+    {
+        id: 'a_dp8',
+        name: 'DP-8 Mountain-Scaled',
+        type: TYPE.ARMOR,
+        rarity: RARITY.RARE,
+        tags: [],
+        superstore: true,
+        passive: ARMOR_PASSIVE.SIEGE_READY,
         armorClass: ARMOR_CLASS.MEDIUM,
     },
 
