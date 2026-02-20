@@ -136,20 +136,27 @@ export const WARBONDS: Record<string, Warbond> = {
         order: 18,
         image: 'https://helldivers.wiki.gg/images/thumb/Redacted_Regiment_Premium_Warbond_Cover.png/1920px-Redacted_Regiment_Premium_Warbond_Cover.png',
     },
+    SIEGE_BREAKERS: {
+        id: 'siege_breakers',
+        name: 'Siege Breakers',
+        type: WARBOND_TYPE.PREMIUM,
+        order: 19,
+        image: 'https://helldivers.wiki.gg/images/thumb/Siege_Breakers_Premium_Warbond_Cover.png/1920px-Siege_Breakers_Premium_Warbond_Cover.png',
+    },
 
     // Legendary Warbonds
     OBEDIENT_DEMOCRACY: {
         id: 'obedient_democracy_support_troopers',
         name: 'Obedient Democracy Support Troopers',
         type: WARBOND_TYPE.LEGENDARY,
-        order: 19,
+        order: 20,
         image: 'https://helldivers.wiki.gg/images/thumb/Halo_ODST_Legendary_Warbond_Cover.png/1920px-Halo_ODST_Legendary_Warbond_Cover.png',
     },
     RIGHTEOUS_REVENANTS: {
         id: 'righteous_revenants',
         name: 'Righteous Revenants',
         type: WARBOND_TYPE.LEGENDARY,
-        order: 20,
+        order: 21,
         image: 'https://helldivers.wiki.gg/images/Righteous_Revenants_Legendary_Warbond_Cover.png',
     },
 }

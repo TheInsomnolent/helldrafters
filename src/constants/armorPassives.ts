@@ -53,4 +53,6 @@ export const ARMOR_PASSIVE_DESCRIPTIONS: Record<string, string> = {
         'Wearer makes 50% less noise when moving. Increases point-of-interest identification range by 30%. Provides immunity to leg injuries.',
     reduced_signature:
         'Wearer makes 50% less noise when moving. Reduces range at which enemies can detect the wearer by 40%.',
+    supplementary_adrenaline:
+        'When the wearer takes damage, they regain some stamina. Provides a higher armor rating.',
 }
