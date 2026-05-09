@@ -85,6 +85,9 @@ export const CUSTOM_ICON_URLS: Record<string, string> = {
     p_censor: `${WIKI_BASE_URL}/R-72_Censor_Primary_Weaponry.png`,
     p_suppressor: `${WIKI_BASE_URL}/AR-59_Suppressor_Primary_Weaponry.png`,
     p_trident: `${WIKI_BASE_URL}/LAS-13_Trident_Primary_Weaponry.png`,
+    p_stoker: `${WIKI_BASE_URL}/SMGFLAM-34_Stoker_Primary_Icon.png`,
+    p_gallant: `${WIKI_BASE_URL}/thumb/SMG-203_Gallant_Primary_Render.png/300px-SMG-203_Gallant_Primary_Render.png`,
+    p_sweeper: `${WIKI_BASE_URL}/thumb/SG-97_Shotgun_Primary_Render.png/300px-SG-97_Shotgun_Primary_Render.png`,
 
     // Secondary Weapons - using _Secondary_Weaponry.png pattern
     s_peacemaker: `${WIKI_BASE_URL}/P-2_Peacemaker_Secondary_Weaponry.png`,
@@ -107,7 +110,9 @@ export const CUSTOM_ICON_URLS: Record<string, string> = {
     s_warrant: `${WIKI_BASE_URL}/thumb/P-92_Warrant_Secondary_Render.png/600px-P-92_Warrant_Secondary_Render.png`,
     s_machete: `${WIKI_BASE_URL}/CQC-42_Machete_Secondary_Weaponry.png`,
     s_re_educator: `${WIKI_BASE_URL}/P-35_Re-Educator_Secondary_Weaponry.png`,
-    s_entrenchment: `${WIKI_BASE_URL}/CQC-72_Entrenchment_Tool_Secondary_Weaponry.png`,
+    s_entrenchment: `${WIKI_BASE_URL}/thumb/CQC-73_Entrenchment_Tool_Secondary_Render.png/2560px-CQC-73_Entrenchment_Tool_Secondary_Render.png`,
+    s_veto: `${WIKI_BASE_URL}/P-69_Veto_Secondary_Icon.png`,
+    s_missile_pistol: `${WIKI_BASE_URL}/thumb/P-33_Missile_Pistol_Secondary_Render.png/300px-P-33_Missile_Pistol_Secondary_Render.png`,
 
     // Grenades - wiki uses varying patterns (_Throwable_Weaponry.png, _Throwable_Render.png, or _Throwable_Icon.png)
     g_he: `${WIKI_BASE_URL}/thumb/G-12_High_Explosive_Throwable_Weaponry.png/300px-G-12_High_Explosive_Throwable_Weaponry.png`,
@@ -128,6 +133,8 @@ export const CUSTOM_ICON_URLS: Record<string, string> = {
     g_pineapple: `${WIKI_BASE_URL}/thumb/G-7_Pineapple_Throwable_Render.png/300px-G-7_Pineapple_Throwable_Render.png`,
     g_lure_mine: `${WIKI_BASE_URL}/thumb/TM-1_Lure_Mine_Throwable_Render.png/600px-TM-1_Lure_Mine_Throwable_Render.png`,
     g_shield: `${WIKI_BASE_URL}/thumb/G-SH-39_Shield_Throwable_Render.png/600px-G-SH-39_Shield_Throwable_Render.png`,
+    g_giga: `${WIKI_BASE_URL}/thumb/G-48_Giga_Grenade_Throwable_Render.png/300px-G-48_Giga_Grenade_Throwable_Render.png`,
+    g_smokescreen: `${WIKI_BASE_URL}/thumb/G-89_Smokescreen_Throwable_Render.png/300px-G-89_Smokescreen_Throwable_Render.png`,
 
     // Boosters - wiki uses _Booster_Icon.svg format
     b_space: `${WIKI_BASE_URL}/Hellpod_Space_Optimization_Booster_Icon.svg`,
@@ -204,6 +211,8 @@ export const CUSTOM_ICON_URLS: Record<string, string> = {
     st_breaching_hammer: `${WIKI_BASE_URL}/CQC-20_Breaching_Hammer_Stratagem_Icon.png`,
     st_leveller: `${WIKI_BASE_URL}/EAT-411_Leveller_Stratagem_Icon.png`,
     st_belt_fed_grenade_launcher: `${WIKI_BASE_URL}/GL-28_Belt-Fed_Grenade_Launcher_Stratagem_Icon.png`,
+    st_cremator: `${WIKI_BASE_URL}/Cremator_Stratagem_Icon.svg`,
+    st_bullet_storm: `${WIKI_BASE_URL}/Bullet_Storm_Stratagem_Icon.svg`,
 
     // Backpacks
     st_bp_jump: `${WIKI_BASE_URL}/Jump_Pack_Stratagem_Icon.png`,
@@ -238,11 +247,14 @@ export const CUSTOM_ICON_URLS: Record<string, string> = {
     st_s_shield_relay: `${WIKI_BASE_URL}/Shield_Generator_Relay_Stratagem_Icon.png`,
     st_s_grenadier: `${WIKI_BASE_URL}/GL-21_Grenadier_Battlement_Stratagem_Icon.png`,
     st_s_gas_mines: `${WIKI_BASE_URL}/Gas_Minefield_Stratagem_Icon.png`,
+    st_s_gas_mortar: `${WIKI_BASE_URL}/Gas_Mortar_Sentry_Stratagem_Icon.svg`,
 
     // Vehicles and Exosuits
     st_v_frv: `${WIKI_BASE_URL}/M-102_Fast_Recon_Vehicle_Stratagem_Icon.png`,
     st_v_patriot: `${WIKI_BASE_URL}/EXO-45_Patriot_Exosuit_Stratagem_Icon.png`,
     st_v_emancipator: `${WIKI_BASE_URL}/EXO-49_Emancipator_Exosuit_Stratagem_Icon.png`,
+    st_v_lumberer: `${WIKI_BASE_URL}/Lumberer_Exosuit_Stratagem_Icon.svg`,
+    st_v_breakthrough: `${WIKI_BASE_URL}/Breakthrough_Exosuit_Stratagem_Icon.svg`,
 
     // Armor - wiki uses {ArmorName}_Body_Icon.png format
     // Helldivers Mobilize
@@ -316,6 +328,12 @@ export const CUSTOM_ICON_URLS: Record<string, string> = {
     // Siege Breakers
     a_sa7: `${WIKI_BASE_URL}/SA-7_Headfirst_Body_Icon.png`,
     a_sa8: `${WIKI_BASE_URL}/SA-8_Ram_Body_Icon.png`,
+    // Entrenched Division
+    a_cpg48: `${WIKI_BASE_URL}/CPG-48_Sapper_Armor_Render.png`,
+    a_cph26: `${WIKI_BASE_URL}/CPH-26_Commandant_Armor_Render.png`,
+    // Exo Experts
+    a_o3: `${WIKI_BASE_URL}/O-3_Free_Spirit_Armor_Render.png`,
+    a_o2: `${WIKI_BASE_URL}/O-2_Heavy_Operator_Armor_Render.png`,
 
     // Halo ODST
     a_a9: `${WIKI_BASE_URL}/A-9_Helljumper_Body_Icon.png`,
@@ -335,6 +353,7 @@ export const CUSTOM_ICON_URLS: Record<string, string> = {
     a_ie57: `${WIKI_BASE_URL}/IE-57_Hell-Bent_Body_Icon.png`,
     a_gs11: `${WIKI_BASE_URL}/GS-11_Democracy%27s_Deputy_Body_Icon.png`,
     a_ad11: `${WIKI_BASE_URL}/AD-11_Livewire_Body_Icon.png`,
+    a_rs100: `${WIKI_BASE_URL}/RS-100_Sanctioner_Body_Armory.png`,
     // Superstore Medium Armor
     a_sc15: `${WIKI_BASE_URL}/SC-15_Drone_Master_Body_Icon.png`,
     a_b24: `${WIKI_BASE_URL}/B-24_Enforcer_Body_Icon.png`,
@@ -347,6 +366,8 @@ export const CUSTOM_ICON_URLS: Record<string, string> = {
     a_af91: `${WIKI_BASE_URL}/AF-91_Field_Chemist_Body_Icon.png`,
     a_uf84: `${WIKI_BASE_URL}/UF-84_Doubt_Killer_Body_Icon.png`,
     a_rs6: `${WIKI_BASE_URL}/RS-6_Fiend_Destroyer_Body_Icon.png`,
+    a_o44: `${WIKI_BASE_URL}/O-44_Bonded_Pilot_Body_Icon.png`,
+    a_dp8: `${WIKI_BASE_URL}/DP-8_Mountain-Scaled_Body_Icon.png`,
     // Superstore Heavy Armor
     a_b27: `${WIKI_BASE_URL}/B-27_Fortified_Commando_Body_Icon.png`,
     a_fs61: `${WIKI_BASE_URL}/FS-61_Dreadnought_Body_Icon.png`,
@@ -359,6 +380,7 @@ export const CUSTOM_ICON_URLS: Record<string, string> = {
     a_sr64: `${WIKI_BASE_URL}/SR-64_Cinderblock_Body_Icon.png`,
     a_re824: `${WIKI_BASE_URL}/RE-824_Bearer_of_the_Standard_Body_Icon.png`,
     a_bp77: `${WIKI_BASE_URL}/BP-77_Grand_Juror_Body_Icon.png`,
+    a_cpr80: `${WIKI_BASE_URL}/CPR-80_Bulwark_Body_Icon.png`,
 }
 
 /**

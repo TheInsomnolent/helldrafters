@@ -1929,6 +1929,146 @@ export const SIEGE_BREAKERS_ITEMS: Item[] = [
 ]
 
 // =============================================================================
+// ENTRENCHED DIVISION (Premium Warbond)
+// =============================================================================
+export const ENTRENCHED_DIVISION_ITEMS: Item[] = [
+    {
+        id: 'p_stoker',
+        name: 'SMG/FLAM-34 Stoker',
+        type: TYPE.PRIMARY,
+        rarity: RARITY.RARE,
+        tags: [TAGS.FIRE],
+        warbond: 'entrenched_division',
+    },
+    {
+        id: 's_entrenchment',
+        name: 'CQC-73 Entrenchment Tool',
+        type: TYPE.SECONDARY,
+        rarity: RARITY.COMMON,
+        tags: [],
+        warbond: 'entrenched_division',
+    },
+    {
+        id: 's_veto',
+        name: 'P-69 Veto',
+        type: TYPE.SECONDARY,
+        rarity: RARITY.UNCOMMON,
+        tags: [],
+        warbond: 'entrenched_division',
+    },
+    {
+        id: 'g_giga',
+        name: 'G-48 Giga Grenade',
+        type: TYPE.GRENADE,
+        rarity: RARITY.RARE,
+        tags: [TAGS.EXPLOSIVE],
+        warbond: 'entrenched_division',
+    },
+    {
+        id: 'a_cpg48',
+        name: 'CPG-48 Sapper',
+        type: TYPE.ARMOR,
+        rarity: RARITY.UNCOMMON,
+        tags: [TAGS.DEFENSIVE],
+        warbond: 'entrenched_division',
+        passive: ARMOR_PASSIVE.CONCUSSIVE_PADDING_GRENADIER,
+        armorClass: ARMOR_CLASS.MEDIUM,
+    },
+    {
+        id: 'a_cph26',
+        name: 'CPH-26 Commandant',
+        type: TYPE.ARMOR,
+        rarity: RARITY.UNCOMMON,
+        tags: [TAGS.DEFENSIVE],
+        warbond: 'entrenched_division',
+        passive: ARMOR_PASSIVE.CONCUSSIVE_PADDING_HAZMAT,
+        armorClass: ARMOR_CLASS.LIGHT,
+    },
+    {
+        id: 'st_s_gas_mortar',
+        name: 'A/GM-17 Gas Mortar Sentry',
+        type: TYPE.STRATAGEM,
+        rarity: RARITY.RARE,
+        tags: [TAGS.EXPLOSIVE],
+        warbond: 'entrenched_division',
+    },
+    {
+        id: 'st_cremator',
+        name: 'B/FLAM-80 Cremator',
+        type: TYPE.STRATAGEM,
+        rarity: RARITY.RARE,
+        tags: [TAGS.SUPPORT_WEAPON, TAGS.BACKPACK, TAGS.FIRE, TAGS.AT],
+        warbond: 'entrenched_division',
+    },
+]
+
+// =============================================================================
+// EXO EXPERTS (Premium Warbond)
+// =============================================================================
+export const EXO_EXPERTS_ITEMS: Item[] = [
+    {
+        id: 'p_gallant',
+        name: 'SMG-203 Gallant',
+        type: TYPE.PRIMARY,
+        rarity: RARITY.UNCOMMON,
+        tags: [],
+        warbond: 'exo_experts',
+    },
+    {
+        id: 's_missile_pistol',
+        name: 'P-33 Missile Pistol',
+        type: TYPE.SECONDARY,
+        rarity: RARITY.RARE,
+        tags: [TAGS.AT, TAGS.EXPLOSIVE, TAGS.PRECISION],
+        warbond: 'exo_experts',
+    },
+    {
+        id: 'a_o3',
+        name: 'O-3 Free Spirit',
+        type: TYPE.ARMOR,
+        rarity: RARITY.UNCOMMON,
+        tags: [],
+        warbond: 'exo_experts',
+        passive: ARMOR_PASSIVE.OXYGENATOR,
+        armorClass: ARMOR_CLASS.LIGHT,
+    },
+    {
+        id: 'a_o2',
+        name: 'O-2 Heavy Operator',
+        type: TYPE.ARMOR,
+        rarity: RARITY.UNCOMMON,
+        tags: [],
+        warbond: 'exo_experts',
+        passive: ARMOR_PASSIVE.OXYGENATOR,
+        armorClass: ARMOR_CLASS.HEAVY,
+    },
+    {
+        id: 'st_bullet_storm',
+        name: 'MGX-42 Bullet Storm',
+        type: TYPE.STRATAGEM,
+        rarity: RARITY.UNCOMMON,
+        tags: [TAGS.SUPPORT_WEAPON],
+        warbond: 'exo_experts',
+    },
+    {
+        id: 'st_v_lumberer',
+        name: 'EXO-51 Lumberer Exosuit',
+        type: TYPE.STRATAGEM,
+        rarity: RARITY.RARE,
+        tags: [TAGS.MECH, TAGS.AT, TAGS.FIRE, TAGS.EXPLOSIVE],
+        warbond: 'exo_experts',
+    },
+    {
+        id: 'st_v_breakthrough',
+        name: 'EXO-55 Breakthrough Exosuit',
+        type: TYPE.STRATAGEM,
+        rarity: RARITY.RARE,
+        tags: [TAGS.MECH, TAGS.DEFENSIVE],
+        warbond: 'exo_experts',
+    },
+]
+
+// =============================================================================
 // HALO: ODST (Legendary Warbond)
 // =============================================================================
 export const OBEDIENT_DEMOCRACY_SUPPORT_TROOPERS_ITEMS: Item[] = [
@@ -2443,6 +2583,64 @@ export const SUPERSTORE_ITEMS: Item[] = [
         passive: ARMOR_PASSIVE.BALLISTIC_PADDING,
         armorClass: ARMOR_CLASS.HEAVY,
     },
+    {
+        id: 'a_cpr80',
+        name: 'CPR-80 Bulwark',
+        type: TYPE.ARMOR,
+        rarity: RARITY.UNCOMMON,
+        tags: [TAGS.DEFENSIVE],
+        superstore: true,
+        passive: ARMOR_PASSIVE.CONCUSSIVE_PADDING_REINFORCED,
+        armorClass: ARMOR_CLASS.HEAVY,
+    },
+
+    // Additional Superstore items
+    {
+        id: 'p_sweeper',
+        name: 'SG-97 Sweeper',
+        type: TYPE.PRIMARY,
+        rarity: RARITY.RARE,
+        tags: [],
+        superstore: true,
+    },
+    {
+        id: 'g_smokescreen',
+        name: 'G-89 Smokescreen',
+        type: TYPE.GRENADE,
+        rarity: RARITY.UNCOMMON,
+        tags: [TAGS.SMOKE],
+        superstore: true,
+    },
+    {
+        id: 'a_rs100',
+        name: 'RS-100 Sanctioner',
+        type: TYPE.ARMOR,
+        rarity: RARITY.UNCOMMON,
+        tags: [],
+        superstore: true,
+        passive: ARMOR_PASSIVE.REDUCED_SIGNATURE,
+        armorClass: ARMOR_CLASS.LIGHT,
+    },
+    {
+        id: 'a_o44',
+        name: 'O-44 Bonded Pilot',
+        type: TYPE.ARMOR,
+        rarity: RARITY.UNCOMMON,
+        tags: [],
+        superstore: true,
+        passive: ARMOR_PASSIVE.OXYGENATOR,
+        armorClass: ARMOR_CLASS.MEDIUM,
+    },
+    {
+        id: 'a_dp8',
+        name: 'DP-8 Mountain-Scaled',
+        type: TYPE.ARMOR,
+        rarity: RARITY.LEGENDARY,
+        tags: [],
+        superstore: true,
+        passive: ARMOR_PASSIVE.SIEGE_READY,
+        armorClass: ARMOR_CLASS.MEDIUM,
+    },
 ]
 
 // =============================================================================
@@ -2468,6 +2666,8 @@ export const MASTER_DB: Item[] = [
     ...PYTHON_COMMANDOS_ITEMS,
     ...REDACTED_REGIMENT_ITEMS,
     ...SIEGE_BREAKERS_ITEMS,
+    ...ENTRENCHED_DIVISION_ITEMS,
+    ...EXO_EXPERTS_ITEMS,
     ...OBEDIENT_DEMOCRACY_SUPPORT_TROOPERS_ITEMS,
     ...RIGHTEOUS_REVENANTS_ITEMS,
     ...PREMIUM_EDITION_ITEMS,
