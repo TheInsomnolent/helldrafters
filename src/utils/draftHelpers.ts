@@ -274,6 +274,16 @@ export const getWeightedPool = (
             weight = 0 // Hard lock: Only 1 backpack usually allowed/needed
         }
 
+        // Hard lock: Only 1 mech allowed per loadout
+        const hasMech = player.loadout.stratagems.some((sId) => {
+            if (!sId) return false
+            const s = getItemById(sId)
+            return s && s.tags.includes(TAGS.MECH)
+        })
+        if (hasMech && item.tags.includes(TAGS.MECH)) {
+            weight = 0
+        }
+
         return { item, weight, isArmorCombo: false as const }
     })
 
