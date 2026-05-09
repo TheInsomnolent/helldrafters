@@ -2640,16 +2640,6 @@ export const SUPERSTORE_ITEMS: Item[] = [
         superstore: true,
     },
     {
-        id: 'a_rs100',
-        name: 'RS-100 Sanctioner',
-        type: TYPE.ARMOR,
-        rarity: RARITY.UNCOMMON,
-        tags: [],
-        superstore: true,
-        passive: ARMOR_PASSIVE.REDUCED_SIGNATURE,
-        armorClass: ARMOR_CLASS.LIGHT,
-    },
-    {
         id: 'a_o44',
         name: 'O-44 Bonded Pilot',
         type: TYPE.ARMOR,
@@ -2657,16 +2647,6 @@ export const SUPERSTORE_ITEMS: Item[] = [
         tags: [],
         superstore: true,
         passive: ARMOR_PASSIVE.OXYGENATOR,
-        armorClass: ARMOR_CLASS.MEDIUM,
-    },
-    {
-        id: 'a_dp8',
-        name: 'DP-8 Mountain-Scaled',
-        type: TYPE.ARMOR,
-        rarity: RARITY.LEGENDARY,
-        tags: [],
-        superstore: true,
-        passive: ARMOR_PASSIVE.SIEGE_READY,
         armorClass: ARMOR_CLASS.MEDIUM,
     },
 ]
