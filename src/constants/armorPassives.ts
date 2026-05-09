@@ -14,6 +14,8 @@ export const ARMOR_PASSIVE_DESCRIPTIONS: Record<string, string> = {
     peak_physique:
         'Increases melee damage by 100%. Improves weapons handling with less drag on weapon movement.',
     extra_padding: 'Provides a higher armor rating.',
+    oxygenator:
+        "Increases the wearer's walking and running speed by 10%. Increases the speed and duration of slides.",
 
     fortified:
         'Further reduces recoil when crouching or prone by 30%. Provides 50% resistance to explosive damage.',
@@ -25,6 +27,12 @@ export const ARMOR_PASSIVE_DESCRIPTIONS: Record<string, string> = {
         'Provides 25% resistance to chest damage. Provides 25% resistance to explosive damage. Prevents all damage from bleeding if chest hemorrhages.',
     rock_solid:
         'Helps prevent Helldivers from ragdolling when hit. Increases melee damage by 100%.',
+    concussive_padding_grenadier:
+        'Provides 50% resistance to explosive damage. Increases initial inventory and holding capacity of throwables by +2.',
+    concussive_padding_hazmat:
+        'Provides 50% resistance to explosive damage. Provides 25% resistance to gas damage and effects. Sidearm recoil reduced by 30%.',
+    concussive_padding_reinforced:
+        'Provides 50% resistance to explosive damage. Provides a higher armor rating.',
 
     engineering_kit:
         'Further reduces recoil when crouching or prone by 30%. Increases initial inventory and holding capacity of throwables by +2.',

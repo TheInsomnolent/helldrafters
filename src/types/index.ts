@@ -67,6 +67,7 @@ export const TAGS = {
     PRECISION: 'Precision',
     EXPLOSIVE: 'Explosive',
     DEFENSIVE: 'Defensive',
+    MECH: 'Mech',
 } as const
 
 export type Tag = (typeof TAGS)[keyof typeof TAGS]
@@ -91,6 +92,7 @@ export const ARMOR_PASSIVE = {
     SCOUT: 'scout',
     PEAK_PHYSIQUE: 'peak_physique',
     EXTRA_PADDING: 'extra_padding',
+    OXYGENATOR: 'oxygenator',
 
     // Defense & Protection
     FORTIFIED: 'fortified',
@@ -98,6 +100,9 @@ export const ARMOR_PASSIVE = {
     UNFLINCHING: 'unflinching',
     BALLISTIC_PADDING: 'ballistic_padding',
     ROCK_SOLID: 'rock_solid',
+    CONCUSSIVE_PADDING_GRENADIER: 'concussive_padding_grenadier',
+    CONCUSSIVE_PADDING_HAZMAT: 'concussive_padding_hazmat',
+    CONCUSSIVE_PADDING_REINFORCED: 'concussive_padding_reinforced',
 
     // Engineering & Support
     ENGINEERING_KIT: 'engineering_kit',

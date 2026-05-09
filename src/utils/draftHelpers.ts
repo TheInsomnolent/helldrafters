@@ -3,9 +3,10 @@
  */
 
 import { getRareWeightMultiplier } from '../constants/balancingConfig'
+import { isDraftFilteringDebugEnabled } from '../constants/gameConfig'
 import { FACTION, RARITY, TAGS, TYPE } from '../constants/types'
-import type { ItemType, Item, Player, GameConfig } from '../types'
 import { MASTER_DB } from '../data/itemsByWarbond'
+import type { DraftState, GameConfig, Item, ItemType, Player } from '../types'
 import {
     anyItemHasTag,
     getItemById,
@@ -14,7 +15,6 @@ import {
     playerHasAccessToArmorCombo,
     type ArmorCombo,
 } from './itemHelpers'
-import { isDraftFilteringDebugEnabled } from '../constants/gameConfig'
 
 /**
  * Weighted pool item for regular items
@@ -274,6 +274,16 @@ export const getWeightedPool = (
             weight = 0 // Hard lock: Only 1 backpack usually allowed/needed
         }
 
+        // Hard lock: Only 1 mech allowed per loadout
+        const hasMech = player.loadout.stratagems.some((sId) => {
+            if (!sId) return false
+            const s = getItemById(sId)
+            return s && s.tags.includes(TAGS.MECH)
+        })
+        if (hasMech && item.tags.includes(TAGS.MECH)) {
+            weight = 0
+        }
+
         return { item, weight, isArmorCombo: false as const }
     })
 
@@ -504,3 +514,15 @@ export const generateDraftHand = (
 
     return hand
 }
+// Helper to create a default DraftState with all required properties
+export const createDraftState = (overrides: Partial<DraftState> = {}): DraftState => ({
+    activePlayerIndex: 0,
+    roundCards: [],
+    isRerolling: false,
+    pendingStratagem: null,
+    extraDraftRound: 0,
+    draftOrder: [],
+    isRetrospective: false,
+    retrospectivePlayerIndex: null,
+    ...overrides,
+})

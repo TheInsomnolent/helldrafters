@@ -143,20 +143,34 @@ export const WARBONDS: Record<string, Warbond> = {
         order: 19,
         image: 'https://helldivers.wiki.gg/images/thumb/Siege_Breakers_Premium_Warbond_Cover.png/1920px-Siege_Breakers_Premium_Warbond_Cover.png',
     },
+    ENTRENCHED_DIVISION: {
+        id: 'entrenched_division',
+        name: 'Entrenched Division',
+        type: WARBOND_TYPE.PREMIUM,
+        order: 20,
+        image: 'https://helldivers.wiki.gg/images/Entrenched_Division_Premium_Warbond_Cover.png',
+    },
+    EXO_EXPERTS: {
+        id: 'exo_experts',
+        name: 'Exo Experts',
+        type: WARBOND_TYPE.PREMIUM,
+        order: 21,
+        image: 'https://helldivers.wiki.gg/images/Exo_Experts_Premium_Warbond_Cover.png',
+    },
 
     // Legendary Warbonds
     OBEDIENT_DEMOCRACY: {
         id: 'obedient_democracy_support_troopers',
         name: 'Obedient Democracy Support Troopers',
         type: WARBOND_TYPE.LEGENDARY,
-        order: 20,
+        order: 22,
         image: 'https://helldivers.wiki.gg/images/thumb/Halo_ODST_Legendary_Warbond_Cover.png/1920px-Halo_ODST_Legendary_Warbond_Cover.png',
     },
     RIGHTEOUS_REVENANTS: {
         id: 'righteous_revenants',
         name: 'Righteous Revenants',
         type: WARBOND_TYPE.LEGENDARY,
-        order: 21,
+        order: 23,
         image: 'https://helldivers.wiki.gg/images/Righteous_Revenants_Legendary_Warbond_Cover.png',
     },
 }
