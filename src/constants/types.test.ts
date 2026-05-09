@@ -42,8 +42,8 @@ describe('Constants - Types', () => {
     })
 
     describe('TAGS', () => {
-        it('should have exactly 9 tags', () => {
-            expect(Object.keys(TAGS)).toHaveLength(9)
+        it('should have exactly 10 tags', () => {
+            expect(Object.keys(TAGS)).toHaveLength(10)
         })
 
         it('should have correct tag values', () => {
@@ -56,6 +56,7 @@ describe('Constants - Types', () => {
             expect(TAGS.PRECISION).toBe('Precision')
             expect(TAGS.EXPLOSIVE).toBe('Explosive')
             expect(TAGS.DEFENSIVE).toBe('Defensive')
+            expect(TAGS.MECH).toBe('Mech')
         })
     })
 })
