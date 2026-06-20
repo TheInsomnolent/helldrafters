@@ -1,5 +1,5 @@
 import { CheckCircle, XCircle } from 'lucide-react'
-import { useReducer, useState } from 'react'
+import { useState } from 'react'
 import {
     getRequisitionMultiplier,
     getSlotLockCost,
@@ -8,7 +8,7 @@ import {
 } from 'src/constants/balancingConfig'
 import { getMissionsForDifficulty } from 'src/constants/gameConfig'
 import { useGamePersistence } from 'src/hooks'
-import { gameReducer, initialState } from 'src/state/gameReducer'
+import { useGameState } from 'src/state/GameStateContext'
 import { getFactionColors } from 'src/styles'
 import { EVENTS } from 'src/systems/events/events'
 import { useMultiplayer } from 'src/systems/multiplayer'
@@ -92,8 +92,8 @@ export default function DashboardScreen({
     tryTriggerRandomEvent,
     children,
 }: DashboardScreenProps) {
-    // --- STATE (Using useReducer for complex state management) ---
-    const [state, dispatch] = useReducer(gameReducer, initialState)
+    // --- STATE (shared via GameStateProvider) ---
+    const { state, dispatch } = useGameState()
 
     // Destructure commonly used state values for easier access
     const {

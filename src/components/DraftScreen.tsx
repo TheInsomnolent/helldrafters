@@ -1,7 +1,7 @@
 import { RefreshCw } from 'lucide-react'
-import { useReducer } from 'react'
 import { useGamePersistence } from 'src/hooks'
-import { gameReducer, initialState } from 'src/state/gameReducer'
+import { initialState } from 'src/state/gameReducer'
+import { useGameState } from 'src/state/GameStateContext'
 import { getFactionColors, SPACING } from 'src/styles'
 import {
     ActionButton,
@@ -69,7 +69,7 @@ export default function DraftScreen({
     pendingCardRemoval,
     confirmRemoveCardFromDraft,
 }: DraftScreenProps) {
-    const [state, dispatch] = useReducer(gameReducer, initialState)
+    const { state, dispatch } = useGameState()
 
     const { gameConfig, currentDiff, requisition, players, draftState, draftHistory } = state
 
@@ -198,6 +198,22 @@ export default function DraftScreen({
     }
 
     const player = players[draftState.activePlayerIndex]
+
+    // Guard against missing player data (e.g. state not yet hydrated)
+    if (!player) {
+        return (
+            <PageWrapper>
+                {isMultiplayer && (
+                    <MultiplayerStatusBar gameConfig={gameConfig} onDisconnect={disconnect} />
+                )}
+                <ContentWrapper>
+                    <WaitingMessage>
+                        <WaitingText>Preparing draft…</WaitingText>
+                    </WaitingMessage>
+                </ContentWrapper>
+            </PageWrapper>
+        )
+    }
 
     // In multiplayer, check if it's this player's turn to draft
     const isMyTurn = !isMultiplayer || playerSlot === draftState.activePlayerIndex

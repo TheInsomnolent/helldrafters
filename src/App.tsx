@@ -1,4 +1,4 @@
-import { Fragment, useEffect, useReducer, useRef, useState } from 'react'
+import { Fragment, useEffect, useRef, useState } from 'react'
 import { HashRouter, Route, Routes } from 'react-router-dom'
 import { ThemeProvider } from 'styled-components'
 import { AnalyticsDashboard } from './components/analytics'
@@ -29,7 +29,7 @@ import { useGamePersistence } from './hooks'
 import * as actions from './state/actions'
 import * as types from './state/actionTypes'
 import * as runAnalytics from './state/analyticsStore'
-import { gameReducer, initialState } from './state/gameReducer'
+import { GameStateProvider, useGameState } from './state/GameStateContext'
 import { GlobalStyles, theme } from './styles'
 import { selectRandomEvent } from './systems/events/events'
 import * as eventsV2 from './systems/eventsV2'
@@ -60,8 +60,8 @@ declare global {
 }
 
 function HelldiversRoguelikeApp() {
-    // --- STATE (Using useReducer for complex state management) ---
-    const [state, dispatch] = useReducer(gameReducer, initialState)
+    // --- STATE (shared via GameStateProvider) ---
+    const { state, dispatch } = useGameState()
 
     // Destructure commonly used state values for easier access
     const {
@@ -129,7 +129,7 @@ function HelldiversRoguelikeApp() {
             // This shouldn't happen (host set their own flag), but clear it anyway
             clearHostDisconnected()
         }
-    }, [hostDisconnected, isHost, wasKicked, clearHostDisconnected])
+    }, [hostDisconnected, isHost, wasKicked, clearHostDisconnected, dispatch])
 
     // Handle client intentional disconnect - return to menu
     useEffect(() => {
@@ -141,7 +141,7 @@ function HelldiversRoguelikeApp() {
             }
             clearClientDisconnected()
         }
-    }, [clientDisconnected, wasKicked, clearClientDisconnected])
+    }, [clientDisconnected, wasKicked, clearClientDisconnected, dispatch])
 
     // Handle being kicked - show kicked screen
     useEffect(() => {
@@ -149,7 +149,7 @@ function HelldiversRoguelikeApp() {
             dispatch(actions.setPhase('KICKED'))
             setMultiplayerMode(null)
         }
-    }, [wasKicked])
+    }, [wasKicked, dispatch])
 
     // UI-only state (not part of game state)
     const [selectedPlayer, setSelectedPlayer] = useState(0) // For custom setup phase
@@ -1870,10 +1870,12 @@ export default function HelldiversRoguelike() {
             <GlobalStyles />
             <HashRouter>
                 <MultiplayerProvider>
-                    <Routes>
-                        <Route path="card-library" element={<CardLibrary />} />
-                        <Route path="/" element={<HelldiversRoguelikeApp />} />
-                    </Routes>
+                    <GameStateProvider>
+                        <Routes>
+                            <Route path="card-library" element={<CardLibrary />} />
+                            <Route path="/" element={<HelldiversRoguelikeApp />} />
+                        </Routes>
+                    </GameStateProvider>
                 </MultiplayerProvider>
             </HashRouter>
         </ThemeProvider>
