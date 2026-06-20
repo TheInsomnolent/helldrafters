@@ -1,6 +1,6 @@
-import { useReducer, useState } from 'react'
+import { useState } from 'react'
 import { useGamePersistence } from 'src/hooks'
-import { gameReducer, initialState } from 'src/state/gameReducer'
+import { useGameState } from 'src/state/GameStateContext'
 import { Button, Caption, getFactionColors } from 'src/styles'
 import {
     CenteredContent,
@@ -40,7 +40,7 @@ interface SacrificeScreenProps {
 }
 
 export default function SacrificeScreen({ startDraftPhase }: SacrificeScreenProps) {
-    const [state, dispatch] = useReducer(gameReducer, initialState)
+    const { state, dispatch } = useGameState()
 
     const { gameConfig, players, sacrificeState } = state
 

@@ -1,7 +1,6 @@
-import { useReducer } from 'react'
 import { Subfaction } from 'src/constants/balancingConfig'
 import { MASTER_DB } from 'src/data/itemsByWarbond'
-import { gameReducer, initialState } from 'src/state/gameReducer'
+import { useGameState } from 'src/state/GameStateContext'
 import { EventPageWrapper } from 'src/styles/App.styles'
 import {
     applyGainBoosterWithSelection,
@@ -30,7 +29,7 @@ interface EventScreenProps {
 }
 
 export default function EventScreen({ getConnectedPlayerIndices }: EventScreenProps) {
-    const [state, dispatch] = useReducer(gameReducer, initialState)
+    const { state, dispatch } = useGameState()
 
     const {
         gameConfig,
