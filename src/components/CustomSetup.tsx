@@ -1,7 +1,6 @@
-import { useReducer } from 'react'
 import { DIFFICULTY_CONFIG } from 'src/constants/gameConfig'
 import { MASTER_DB } from 'src/data/itemsByWarbond'
-import { gameReducer, initialState } from 'src/state/gameReducer'
+import { useGameState } from 'src/state/GameStateContext'
 import { getFactionColors, SPACING } from 'src/styles'
 import {
     CenteredContent,
@@ -49,7 +48,7 @@ export default function CustomSetup({
     setSelectedPlayer,
     setGameStartTime,
 }: GameLobbyProps): React.ReactElement {
-    const [state, dispatch] = useReducer(gameReducer, initialState)
+    const { state, dispatch } = useGameState()
     const multiplayer = useMultiplayer()
 
     const { customSetup, gameConfig } = state
